@@ -1,0 +1,9 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'coreEnv', 'buildOS', 'buildArch', 'openclFlags', 'glewFlags' )
+
+coreEnv.MergeFlags( openclFlags )
+coreEnv.MergeFlags( glewFlags )
+coreEnv.Prepend( LIBS = coreEnv.StaticLibrary( 'OCL', Glob('*.cpp') ) )

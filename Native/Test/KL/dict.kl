@@ -1,0 +1,79 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function simpleTest() {
+  Scalar a[String];
+  report("a.size = " + a.size);
+  report("a.has('foo') = " + a.has('foo'));
+  report("a['foo'] = " + a['foo']);
+  report("a = " + a);
+  a['foo'] = 3.14;
+  report("a.size = " + a.size);
+  report("a.has('foo') = " + a.has('foo'));
+  report("a['foo'] = " + a['foo']);
+  report("a = " + a);
+  a['foo'] = 2.71;
+  report("a.size = " + a.size);
+  report("a.has('foo') = " + a.has('foo'));
+  report("a['foo'] = " + a['foo']);
+  report("a = " + a);
+  a.delete('foo');
+  report("a.size = " + a.size);
+  report("a.has('foo') = " + a.has('foo'));
+  report("a['foo'] = " + a['foo']);
+  report("a = " + a);
+}
+
+function largeTest() {
+  String a[String];
+  for (Size i=0; i<1024; ++i) {
+    String key = "key " + i;
+    a[key] = "value "+i;
+  }
+  report("a = " + a);
+  report("a.size = " + a.size);
+  for (Size i=0; i<32; ++i) {
+    String key = "key " + (i*3)%1024;
+    report("a.has('" + key + "') = " + a.has(key));
+  }
+  for (Size i=0; i<32; ++i) {
+    String key = "key " + (i*5)%1024;
+    a.delete( key );
+  }
+  report("a = " + a);
+  report("a.size = " + a.size);
+  Size displayed = 0;
+  for ( k, v in a ) {
+    report("a['" + k + "'] = " + v);
+    if ( ++displayed == 32 )
+      break;
+  }
+  a.clear();
+  report("a = " + a);
+}
+
+function nestedTest() {
+  Size a[String][Size][2][2];
+  for (Size i=0; i<8; ++i) {
+    for (Size j=0; j<8; ++j) {
+      Size b[2][2];
+      b[0][0] = 0;
+      b[0][1] = i;
+      b[1][0] = j;
+      b[1][1] = i*j;
+      a["key "+i][j] = b;
+    }
+  }
+  report("a = " + a);
+  report("a.size = " + a.size);
+  report("a['key 4'] = " + a['key 4']);
+  report("a['key 4'].size = " + a['key 4'].size);
+  report("a['key 4'][7] = " + a['key 4'][7]);
+}
+
+operator entry() {
+  simpleTest();
+  largeTest();
+  nestedTest();
+}

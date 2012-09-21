@@ -1,0 +1,19 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'nativeEnv' )
+
+md5Env = nativeEnv.Clone()
+md5IncludeDir = md5Env.Dir('.');
+builtMD5 = md5Env.StaticLibrary(
+  target = 'md5-1.4',
+  source = Glob( os.path.join( 'md5', '*.c' ) )
+  )
+
+md5Flags = {
+  'CPPPATH': [md5IncludeDir],
+  'LIBS': [builtMD5],
+}
+Export( 'md5Flags' )

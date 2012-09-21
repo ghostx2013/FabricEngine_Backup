@@ -1,0 +1,14 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+# SCons stuff
+.sconscache/
+.sconsign.dblite
+
+# Build products
+build/
+dist/
+
+# Per-user workspace for Sublime Text 2 editor
+Fabric.sublime-workspace

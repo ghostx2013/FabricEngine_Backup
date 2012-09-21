@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function myFunc( in Scalar a )
+{
+  report( a );
+}
+
+operator entry( )
+{
+  myFunc( 20 );
+}

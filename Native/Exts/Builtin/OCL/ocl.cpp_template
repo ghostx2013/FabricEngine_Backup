@@ -1,0 +1,16 @@
+/*
+ *  Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+ */
+ 
+#include <Fabric/EDK/EDK.h>
+IMPLEMENT_FABRIC_EDK_ENTRIES
+
+#if defined(FABRIC_OS_LINUX)
+  #include "CL/cl.h"
+#else
+  #include "OCL.h"
+#endif
+
+using namespace Fabric::EDK;
+
+####FUNCTIONS####

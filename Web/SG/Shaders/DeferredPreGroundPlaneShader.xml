@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>GroundPlaneMaterial</name>
+  <prototypeMaterialType>DeferredPrePassMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_modelViewMatrix" constant="modelViewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_normalMatrix" constant="normalMatrix" type="Mat33" owner="instance"/>
+
+    <uniform name="u_materialBrightColor" constant="darkColor" type="Color" defaultValue="FABRIC.RT.rgba(1,1,1,1)"/>
+    <uniform name="u_materialDarkColor" constant="brightColor" type="Color" defaultValue="FABRIC.RT.rgba(0,0,0,1)"/>
+    <uniform name="u_materialStep" constant="step" type="Scalar" defaultValue="0.1"/>
+
+    <uniform name="u_shadowMapSampler" constant="lightShadowMap" type="Scalar" defaultValue="0.0" owner="light"/>
+    <uniform name="u_shadowMapMatrix" constant="lightShadowMapMatrix" type="Mat44" owner="light"/>
+    <uniform name="u_shadowIntensity" constant="shadowIntensity" type="Scalar" defaultValue="0.5"/>
+
+    <uniform name="u_lightPosition" constant="lightPosition" type="Vec3" owner="light"/>
+    <uniform name="u_lightDir" constant="lightDir" type="Vec3" owner="light"/>
+    <uniform name="u_lightCosCutoff" constant="lightCosCutoff" type="Scalar" owner="light"/>
+
+    <uniform name="u_colorBlend" constant="colorBlend" type="Scalar" defaultValue="1.0"/>
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_normal" binding="normals"/>
+    <attribute name="a_texCoord" binding="uvs0"/>
+  </attributes>
+  
+  <textures>
+    <texture binding="lightShadowMap"/>
+  </textures>
+
+  <lights>
+    <light type="SpotLight" binding="light" shadowMap="shadowMap"/>
+  </lights>
+  
+  <vertexshader>
+    <source>
+      <![CDATA[
+      uniform mat4 u_modelViewProjectionMatrix;
+      uniform mat4 u_modelViewMatrix;
+      uniform mat3 u_normalMatrix;
+      uniform mat4 u_shadowMapMatrix;
+      uniform vec4 u_lightPosition;
+      
+      attribute vec4 a_position;
+      attribute vec3 a_normal;
+      attribute vec2 a_texCoord;
+      varying vec4 shadowCoord;
+      varying vec3 lightDir;
+      varying vec3 normal;
+      varying vec3 position;
+      
+      void main()
+      {
+        position = vec3( u_modelViewMatrix * a_position );
+        lightDir = u_lightPosition.xyz - position;
+
+        gl_TexCoord[0].xy = a_texCoord;
+        gl_Position =  u_modelViewProjectionMatrix * a_position;
+        normal = u_normalMatrix * a_normal;
+        shadowCoord =  u_shadowMapMatrix * u_modelViewMatrix * a_position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      
+      uniform vec4 u_materialBrightColor;
+      uniform vec4 u_materialDarkColor;
+      uniform float u_materialStep;
+      uniform float u_shadowIntensity;
+      uniform vec3 u_lightDir;
+      uniform float u_lightCosCutoff;
+      uniform float u_colorBlend;
+
+      varying vec4 shadowCoord;
+      varying vec2 a_texCoord;
+      varying vec3 lightDir;
+      varying vec3 normal;
+      varying vec3 position;
+      ]]>
+      </source>
+      <include file="shadows.txt"/>
+      <source>
+      <![CDATA[
+
+      #ifdef USE_SHADOW_SAMPLER
+        uniform sampler2DShadow u_shadowMapSampler;
+      #else
+        uniform sampler2D u_shadowMapSampler;
+      #endif
+      
+      void main()
+      {
+        gl_FragData[0].r = position.z;
+        gl_FragData[1].xyz = normalize(normal);
+
+        vec3 Ln = normalize(lightDir);
+
+        float lightFactor = getLightFactor_Hard( u_shadowMapSampler, shadowCoord );
+        lightFactor = (1.0 - u_shadowIntensity) * lightFactor + u_shadowIntensity;
+        if( -dot( Ln, u_lightDir ) < u_lightCosCutoff )
+          lightFactor = (1.0 - u_shadowIntensity);
+
+        int modX = int(floor(gl_TexCoord[0].x / u_materialStep));
+        int modY = int(floor(gl_TexCoord[0].y / u_materialStep));
+        if((modX - (modX/2*2)) == (modY - (modY/2*2)))
+          gl_FragData[2] = u_materialBrightColor * lightFactor;
+        else
+          gl_FragData[2] = u_materialDarkColor * lightFactor;
+        gl_FragData[2].a = u_colorBlend;
+      }
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

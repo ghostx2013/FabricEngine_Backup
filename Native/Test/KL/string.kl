@@ -1,0 +1,19 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function reportString( String string )
+{
+  report("'" + string + "' (length " + string.length + ")");
+}
+
+operator entry()
+{
+  var String string; reportString( string );
+  string = 7; reportString( string );
+  string = 14; reportString( string );
+  string += 2; reportString( string );
+  string = string + 9; reportString( string );
+  string += "goo"; reportString( string );
+  string += 'foo'; reportString( string );
+}

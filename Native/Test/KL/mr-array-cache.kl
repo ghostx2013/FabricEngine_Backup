@@ -1,0 +1,122 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator produceAndFlush(
+  ArrayProducer<Integer> ap,
+  String method
+  )
+{
+  report(ap);
+  report("  ap.getCount() = " + ap.getCount());
+
+  report("Should run " + method + " 10x");
+  for (Size i=0; i<10; ++i)
+    report("  ap.produce() = " + ap.produce(i));
+
+  report("Should not run " + method + " 10x");
+  for (Size i=0; i<10; ++i)
+    report("  ap.produce() = " + ap.produce(i));
+
+  ap.flush();
+  report("Should run " + method + " 10x");
+  for (Size i=0; i<10; ++i)
+    report("  ap.produce() = " + ap.produce(i));
+
+  report(" ");
+}
+
+operator generator(
+  io Integer value
+  )
+{
+  report(" running generator");
+  value = 42;
+}
+
+operator testGeneratorCache()
+{
+  report("--- Testing Generator Cache");
+  ValueProducer<Size> cvg = createConstValue(Size(10));
+  ArrayProducer<Integer> gen = createArrayCache(
+    createArrayGenerator(cvg, generator)
+    );
+  produceAndFlush(gen, "generator");
+}
+
+operator transform(
+  io Integer value
+  )
+{
+  report(" running transform");
+  value *= 2;
+}
+
+operator testTransformCache()
+{
+  report("--- Testing Transform Cache");
+  Integer va[];
+  for (Integer i=0; i<10; ++i)
+    va.push(i);
+
+  ArrayProducer<Integer> cap = createConstArray(va);
+  ArrayProducer<Integer> tr = createArrayCache(
+    createArrayTransform(cap, transform)
+    );
+
+  produceAndFlush(tr, "transform");
+}
+
+operator testNestedCache()
+{
+  report("--- Testing Nested Caches");
+  ValueProducer<Size> cvg = createConstValue(Size(10));
+  ArrayProducer<Integer> gen = createArrayCache(
+    createArrayCache(
+      createArrayGenerator(cvg, generator)
+    )
+  );
+  produceAndFlush(gen, "generator");
+}
+
+operator testTransformFlushPropagate()
+{
+  report("--- Testing Transform flush propagation");
+  ValueProducer<Size> cvg = createConstValue(Size(10));
+  ArrayProducer<Integer> gen = createArrayGenerator(cvg, generator);
+  ArrayProducer<Integer> tr = createArrayTransform(
+    createArrayCache(gen),
+    transform
+  );
+
+  produceAndFlush(tr, "generator");
+}
+
+operator map(
+  Integer input,
+  io Integer output
+  )
+{
+  output = 2;
+}
+
+operator testMapFlushPropagate()
+{
+  report("--- Testing Map flush propagation");
+  ValueProducer<Size> cvg = createConstValue(Size(10));
+  ArrayProducer<Integer> gen = createArrayGenerator(cvg, generator);
+  ArrayProducer<Integer> tr = createArrayMap(
+    createArrayCache(gen),
+    map
+  );
+
+  produceAndFlush(tr, "generator");
+}
+
+operator entry() {
+  testGeneratorCache();
+  testTransformCache();
+  testNestedCache();
+  testTransformFlushPropagate();
+  testMapFlushPropagate();
+}

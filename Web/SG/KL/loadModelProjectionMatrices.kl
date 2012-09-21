@@ -1,0 +1,76 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo, Mat33, Mat44;
+use OGLShaderProgram;
+
+
+operator loadProjectionMatrices(
+  io OGLShaderProgram shaderProgram,
+  io Mat44 cameraMatrix,
+  io Mat44 projectionMatrix
+) {
+//  report("loadProjectionMatricesFn");
+  Integer location;
+
+  location = shaderProgram.getUniformLocation(VIEWMATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadMat44Uniform(location, cameraMatrix);
+  }
+  location = shaderProgram.getUniformLocation(CAMERAMATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    // Some shaders need the world space transform of the camera.
+    // The camera matrix is inverted. 
+    shaderProgram.loadMat44Uniform(location, cameraMatrix.inverse());
+  }
+  location = shaderProgram.getUniformLocation(CAMERAPOSITION_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadVec3Uniform(location, cameraMatrix.inverse().translation());
+  }
+  location = shaderProgram.getUniformLocation(PROJECTIONMATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadMat44Uniform(location, projectionMatrix);
+  }
+  location = shaderProgram.getUniformLocation(PROJECTIONMATRIXINV_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadMat44Uniform(location, projectionMatrix.inverse());
+  }
+}
+
+
+operator loadModelProjectionMatrices(
+  io OGLShaderProgram shaderProgram,
+  io Xfo modelXfo,
+  io Mat44 cameraMatrix,
+  io Mat44 projectionMatrix
+) {
+//  report("loadModelProjectionMatrices");
+  Integer location;
+
+  location = shaderProgram.getUniformLocation(MODELMATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadMat44Uniform(location, modelXfo.toMat44());
+  }
+  location = shaderProgram.getUniformLocation(MODELMATRIXINVERSE_ATTRIBUTE_ID);
+  if(location!=-1){
+    shaderProgram.loadMat44Uniform(location, modelXfo.toMat44().inverse());
+  }
+  location = shaderProgram.getUniformLocation(NORMALMATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    Mat44 modelViewMatrix = cameraMatrix * modelXfo.toMat44();
+    Mat33 normalMatrix = modelViewMatrix.upperLeft().inverse().transpose();
+    shaderProgram.loadMat33Uniform(location, normalMatrix);
+  }
+  location = shaderProgram.getUniformLocation(MODELVIEW_MATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    Mat44 modelViewMatrix = cameraMatrix * modelXfo.toMat44();
+    shaderProgram.loadMat44Uniform(location, modelViewMatrix);
+  }
+  location = shaderProgram.getUniformLocation(MODELVIEWPROJECTION_MATRIX_ATTRIBUTE_ID);
+  if(location!=-1){
+    Mat44 modelViewProjectionMatrix = projectionMatrix * cameraMatrix * modelXfo.toMat44();
+    shaderProgram.loadMat44Uniform(location, modelViewProjectionMatrix);
+  }
+}
+

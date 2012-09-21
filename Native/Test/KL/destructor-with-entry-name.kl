@@ -1,0 +1,16 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Foo {
+  String bar;
+};
+
+function ~Foo() = "myDestructorName" {
+  report(this.bar);
+}
+
+operator entry() {
+  Foo foo;
+  foo.bar = "baz";
+}

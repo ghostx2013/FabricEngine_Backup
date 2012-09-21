@@ -1,0 +1,27 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Struct
+{
+  Integer integer;
+  Scalar scalar;
+};
+
+alias Struct StructArray[];
+alias StructArray StructArrayArray[];
+
+operator entry()
+{
+  var Struct _struct;
+  _struct.integer = 42;
+  _struct.scalar = 3.141;
+
+  var StructArray structArray;
+  structArray.push( _struct );
+
+  var StructArrayArray structArrayArray;
+  structArrayArray.push( structArray );
+
+  report(structArrayArray);
+}

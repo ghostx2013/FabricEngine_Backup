@@ -1,0 +1,41 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricFACE;
+use FabricVIDEO;
+
+function clampByte(io Byte value, in Byte addition)
+{
+  if((Size(value) + Size(addition)) > 255)
+    value = 255;
+  else
+    value += addition;
+}
+
+operator detectFaces
+(
+  io FaceDetector detector,
+  io FabricResource resource,
+  io RGB pixels[],
+  io VideoHandle video
+)
+{
+  if(!detector.pointer) {
+    if(resource.dataExternalLocation)
+      detector.init(resource.dataExternalLocation);
+  }
+  if(detector.pointer) {
+    FaceLocation faces[];
+    detector.detectRGB(pixels,video.width,video.height,1.2,Size(60),Size(60),faces);
+    for(Size i=0;i<faces.size();i++) {
+      for(Size x=faces[i].left;x<=faces[i].right;x++) {
+        for(Size y=faces[i].bottom;y<=faces[i].top;y++) {
+          Size index = y * video.width + x;
+          clampByte(pixels[index].r,50);
+          clampByte(pixels[index].g,50);
+        }
+      }
+    }
+  }
+}

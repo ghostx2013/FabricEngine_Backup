@@ -1,0 +1,1 @@
+[u"binding 0: operator 'op': node 'self': parameter 1: member 'input': parameter type mismatch: member element type is 'Scalar[]', operator parameter type is 'Scalar[][]'"]

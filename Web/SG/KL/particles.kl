@@ -1,0 +1,44 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3;
+use HashTable;
+
+operator calcCellIndex(
+  io Vec3 position,
+  io Vec3 cellcoords,
+  io Integer cellindex,
+  io HashTable hashtable
+) {
+  // determine the cell that this particle belongs to.
+  cellindex = hashtable.calcCellIndex(position, cellcoords);
+}
+
+operator populateHashTable(
+  io HashTable hashtable,
+  io Integer cellIndices<>
+) {
+  // Reset the hash table, and re-accumulate the ids.
+  Size numCells = hashtable.x_count * hashtable.y_count * hashtable.z_count;
+  hashtable.cells.resize(numCells);
+  for (Index i = 0; i < numCells; ++ i)
+    hashtable.cells[i].resize(0);
+
+  for (Index i = 0; i < cellIndices.size; i++) {
+    var Integer cellIndex = cellIndices[i];
+    hashtable.cells[cellIndex].push(i);
+  }
+}
+
+operator copyCurrentFrameDataToPrevFrameData(
+  io Vec3 position,
+  io Vec3 velocity,
+  io Vec3 previousframe_position,
+  io Vec3 previousframe_velocity
+) {
+  previousframe_position = position;
+  previousframe_velocity = velocity;
+}
+
+

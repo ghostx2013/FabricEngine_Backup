@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>DeferredPostPhongMaterial</name>
+  <prototypeMaterialType>DeferredPostPassMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_samplerPositionsZMap" constant="positionsZTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerNormalsMap" constant="normalsTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerDiffuseMap" constant="diffuseTexture" type="Integer" owner="texture"/>
+
+    <uniform name="u_width" constant="width" type="Integer" owner="window"/>
+    <uniform name="u_height" constant="height" type="Integer" owner="window"/>
+    <uniform name="u_outlineWidth" constant="outlineWidth" type="Scalar" defaultValue="1.0"/>
+    <uniform name="u_outlineColor" constant="outlineColor" type="Color" defaultValue="FABRIC.RT.rgba(0.0,0.0,0.0,1.0)"/>
+  </uniforms>
+
+  <textures>
+    <texture binding="positionsZTexture"/>
+    <texture binding="normalsTexture"/>
+    <texture binding="diffuseTexture"/>
+  </textures>
+
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+  </attributes>
+
+  <vertexshader>
+    <source>
+      <![CDATA[
+      attribute vec4 a_position;
+
+      void main(){
+        gl_Position = a_position;
+        gl_TexCoord[0].st = a_position.xy;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+
+  <fragmentshader>
+    <source>
+      <![CDATA[
+			uniform sampler2D u_samplerPositionsZMap;
+			uniform sampler2D u_samplerNormalsMap;
+			uniform sampler2D u_samplerDiffuseMap;
+      uniform int u_width;
+      uniform int u_height;
+      uniform float u_outlineWidth;
+      uniform vec4 u_outlineColor;
+
+      void main(){
+        vec2 windowCoord = gl_TexCoord[0].st*0.5+0.5;
+
+        vec2 tc_offset[9];
+        float xInc = u_outlineWidth / float(u_width);
+        float yInc = u_outlineWidth / float(u_height);
+
+        for(int i=0;i<3;i++) {
+          for(int j=0;j<3;j++) {
+            tc_offset[((i*3)+j)] = vec2((-1.0 * xInc) + ( float(i) * xInc), (-1.0 * yInc) + ( float(j) * yInc));
+          }
+        }
+  
+        vec3 normalSample[9];
+        float depthSample[9];
+        for (int i = 0; i < 9; i++){
+          vec2 uv = windowCoord + tc_offset[i];
+          normalSample[i] = texture2D(u_samplerNormalsMap, uv).xyz;
+          depthSample[i] = texture2D(u_samplerPositionsZMap, uv).r;
+        }
+  
+        vec3 normalHorizEdge = normalSample[2] + (2.0*normalSample[5]) + normalSample[8] - (normalSample[0] + (2.0*normalSample[3]) + normalSample[6]);
+        vec3 normalVertEdge = normalSample[0] + (2.0*normalSample[1]) + normalSample[2] - (normalSample[6] + (2.0*normalSample[7]) + normalSample[8]);
+        float depthHorizEdge = depthSample[2] + (2.0*depthSample[5]) + depthSample[8] - (depthSample[0] + (2.0*depthSample[3]) + depthSample[6]);
+        float depthVertEdge = depthSample[0] + (2.0*depthSample[1]) + depthSample[2] - (depthSample[6] + (2.0*depthSample[7]) + depthSample[8]);
+
+        vec3 normalEdge = sqrt((normalHorizEdge * normalHorizEdge) + (normalVertEdge * normalVertEdge));
+        float depthEdge = 0.1*sqrt((depthHorizEdge * depthHorizEdge) + (depthVertEdge * depthVertEdge));
+        float edge = max(depthEdge,max(max(normalEdge.r,normalEdge.g),normalEdge.b));
+
+        gl_FragColor = edge * u_outlineColor + (1.0 - edge) * texture2D( u_samplerDiffuseMap, windowCoord );
+      }
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

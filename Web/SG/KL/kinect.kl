@@ -1,0 +1,156 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricKINECT;
+use Vec3;
+use Euler;
+use Color;
+
+operator initKinectCamera(
+  io KinectCamera camera
+){
+  Boolean result;
+  camera.init(result);
+  if(result)
+    report('Kinect Camera iniated. Supported Color: '+camera.supportsColor+', Depth: '+camera.supportsDepth+', Skeleton: '+camera.supportsSkeleton);
+}
+
+operator tiltKinectCamera(
+  io KinectCamera camera,
+  io Integer angle
+){
+  Boolean result;
+  camera.tilt(angle,result);
+}
+
+operator getKinectCameraAllPixels(
+  io KinectCamera camera,
+  io Scalar time
+){
+  if(camera.initiated){
+    camera.getDepthPixels();
+    camera.getColorPixels();
+    camera.getSkeleton();
+  }
+}
+
+operator getKinectCameraColorPixels(
+  io Container container,
+  io KinectCamera camera,
+  io Size width,
+  io Size height,
+  io RGBA pixels<>
+){
+  container.resize(width*height);
+  if(pixels.size() == camera.colorData.size() && camera.initiated && camera.supportsColor){
+    for(Size i=0;i<pixels.size();i++)
+    {
+      pixels[i] = camera.colorData[i];
+      pixels[i].a = 255;
+    }
+  }
+}
+
+operator getKinectCameraDepthPixels(
+  io KinectCamera camera,
+  io Integer pixels<>
+){
+  if(pixels.size() == camera.depthData.size() && camera.initiated && camera.supportsDepth){
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = camera.depthData[i];
+  }
+}
+
+operator getKinectCameraPlayerPixels(
+  io KinectCamera camera,
+  io Integer pixels<>
+){  
+  if(pixels.size() == camera.playerData.size() && camera.initiated && camera.supportsDepth){
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = camera.playerData[i];
+  }
+}
+
+operator getKinectCameraDepthAsColorPixels(
+  io Container container,
+  io KinectCamera camera,
+  io RGBA pixels<>,
+  io Size width,
+  io Size height,
+  io Integer depthMin,
+  io Integer depthMax
+){  
+  container.resize(width*height);
+  if(pixels.size() == camera.depthData.size() && camera.initiated && camera.supportsDepth){
+    for(Size i=0;i<pixels.size();i++){
+      if(camera.depthData[i] == 0){
+        pixels[i].r = pixels[i].g = pixels[i].b = pixels[i].a = 0;
+      } else {
+        Scalar depth = 1.0 - Scalar(camera.depthData[i] - depthMin) / Scalar(depthMax - depthMin);
+        if(depth > 1.0) depth = 1.0;
+        if(depth < 0.0) depth = 0.0;
+        if(camera.playerData[i] == 0)
+          pixels[i].r = pixels[i].g = pixels[i].b = Byte(depth * 255.0);
+        else if(camera.playerData[i]%6 == 0){
+          pixels[i].r = Byte(depth * 255.0);
+          pixels[i].g = pixels[i].b = 0;
+        }else if(camera.playerData[i]%6 == 1){
+          pixels[i].g = Byte(depth * 255.0);
+          pixels[i].r = pixels[i].b = 0;
+        }else if(camera.playerData[i]%6 == 2){
+          pixels[i].b = Byte(depth * 255.0);
+          pixels[i].r = pixels[i].g = 0;
+        }else if(camera.playerData[i]%6 == 3){
+          pixels[i].r = pixels[i].b = Byte(depth * 255.0);
+          pixels[i].g = 0;
+        }else if(camera.playerData[i]%6 == 4){
+          pixels[i].r = pixels[i].g = Byte(depth * 255.0);
+          pixels[i].b = 0;
+        }else if(camera.playerData[i]%6 == 5){
+          pixels[i].g = pixels[i].b = Byte(depth * 255.0);
+          pixels[i].r = 0;
+        }
+          
+        pixels[i].a = 255;
+      }
+    }
+  }
+}
+
+operator getKinectCameraPoints(
+  io KinectCamera camera,
+  io Vec3 positions<>,
+  io Color colors<>
+){
+  camera.getPoints(positions,colors);
+}
+
+operator getKinectCameraLines(
+  io KinectCamera camera,
+  io Vec3 positions<>,
+  io Color colors<>
+){
+  Size offset = 0;
+  for(Size i=0;i<KINECT_SKELETON_COUNT;i++){
+    for(Size j=0;j<KINECT_POSITION_COUNT;j++){
+      positions[offset] = camera.skeletonData[i].positions[j];
+      if(camera.skeletonData[i].trackingID == 0){
+        colors[offset] = Color(0.0,0.0,0.0,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 0){
+        colors[offset] = Color(0.5,0.0,0.0,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 1){
+        colors[offset] = Color(0.0,0.5,0.0,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 2){
+        colors[offset] = Color(0.0,0.0,0.5,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 3){
+        colors[offset] = Color(0.5,0.0,0.5,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 4){
+        colors[offset] = Color(0.5,0.5,0.0,1.0);
+      } else if(camera.skeletonData[i].trackingID % 6 == 5){
+        colors[offset] = Color(0.0,0.5,0.5,1.0);
+      }
+      offset++;
+    }
+  }
+}

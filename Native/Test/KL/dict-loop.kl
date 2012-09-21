@@ -1,0 +1,26 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function displayRValue( Scalar a[String] ) {
+  for ( k, v in a ) {
+    report("a['" + k + "'] = " + v);
+  }
+}
+
+function displayLValue( io Scalar a[String] ) {
+  for ( k, v in a ) {
+    report("a['" + k + "'] = " + v);
+  }
+}
+
+operator entry() {
+  Scalar a[String];
+  a['pi'] = 3.14;
+  a['e'] = 2.71;
+  for ( k in a ) {
+    report("a['" + k + "'] = " + a[k]);
+  }
+  displayRValue( a );
+  displayLValue( a );
+}

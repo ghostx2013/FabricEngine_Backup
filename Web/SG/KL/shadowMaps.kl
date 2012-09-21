@@ -1,0 +1,117 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, Mat44;
+use FabricOGL, OGLTexture2D, OGLRenderTarget, OGLShaderProgram;
+
+
+function Mat44 symmetricFrustum(
+  Scalar width, Scalar height, 
+  Scalar near, Scalar far)
+{
+  var Scalar d = far - near;
+  var Scalar q = -(far + near) / d;
+  var Scalar qn = -2.0 * (far * near) / d;
+  var Scalar w = 2.0 * (near / width);
+  var Scalar h = 2.0 * (near / height);
+  var Mat44 result(
+    w, 0.0, 0.0, 0.0,
+    0.0, h, 0.0, 0.0,
+    0.0, 0.0, q, qn,
+    0.0, 0.0, -1.0, 0.0);
+  return result;
+}
+
+function Mat44 symmetricOrthographicFrustum(
+  Scalar w, Scalar h,
+  Scalar n, Scalar f
+) {
+  var Scalar d = f - n;
+  var Mat44 result(
+    2.0 / w, 0.0, 0.0, 0.0,
+    0.0, 2.0 / h, 0.0, 0.0,
+    0.0, 0.0, - 2.0 / d, -(f + n) / d,
+    0.0, 0.0, 0.0, 1.0);
+  return result;
+}
+
+operator calcDirectionalLightProjectionMatrices(
+  io Scalar near,
+  io Scalar far,
+  io Scalar size,
+  io Mat44 lightInvMat,
+  io Mat44 lightProjectionMat,
+  io Mat44 shadowMat
+) {
+// report( "calcDirectionalLightProjectionMatrices" );
+
+  lightProjectionMat = symmetricOrthographicFrustum(size, size, near, far);
+
+  var Mat44 biasMat;
+  biasMat.setNull();
+  biasMat.setDiagonal(0.5);
+  biasMat.setTranslation(Vec3(0.5, 0.5, 0.5));
+  biasMat.row3.t = 1.0;
+  shadowMat = biasMat * lightProjectionMat * lightInvMat;
+}
+
+
+operator calcSpotLightProjectionMatrices(
+  io Scalar near,
+  io Scalar far,
+  io Scalar fovY,
+  io Mat44 lightInvMat,
+  io Mat44 lightProjectionMat,
+  io Mat44 shadowMat
+) {
+  //  report( "calcSpotLightProjectionMatrices" );
+  
+  var Scalar frustumH = tan(fovY / 2) * near * 2;
+  var Scalar frustumW = frustumH;
+
+  lightProjectionMat = symmetricFrustum(frustumW, frustumH, near, far);
+
+  var Mat44 biasMat;
+  biasMat.setNull();
+  biasMat.setDiagonal(0.5);
+  biasMat.setTranslation(Vec3(0.5, 0.5, 0.5));
+  biasMat.row3.t = 1.0;
+  shadowMat = biasMat * lightProjectionMat * lightInvMat;
+}
+
+operator bindShadowMapBuffer(
+  io Size textureUnit,
+  io OGLRenderTarget depthRenderTarget
+) {
+//  report("bindShadowMapBuffer");
+  if(depthRenderTarget.depthBuffer >= 0){
+    Integer depthTextureID = depthRenderTarget.textures[depthRenderTarget.depthBuffer].texture.bufferID;
+    glActiveTexture(GL_TEXTURE0 + textureUnit);
+    glBindTexture(GL_TEXTURE_2D, depthTextureID);
+  }
+}
+
+operator debugShadowMapBuffer(
+  io OGLRenderTarget depthRenderTarget,
+  io Integer program
+) {
+  
+  OGLTexture2D colorTexture;// = depthRenderTarget.getFirstColorTexture();
+  for(Integer i=0; i<depthRenderTarget.textures.size(); i++){
+    if(depthRenderTarget.textures[i].type == 2){//this.COLOR_BUFFER
+      colorTexture = depthRenderTarget.textures[i].texture;
+    }
+  }
+  if(colorTexture.bufferID > 0 ){
+    Integer textureUnit = 0;
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, colorTexture.bufferID);
+    
+    Vec2 tl(-1.0, 1.0);
+    Vec2 br(-0.5, 0.5);
+    drawTexture(textureUnit, program, tl, br, false);
+  }else{
+    report("Error: no color textures found");
+  }
+}

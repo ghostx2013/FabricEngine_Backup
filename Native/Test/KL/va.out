@@ -1,0 +1,4 @@
+["foo","bar","baz"]
+["baz","bar","foo"]
+["baz","bar","foo"]
+Caught exception: KL: index (3) out of range (3)

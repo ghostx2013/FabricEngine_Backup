@@ -1,0 +1,17 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var String a;
+  a += 1;
+  a += 2;
+  a += "";
+  a += "foo";
+  report(a);
+
+  String b[]; 
+  b.push( "j*34\"\a\b\v\f\0\n\xC3\xA9\r\t\'" );
+  report(b);
+}

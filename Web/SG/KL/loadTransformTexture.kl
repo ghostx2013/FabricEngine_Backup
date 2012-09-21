@@ -1,0 +1,33 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, Vec3, Mat44, Xfo;
+use OGLTexture2D, OGLShaderProgram;
+use FabricOGL;
+
+
+operator calcGlobalTransposedMatrix(io Xfo globalXfos<>, io Mat44 globalMat, in Size index) {
+  globalMat = globalXfos[index].toMat44().transpose();
+}
+
+
+operator prepareTextureMatrix(
+  io Mat44 matrices<>,
+  io Mat44 matricesTempBuffer[],
+  io Size textureHeight,
+  io OGLTexture2D oglTexture2D,
+  io OGLShaderProgram shaderProgram,
+  io Integer textureUnit
+){
+  if(textureUnit > -1) {
+    Size height = 0;
+    oglTexture2D.bindImageMatrix(matrices, matricesTempBuffer, textureUnit, height);
+    if(height != 0)//height == 0 if texture is already bound
+      textureHeight = height;
+  }
+  shaderProgram.numInstances = Integer(matrices.size());
+  Integer location = shaderProgram.getUniformLocation( TRANSFORM_TEXTURE_HEIGHT_ATTRIBUTE_ID );
+  if(location != -1)
+    shaderProgram.loadScalarUniform(location, Scalar(textureHeight));
+}

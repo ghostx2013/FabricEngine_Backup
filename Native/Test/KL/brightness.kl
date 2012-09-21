@@ -1,0 +1,40 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct RGBA
+{
+  Byte r;
+  Byte g;
+  Byte b;
+  Byte a;
+};
+
+function brightness( Integer index, io RGBA rgba, io RGBA sourceRgba[], io Byte brightnessTable[] )
+{
+  var RGBA inRGBA = sourceRgba[index];
+  rgba.r = brightnessTable[inRGBA.r];
+  rgba.g = brightnessTable[inRGBA.g];
+  rgba.b = brightnessTable[inRGBA.b];
+  rgba.a = inRGBA.a;
+}
+
+operator entry()
+{
+  var Integer index = 546;
+
+  var RGBA sourceRGBA[];
+  sourceRGBA.resize( 1024 );
+  sourceRGBA[index].r = 56;
+  sourceRGBA[index].g = 98;
+  sourceRGBA[index].b = 123;
+  sourceRGBA[index].a = 255;
+
+  var Byte brightnessTable[];
+  for ( var Size i=0; i<256; ++i )
+    brightnessTable.push( Byte(i) );
+
+  var RGBA rgba;
+  brightness( index, rgba, sourceRGBA, brightnessTable );
+  report(rgba);
+}

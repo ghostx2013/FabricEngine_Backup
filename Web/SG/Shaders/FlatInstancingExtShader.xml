@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>FlatInstancingExtMaterial</name>
+  
+  <uniforms>
+    <uniform name="u_materialColor" constant="color" type="Color" defaultValue="FABRIC.RT.rgba(1.0,1.0,1.0,1)"/>
+    
+    <uniform name="u_viewMatrix" constant="viewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_projectionMatrix" constant="projectionMatrix" type="Mat44" owner="instance"/>
+
+    <uniform name="u_samplerTransformMap" constant="transformTexture" type="Integer" owner="texture"/>
+    <uniform name="u_transformTextureHeight" constant="transformTextureHeight" type="Scalar"/>
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+  </attributes>
+  
+	<textures>
+		<texture binding="transformTexture"/>
+	</textures>
+  
+  <vertexshader>
+    <source>
+      <![CDATA[
+      #version 140
+
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      uniform mat4 u_modelMatrix;
+      uniform sampler2D u_samplerTransformMap;
+      uniform float u_transformTextureHeight;
+      
+      in vec4 a_position;
+      in int a_instanceID;
+
+      ]]>
+      </source>
+      <include file="matrices.txt"/>
+      <source>
+      <![CDATA[
+
+      void main(){
+				mat4 modelViewMatrix = u_viewMatrix * loadMatrixFromTexture(u_samplerTransformMap, u_transformTextureHeight, gl_InstanceID);
+        mat4 modelViewProjectionMatrix = u_projectionMatrix * modelViewMatrix;
+        gl_Position = modelViewProjectionMatrix * a_position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform vec4 u_materialColor;
+      void main(){
+        gl_FragColor = u_materialColor;
+      }
+
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

@@ -1,0 +1,60 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricOGL;
+
+operator viewportBeginRender(
+  io Integer width,
+  io Integer height,
+  io Color backgroundColor
+) {
+  //  report( "viewPortBeginRender:"+backgroundColor+" width:"+width+" height:"+height );
+  glViewport(0, 0, width, height);
+  glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
+}
+
+
+use Vec3, Mat44;
+
+operator viewportUpdateRayCast(
+  io Mat44 camera,
+  io Mat44 projection,
+  io Integer width,
+  io Integer height,
+  io Integer x,
+  io Integer y,
+  io Ray ray
+) {
+  // report( "viewPortUpdateRayCast\n" );
+
+  // Convert the raster coordinates to screen space ([0,{w|h}] -> [-1,1]
+  // - Note: The raster vertical is inverted wrt OGL screenspace Y
+  var Scalar sx = x / Scalar(width);
+  var Scalar sy = y / Scalar(height);
+
+  sx = (sx * 2.0) - 1.0;
+  sy = (sy * 2.0) - 1.0;
+
+  // Transform the origin from camera local to world space
+  var Mat44 camInv = camera.inverse();
+
+  ray.start = camInv * Vec3(0.0, 0.0, 0.0);
+
+  // Get the projected window coordinate on the near plane
+  // See http://www.songho.ca/opengl/gl_projectionmatrix.html
+  // for details.
+  var Mat44 projInv = projection.inverse();
+
+  ray.direction = projInv * Vec3(sx, - sy, - 1.0);
+
+  // And from projection space to camera local.
+  // - We nuke the translation part since we're transforming a vector.
+  camInv.zeroTranslation();
+  ray.direction = (camInv * ray.direction).unit();
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Deferred Rendering</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+    <script type="text/javascript">
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Primitives",
+                "SG/DeferredRendering"], function() {
+ 
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPrePassPhongMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPrePhongShader.xml');
+
+$(document).ready(function() {
+  
+
+  var scene = FABRIC.SceneGraph.createScene();
+  
+  var viewport = scene.constructNode('Viewport', {
+    enableRaycasting: false,
+    windowElement: document.getElementById('FabricContainer'),
+    backgroundColor: FABRIC.RT.rgb(0, 0, 0),//Important: deferred shading is additive!
+  });
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(15, 25, 50),
+      target: new FABRIC.RT.Vec3(0, 5, 0),
+      nearDistance: 1.5,
+      farDistance: 300
+    });
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0), color: FABRIC.RT.rgb(1.0, 1.0, 1.0) });
+
+  var deferredRenderer = scene.constructNode('PhongDeferredRenderer', {cameraNode: camera, lightNode: light, shininess: 20, showDebug: true});
+
+  // Phong Cuboid
+  scene.constructNode('Instance', {
+      transformNode: scene.constructNode('Transform', {
+        hierarchical: false,
+        globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(-20, 15, -10) })
+      }),
+      geometryNode: scene.constructNode('Cuboid', {
+        length: 15,
+        width: 15,
+        height: 30
+      }),
+      materialNode: scene.constructNode('DeferredPrePassPhongMaterial', {
+        diffuseColor: FABRIC.RT.rgb(1.0, 0.2, 0.2),
+        specularFactor: 0.5,
+        rendererNode: deferredRenderer
+      })
+    });
+
+  // Phong Cone
+  scene.constructNode('Instance', {
+      transformNode: scene.constructNode('Transform', {
+        hierarchical: false,
+        globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 15, 0) })
+      }),
+      geometryNode: scene.constructNode('Cone', {
+        radius: 10.0,
+        height: 30.0,
+        detail: 10
+      }),
+      materialNode: scene.constructNode('DeferredPrePassPhongMaterial', {
+        diffuseColor: FABRIC.RT.rgb(0.2, 1.0, 0.2),
+        specularFactor: 0.2,
+        rendererNode: deferredRenderer
+      })
+    });
+
+  // Phong Sphere
+  scene.constructNode('Instance', {
+      transformNode: scene.constructNode('Transform', {
+        hierarchical: false,
+        globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(20, 10, 20) })
+      }),
+      geometryNode: scene.constructNode('Sphere', {
+        radius: 10,
+        detail: 10
+      }),
+      materialNode: scene.constructNode('DeferredPrePassPhongMaterial', {
+        diffuseColor: FABRIC.RT.rgb(0.2, 0.2, 1.0),
+        specularFactor: 1.0,
+        rendererNode: deferredRenderer
+      })
+    });
+
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+              <div class="content">
+              Simple deferred rendering setup.<br>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

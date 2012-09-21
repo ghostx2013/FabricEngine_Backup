@@ -1,0 +1,36 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import itertools, os
+
+Import( 'baseEnv', 'buildOS', 'buildArch' )
+
+if 'dist' in COMMAND_LINE_TARGETS:
+  Import( 'klToolInstaller', 'fileSystemInstaller' )
+  installers = [klToolInstaller[0], fileSystemInstaller[0]]
+  if buildOS == 'Windows':
+    Import( 'kinectBuilt' )
+    if kinectBuilt:
+      Import( 'kinectInstaller' )
+      installers.append( kinectInstaller[0] )
+  if buildOS != 'Windows' or buildArch != 'x86_64':
+    installers += SConscript( 'Chrome/SConscript' )
+  installers += SConscript( 'Firefox/SConscript' )
+  installers += SConscript( 'Python/SConscript' )
+  installers += SConscript( 'Node/SConscript' )
+  Alias( 'dist', installers )
+  if 'upload' in COMMAND_LINE_TARGETS:
+    if buildOS == 'Windows':
+      unixInstallers = ['/c'+'/'.join(str(item).split('\\'))[2:] for item in installers]
+      uploadCommand = [ 'scp', '-i', os.environ['HOME'] + '/.ssh/id_rsa' ]
+      uploadCommand += unixInstallers
+      uploadCommand += [ 'fabric-engine.com:' ]
+    else:
+      uploadCommand = [ 'rsync', '-e', 'ssh', '--progress', '$SOURCES', 'fabric-engine.com:' ]
+    upload = baseEnv.AlwaysBuild( baseEnv.Command(
+      'upload',
+      installers,
+      [uploadCommand]
+      ) )
+    Alias( 'upload', upload )

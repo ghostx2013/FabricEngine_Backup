@@ -1,0 +1,191 @@
+#
+# Copyright 2010-2011 Fabric Engine Inc. All rights reserved.
+#
+
+import os, platform, posixpath, glob, sys
+Import('env', 'buildDir', 'distDir', 'buildOS', 'buildArch', 'buildType')
+
+nativeEnv = env.Clone()
+
+template = Builder( action = "\
+  sed \
+    -e 's/{{FABRIC_OS}}/"+buildOS+"/g' \
+    -e 's/{{FABRIC_ARCH}}/"+buildArch+"/g' \
+    -e 's/{{FABRIC_COMPANY_NAME}}/"+nativeEnv['FABRIC_COMPANY_NAME']+"/g' \
+    -e 's/{{FABRIC_NAME}}/"+nativeEnv['FABRIC_NAME']+"/g' \
+    -e 's/{{FABRIC_DESC}}/"+nativeEnv['FABRIC_DESC']+"/g' \
+    -e 's/{{FABRIC_COPYRIGHT}}/"+nativeEnv['FABRIC_COPYRIGHT']+"/g' \
+    -e 's,{{FABRIC_URL}},"+nativeEnv['FABRIC_URL']+",g' \
+    -e 's/{{FABRIC_VERSION_MAJ}}/"+nativeEnv['FABRIC_VERSION_MAJ']+"/g' \
+    -e 's/{{FABRIC_VERSION_MIN}}/"+nativeEnv['FABRIC_VERSION_MIN']+"/g' \
+    -e 's/{{FABRIC_VERSION_REV}}/"+nativeEnv['FABRIC_VERSION_REV']+"/g' \
+    -e 's/{{FABRIC_VERSION_SUFFIX}}/"+nativeEnv['FABRIC_VERSION_SUFFIX']+"/g' \
+    -e 's/{{FABRIC_VERSION}}/"+nativeEnv['FABRIC_VERSION']+"/g' \
+    -e 's/{{FABRIC_CACHE_GENERATION}}/"+nativeEnv['FABRIC_CACHE_GENERATION']+"/g' \
+  <$SOURCE >$TARGET \
+" )
+nativeEnv.Append( BUILDERS = { 'Template': template } )
+
+FABRIC_VERSION = nativeEnv['FABRIC_VERSION']
+Export('FABRIC_VERSION')
+
+if buildOS == 'Windows':
+  nativeEnv['ENV']['TMP'] = os.environ['TMP']
+
+if buildOS == 'Darwin':
+  #env.Replace( CC = 'gcc-4.2' )
+  #env.Replace( CXX = 'g++-4.2' )
+  nativeEnv.Replace( YACC = '/opt/local/bin/bison' )
+
+if not ARGUMENTS.get( 'VERBOSE' ):
+	nativeEnv['CCCOMSTR']       = 'Compiling       $SOURCE'
+	nativeEnv['CXXCOMSTR']      = 'Compiling       $SOURCE'
+	nativeEnv['SHCCCOMSTR']     = 'Compiling       $SOURCE'
+	nativeEnv['SHCXXCOMSTR']    = 'Compiling       $SOURCE'
+	nativeEnv['YACCCOMSTR']     = 'Bison           $SOURCE'
+	nativeEnv['ARCOMSTR']       = 'StaticLibrary   $TARGET'
+	nativeEnv['SHLINKCOMSTR']   = 'SharedLibrary   $TARGET'
+	nativeEnv['RANLIBCOMSTR']   = 'Ranlib          $TARGET'
+	nativeEnv['LINKCOMSTR']     = 'Linking         $TARGET'
+	nativeEnv['LDMODULECOMSTR'] = 'LoadableModule  $TARGET'
+
+if buildType == 'Release':
+  nativeEnv.Append( CPPDEFINES = ['NDEBUG'] )
+
+# Uncomment the following to have RC leaks logged
+# nativeEnv.Append( CPPDEFINES = ['FABRIC_RC_LEAK_REPORT'] )
+
+if buildOS == 'Windows' and buildType == 'Debug':
+  nativeEnv.Append( PDB='${TARGET.base}.pdb' )
+
+# [pzion 20120403] Core issue 44
+# Xcode SDK path changed somewhere around Xcode 4.3.2
+darwinSysRoot = ''
+if buildOS == 'Darwin':
+  darwinSysRoot = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk'
+  if not os.path.isdir(darwinSysRoot):
+    darwinSysRoot = '/Developer/SDKs/MacOSX10.6.sdk'
+  if not os.path.isdir(darwinSysRoot):
+    raise Exception("Xcode 4.0.0 or later does not appear to be installed, exiting.")
+
+# check for buildOS specific flags
+buildFlags = { 
+  # === OSX ===
+  'Darwin': {
+    'ccflags': [ '-Wall', '-fvisibility=hidden', '-isysroot', darwinSysRoot ],
+    'linkflags' : [ '-w', '-isysroot', darwinSysRoot ],
+    'universal' : {
+      'ccflags': [ '-arch', 'i386', '-arch', 'x86_64' ],
+      'linkflags': [ '-arch', 'i386', '-arch', 'x86_64' ]
+      },
+    'Debug' : {
+      'ccflags': [ '-g' ]
+      },
+    'Release' : {
+      'ccflags': [ '-O2' ]
+      },
+    }, 
+  # === LINUX ===
+  'Linux': {
+    'ccDefs': [
+      '__STDC_LIMIT_MACROS',
+      '__STDC_CONSTANT_MACROS'
+    ],
+    'ccflags': ['-fPIC'],
+    'i686' : {
+      'ccflags': [ '-m32' ],
+      'linkflags': [ '-m32' ]
+      },
+    'x86_64' : {
+      'ccflags': [ '-m64' ],
+      'linkflags': [ '-m64' ]
+      },
+    'Debug' : {
+      'ccflags': [ '-g' ]
+      },
+    'Release' : {
+      'ccflags': [ '-O2' ]
+      },
+    }, 
+  # === WINDOWS ===
+  'Windows': {
+    'ccDefs': [ 
+      '_SCL_SECURE_NO_WARNINGS=1',
+      '_ITERATOR_DEBUG_LEVEL=0',
+      '_SECURE_SCL=0',
+      '_WIN32_WINNT=0x0501'
+    ],
+    'ccflags': [ 
+      '/EHsc', 
+      '/wd4624'    ],
+    'linkflags': [ 'chkstk.obj' ],
+    'x86' : {
+      'ccflags': [ ],
+      'linkflags': [ ]
+      },
+    'x86_64' : {
+      'ccDefs': [ 'WIN64' ],
+      'ccflags': [ ],
+      'linkflags': [ ]
+      },
+    'Debug' : {
+      'ccflags': [ '/Od', '/Z7', '/MTd' ]
+      },
+    'Release' : {
+      'ccflags': [ '/Ox', '/MT' ]
+      },
+    }
+  }
+
+osFlags = buildFlags[buildOS]
+
+if 'ccDefs' in osFlags:
+  nativeEnv.Append( CPPDEFINES = osFlags['ccDefs'] )  
+if 'ccflags' in osFlags:
+  nativeEnv.Append( CCFLAGS = osFlags['ccflags'] )
+if 'cxxflags' in osFlags:
+  nativeEnv.Append( CXXFLAGS = osFlags['cxxflags'] )
+if 'linkflags' in osFlags:
+  nativeEnv.Append( LINKFLAGS = osFlags['linkflags'] )
+
+subTypes = [ buildArch, buildType ]
+for subType in subTypes:
+  if subType in osFlags:
+    osSubFlags = osFlags[subType]
+    if 'ccDefs' in osSubFlags:
+      nativeEnv.Append( CPPDEFINES = osSubFlags['ccDefs'] )  
+    if 'ccflags' in osSubFlags:
+      nativeEnv.Append( CCFLAGS = osSubFlags['ccflags'] )
+    if 'cxxflags' in osSubFlags:
+      nativeEnv.Append( CXXFLAGS = osSubFlags['cxxflags'] )
+    if 'linkflags' in osSubFlags:
+      nativeEnv.Append( LINKFLAGS = osSubFlags['linkflags'] )
+
+archBuildDirBase = os.path.join(buildDir, 'Native', buildOS, buildArch, buildType)
+nativeEnv.Append( CPPPATH=[archBuildDirBase] )
+archBuildDir = os.path.join(archBuildDirBase, 'Fabric')
+Export('archBuildDir')
+
+archDistDir = distDir.Dir('Native').Dir(buildOS).Dir(buildArch).Dir(buildType)
+npapiDistDir = archDistDir.Dir( 'NPAPI' )
+fabricExtsDistDir = archDistDir.Dir( 'Exts' )
+Export('archDistDir', 'npapiDistDir', 'fabricExtsDistDir')
+
+Export('nativeEnv')
+
+subDirs = [
+  'Licenses',
+  'ThirdParty',
+  'Base',
+  'Core',
+  'Tools',
+  'EDK',
+  'Exts',
+  'Clients',
+  'Installer'
+  ]
+for subDir in subDirs:
+  SConscript( dirs=[subDir], variant_dir=os.path.join(archBuildDir, subDir) )
+
+Alias('cli', ['cliClients', 'cliTools'])
+Alias('all', ['cli', 'npapi'])

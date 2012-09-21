@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Undo Redo</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+
+    <script type="text/javascript">
+    
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+		"SG/Kinematics",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Undo"], function() {
+ 
+$(document).ready(function() {
+  ///////////////////////////////////////////////////////////////
+  // Create the scene.
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    enableRaycasting: true,
+    rayIntersectionThreshold: 0.8
+  });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(25, 60, 100),
+      target: new FABRIC.RT.Vec3(0, 0, 0)
+    });
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+  
+  // create the undo manager
+  var undoManager = scene.constructManager("UndoManager");
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  var cube = scene.constructNode('Cuboid', { length: 10, width: 10, height: 15 });
+
+  // Translation
+  var cubeInstance = scene.constructNode('Instance', {
+      transformNode: scene.constructNode('Transform', {
+        hierarchical: false,
+        globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 0, 0) })
+      }),
+      geometryNode: cube,
+      materialNode: scene.constructNode('PhongMaterial', {
+        diffuseColor: FABRIC.RT.rgb(0.0, 0.8, 0, 1),
+        lightNode: light
+      })
+    });
+  
+  // provide the undoManager to Manipulators makes them undoable
+  scene.constructNode('XfoManipulator', { targetNode: cubeInstance });
+  
+  // ===============================================
+  // UI LOGIC
+  $("#undo").button().click(function(){
+    undoManager.undo();
+    viewport.redraw();
+  });
+  $("#redo").button().click(function(){
+    undoManager.redo();
+    viewport.redraw();
+  });
+  
+  function setupSlider(index) {
+    return function() {
+      var prevValue = 0;
+      var $slider = $('#slider'+index).slider({
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        value: prevValue
+      }).bind( "slidestart", function(event, ui) {
+          // An undo transaction is opened, and actions can be added
+          // to the transaction. A transaction groups a collection
+          // of changes together as a single undo item. This is useful
+          // when manipulations caused multiple data values to change.
+          undoManager.openUndoTransaction();
+          var newVal, prevVal = ui.value;
+          undoManager.addTransaction({
+            onClose: function() {
+              // When the undo transaction is closed, we record the new value.
+              newVal = $slider.slider('value');
+            },
+            onUndo: function() {
+              $slider.slider('value', prevVal);
+            },
+            onRedo: function() {
+              $slider.slider('value', newVal);
+            }
+          });
+        })
+       .bind('slidestop',
+        function(event, ui) {
+          undoManager.closeUndoTransaction();
+        });
+    };
+  }
+  
+  // setup 4 sliders
+  for(var i=0;i<4;i++) {
+    setupSlider(i)();
+  }
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Undo / Redo.<br>
+              The Undo / Redo system is implemented by using a manager called the UndoManager.
+              You can register tasks providing an OnDo and OnUndo callback, as well as additional
+              options.<br><br>
+              You can manipulate the object, as well as the sliders below, and the Undo / Redo buttons
+              can  be used to Undo / Redo the tasks.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <button id='undo'>Undo</button>
+              <button id='redo'>Redo</button><br><br>
+              <div id="slider0" style="margin-bottom: 10px"></div>
+              <div id="slider1" style="margin-bottom: 10px"></div>
+              <div id="slider2" style="margin-bottom: 10px"></div>
+              <div id="slider3" style="margin-bottom: 10px"></div>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+</html>

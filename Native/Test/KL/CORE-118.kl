@@ -1,0 +1,28 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function processDataIN( in Size myDataSize, in Data myData )
+{
+	report( "Size: " + myDataSize + " - Data: " + myData );
+}
+
+function processDataIO( in Size myDataSize, io Data myData )
+{
+	report( "Size: " + myDataSize + " - Data: " + myData );
+}
+
+operator entry()
+{
+  var Integer foo;
+  processDataIN( foo.dataSize, foo.data );
+
+  var Data fooData = foo.data;
+  processDataIO( foo.dataSize, fooData );
+  
+  var Data null;
+  var Size zero = 0;
+  
+  processDataIN( zero, null );
+  processDataIO( zero, null );
+}

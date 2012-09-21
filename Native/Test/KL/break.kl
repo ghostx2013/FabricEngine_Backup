@@ -1,0 +1,12 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Integer foo;
+  for ( foo=0; foo<10; ++foo )
+    if ( foo == 7 )
+      break;
+  report(foo);
+}

@@ -1,0 +1,5 @@
+string.length = 13
+string.dataSize = 14
+string.data = <Opaque>
+a.dataSize = 8
+a.data = <Opaque>

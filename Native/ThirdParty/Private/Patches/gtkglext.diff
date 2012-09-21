@@ -1,0 +1,110 @@
+diff -ru gtkglext-1.2.0-x86_64.orig/gdk/x11/gdkglconfig-x11.c gtkglext-1.2.0-x86_64/gdk/x11/gdkglconfig-x11.c
+--- gtkglext-1.2.0-x86_64.orig/gdk/x11/gdkglconfig-x11.c	2011-08-18 15:25:09.900002405 -0400
++++ gtkglext-1.2.0-x86_64/gdk/x11/gdkglconfig-x11.c	2011-08-23 12:11:39.589999966 -0400
+@@ -35,11 +35,13 @@
+ 
+ #include <X11/Xatom.h>  /* for XA_RGB_DEFAULT_MAP atom */
+ 
++#if 0
+ #ifdef HAVE_XMU_STDCMAP_H
+ #include <Xmu/StdCmap.h>  /* for XmuLookupStandardColormap */
+ #else
+ #include <X11/Xmu/StdCmap.h>  /* for XmuLookupStandardColormap */
+ #endif
++#endif
+ 
+ #endif /* HAVE_LIBXMU */
+ 
+@@ -177,6 +179,7 @@
+         }
+     }
+ 
++#if 0
+ #if defined(HAVE_LIBXMU) && !defined(_DISABLE_STANDARD_RGB_CMAP)
+ 
+   /*
+@@ -231,6 +234,7 @@
+     }
+ 
+ #endif /* defined(HAVE_LIBXMU) && !defined(_DISABLE_STANDARD_RGB_CMAP) */
++#endif
+ 
+   return NULL;
+ }
+diff -ru gtkglext-1.2.0-x86_64.orig/gtk/gtkglwidget.c gtkglext-1.2.0-x86_64/gtk/gtkglwidget.c
+--- gtkglext-1.2.0-x86_64.orig/gtk/gtkglwidget.c	2011-08-18 15:25:09.890002405 -0400
++++ gtkglext-1.2.0-x86_64/gtk/gtkglwidget.c	2011-08-23 12:10:56.599999966 -0400
+@@ -127,7 +127,7 @@
+    * Synchronize OpenGL and window resizing request streams.
+    */
+ 
+-  if (GTK_WIDGET_REALIZED (widget) && private->is_realized)
++  if (gtk_widget_get_realized (widget) && private->is_realized)
+     {
+       gldrawable = gdk_window_get_gl_drawable (widget->window);
+       gdk_gl_drawable_wait_gdk (gldrawable);
+@@ -154,7 +154,7 @@
+    * Remove OpenGL-capability from widget->window.
+    */
+ 
+-  if (GTK_WIDGET_REALIZED (widget))
++  if (gtk_widget_get_realized (widget))
+     gdk_window_unset_gl_capability (widget->window);
+ 
+   private->is_realized = FALSE;
+@@ -174,7 +174,7 @@
+    */
+ 
+   toplevel = gtk_widget_get_toplevel (widget);
+-  if (GTK_WIDGET_TOPLEVEL (toplevel) && !GTK_WIDGET_REALIZED (toplevel))
++  if (gtk_widget_is_toplevel (toplevel) && !gtk_widget_get_realized (toplevel))
+     {
+       GTK_GL_NOTE (MISC,
+         g_message (" - Install colormap to the top-level window."));
+@@ -194,7 +194,7 @@
+    * Set a background of "None" on window to avoid AIX X server crash.
+    */
+ 
+-  if (GTK_WIDGET_REALIZED (widget))
++  if (gtk_widget_get_realized (widget))
+     {
+       GTK_GL_NOTE (MISC,
+         g_message (" - window->bg_pixmap = %p",
+@@ -250,8 +250,8 @@
+   GTK_GL_NOTE_FUNC ();
+ 
+   g_return_val_if_fail (GTK_IS_WIDGET (widget), FALSE);
+-  g_return_val_if_fail (!GTK_WIDGET_NO_WINDOW (widget), FALSE);
+-  g_return_val_if_fail (!GTK_WIDGET_REALIZED (widget), FALSE);
++  g_return_val_if_fail (gtk_widget_get_has_window (widget), FALSE);
++  g_return_val_if_fail (!gtk_widget_get_realized (widget), FALSE);
+   g_return_val_if_fail (GDK_IS_GL_CONFIG (glconfig), FALSE);
+ 
+   /* 
+@@ -432,7 +432,7 @@
+   GTK_GL_NOTE_FUNC ();
+ 
+   g_return_val_if_fail (GTK_IS_WIDGET (widget), NULL);
+-  g_return_val_if_fail (GTK_WIDGET_REALIZED (widget), NULL);
++  g_return_val_if_fail (gtk_widget_get_realized (widget), NULL);
+ 
+   gldrawable = gdk_window_get_gl_drawable (widget->window);
+   if (gldrawable == NULL)
+@@ -474,7 +474,7 @@
+   GLWidgetPrivate *private;
+ 
+   g_return_val_if_fail (GTK_IS_WIDGET (widget), NULL);
+-  g_return_val_if_fail (GTK_WIDGET_REALIZED (widget), NULL);
++  g_return_val_if_fail (gtk_widget_get_realized (widget), NULL);
+ 
+   private = g_object_get_qdata (G_OBJECT (widget), quark_gl_private);
+   if (private == NULL)
+@@ -501,7 +501,7 @@
+ gtk_widget_get_gl_window (GtkWidget *widget)
+ {
+   g_return_val_if_fail (GTK_IS_WIDGET (widget), NULL);
+-  g_return_val_if_fail (GTK_WIDGET_REALIZED (widget), NULL);
++  g_return_val_if_fail (gtk_widget_get_realized (widget), NULL);
+ 
+   return gdk_window_get_gl_window (widget->window);
+ }

@@ -1,0 +1,15 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Mat44, Xfo;
+
+operator calcGlobalXfo(io Xfo localXfo, io Xfo parentGlobalXfo, io Xfo globalXfo) {
+  //report( "calcGlobalXfo\n" );
+  globalXfo = parentGlobalXfo * localXfo;
+}
+
+operator calcIndexedGlobalXfo(io Xfo localXfo, io Xfo parentGlobalXfos[], io Size parentXfoIndex, io Xfo globalXfo) {
+  //report( "calcIndexedGlobalXfo\n" );
+  globalXfo = parentGlobalXfos[parentXfoIndex] * localXfo;
+}

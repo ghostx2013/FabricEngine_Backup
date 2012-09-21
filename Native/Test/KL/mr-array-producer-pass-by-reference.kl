@@ -1,0 +1,12 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator gen(io String output, Size index) {
+  output = "Hello, " + index + " !";
+}
+
+operator entry() {
+  ArrayProducer<String> vp = createArrayGenerator(createConstValue(Size(2)), gen);
+  report(vp.produce(Size(1)));
+}

@@ -1,0 +1,27 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'lidarFlags', 'fabricExtsDistDir', 'ExtSLName', 'buildOS' )
+
+lidarPluginEnv = extsEnv.Clone()
+lidarPluginEnv.MergeFlags(lidarFlags)
+lidarPluginEnv.Append(CPPPATH = ['../../../ThirdParty/Private/libLAS-1.7.0b2/include'])
+lidarPluginEnv.Append(CPPPATH = ['../../../ThirdParty/Private/laszip-2.0.2/include'])
+lidarPluginEnv.Append(CPPPATH = ['../../../ThirdParty/Private/laszip-2.0.2/include/laszip'])
+lidarPluginEnv.Append(CCFLAGS = ['-DHAVE_LASZIP'])
+lidarSources = Glob('*.cpp')
+lidarSources.extend(Glob('../../../ThirdParty/Private/libLAS-1.7.0b2/src/*.cpp'))
+lidarSources.extend(Glob('../../../ThirdParty/Private/libLAS-1.7.0b2/src/detail/*.cpp'))
+lidarSources.extend(Glob('../../../ThirdParty/Private/libLAS-1.7.0b2/src/detail/index/*.cpp'))
+lidarSources.extend(Glob('../../../ThirdParty/Private/libLAS-1.7.0b2/src/detail/reader/*.cpp'))
+lidarSources.extend(Glob('../../../ThirdParty/Private/libLAS-1.7.0b2/src/detail/writer/*.cpp'))
+lidarSources.extend(Glob('../../../ThirdParty/Private/laszip-2.0.2/src/*.cpp'))
+lidarPlugin = lidarPluginEnv.SharedLibrary( ExtSLName('FabricLIDAR'), lidarSources )
+if buildOS == 'Windows':
+  lidarPlugin = lidarPlugin[0]
+lidarManifest = lidarPluginEnv.File('FabricLIDAR.fpm.json'),
+lidarKL = lidarPluginEnv.File('FabricLIDAR.kl'),
+lidarFiles = [lidarManifest, lidarPlugin, lidarKL]
+
+Return( 'lidarFiles' )

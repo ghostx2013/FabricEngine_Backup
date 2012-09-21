@@ -1,0 +1,25 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct S
+{
+  Integer a[];
+};
+
+operator entry()
+{
+  var S s[];
+  for ( var Integer i=0; i<100; ++i )
+  {
+    s.resize( i+1 );
+    s[i].a.push( i );
+  }
+  s.resize( 0 );
+  for ( var Integer i=0; i<100; ++i )
+  {
+    s.resize( i+1 );
+    s[i].a.push( i );
+  }
+  report(s);
+}

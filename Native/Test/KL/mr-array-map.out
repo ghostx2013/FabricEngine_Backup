@@ -1,0 +1,89 @@
+cap.getCount() = 10
+ArrayProducer<Scalar>
+10
+map2: input=0
+1
+map2: input=1
+0.25
+map2: input=2
+0.1111111
+map2: input=3
+0.0625
+map2: input=4
+0.04
+map2: input=5
+0.02777778
+map2: input=6
+0.02040816
+map2: input=7
+0.015625
+map2: input=8
+0.01234568
+map2: input=9
+0.01
+ArrayProducer<Scalar>
+10
+map3: input=0 index=0
+1
+map3: input=1 index=1
+0.25
+map3: input=2 index=2
+0.1111111
+map3: input=3 index=3
+0.0625
+map3: input=4 index=4
+0.04
+map3: input=5 index=5
+0.02777778
+map3: input=6 index=6
+0.02040816
+map3: input=7 index=7
+0.015625
+map3: input=8 index=8
+0.01234568
+map3: input=9 index=9
+0.01
+ArrayProducer<Scalar>
+10
+map4: input=0 index=0 count=10
+1
+map4: input=1 index=1 count=10
+0.25
+map4: input=2 index=2 count=10
+0.1111111
+map4: input=3 index=3 count=10
+0.0625
+map4: input=4 index=4 count=10
+0.04
+map4: input=5 index=5 count=10
+0.02777778
+map4: input=6 index=6 count=10
+0.02040816
+map4: input=7 index=7 count=10
+0.015625
+map4: input=8 index=8 count=10
+0.01234568
+map4: input=9 index=9 count=10
+0.01
+ArrayProducer<Scalar>
+10
+map5: input=0 index=0 count=10 shared=hello
+1
+map5: input=1 index=1 count=10 shared=hello
+0.25
+map5: input=2 index=2 count=10 shared=hello
+0.1111111
+map5: input=3 index=3 count=10 shared=hello
+0.0625
+map5: input=4 index=4 count=10 shared=hello
+0.04
+map5: input=5 index=5 count=10 shared=hello
+0.02777778
+map5: input=6 index=6 count=10 shared=hello
+0.02040816
+map5: input=7 index=7 count=10 shared=hello
+0.015625
+map5: input=8 index=8 count=10 shared=hello
+0.01234568
+map5: input=9 index=9 count=10 shared=hello
+0.01

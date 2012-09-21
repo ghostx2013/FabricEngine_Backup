@@ -1,0 +1,25 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3;
+use Quat;
+
+operator twistOp(
+  io Vec3 parentpositions<>,
+  io Vec3 parentnormals<>,
+  io Vec3 boundingboxmin,
+  io Vec3 boundingboxmax,
+  io Scalar twist,
+  io Vec3 position,
+  io Vec3 normal,
+  in Size index
+){
+//  report("twistOp");
+  Scalar u = parentpositions[index].x / (boundingboxmax.x - boundingboxmin.x);
+
+  Quat q;
+  q.setFromAxisAndAngle(Vec3(1.0, 0.0, 0.0), u * twist);
+  position = q.rotateVector(parentpositions[index]);
+  normal = q.rotateVector(parentnormals[index]);
+}

@@ -1,0 +1,35 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use SolverHelperFunctions;
+
+operator solveNCFIKOp(
+  io Xfo pose[],
+  io Bone bones[],
+  io Integer boneIndices[],
+  io Xfo target,
+  io DebugGeometry debugGeometry
+) {
+  // Compute the FK pose of the chain.
+  // Note: this should be moved to a separate solver.
+  for (Integer i = 0; i < boneIndices.size(); i++) {
+    pose[boneIndices[i]] = bones[boneIndices[i]].referenceLocalPose * pose[bones[boneIndices[i]].parent];
+  }
+  solveNCFIKOp(
+    pose,
+    bones,
+    boneIndices,
+    target,
+    debugGeometry
+  );
+}
+
+operator solveInvNCFIK(
+  io Xfo pose[],
+  io Bone bones[],
+  io Integer boneIndices[],
+  io Xfo target
+) {
+  target.tr = pose[boneIndices[boneIndices.size() - 1]].transformVector(Vec3(bones[boneIndices.size() - 1].length, 0.0, 0.0));
+}

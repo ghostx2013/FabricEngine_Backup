@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Model Viewer</title> 
+        
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+   
+   
+$(document).ready(function() {
+  // In firefox, buttons stay disabled after refreshing.
+  // they must be manually re-enabled. This is an open bug with FF.
+  $('#importModel').removeAttr('disabled');
+  $('#importCow').removeAttr('disabled');
+});
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Parsers/parseOBJ"], function() {
+
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer')
+  });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+ camera = scene.constructNode('TargetCamera', {
+      nearDistance: 1,
+      farDistance: 300,
+      target: new FABRIC.RT.Vec3(-10, -1.2, -0.15),
+      position: new FABRIC.RT.Vec3(-1.8, 4.77, 7.93)
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  
+  var importObj = function(url) {
+    if(!url)
+      return;
+    $('#importModel').button('disable');
+    $('#importCow').button('disable');
+
+    scene.importAssetFile(url,{
+        splitMaterials: true
+      },
+      function(assetNodes){
+        for(var i in assetNodes){
+          var objectName = i;
+          var material = scene.constructNode('PhongMaterial', {
+            diffuseColor: FABRIC.RT.rgb(Math.random(), Math.random(), Math.random(), 1),
+            lightNode: light
+          });
+          var instance = scene.constructNode('Instance', {
+            geometryNode: assetNodes[objectName],
+            materialNode: material,
+            transformNode: scene.constructNode('Transform', {
+                hierarchical: false,
+                globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(-10, 0, 0) })
+              }),
+          });
+        }
+        // Wait for all other resources to load, including materials etc, and then redraw.
+        FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+          if (nbRemaining===0) {
+            viewport.redraw();
+            return true;
+          }
+        });
+      }
+    );
+  }
+
+  $('#importModel').button().click(function() {
+    importObj(FABRIC.IO.queryUserFileHandle(FABRIC.IO.forOpen,"Choose local OBJ file", "obj", "model.obj"));
+  });
+
+  $('#importCow').button().click(function() {
+    importObj('Models/cow.obj');
+  });
+
+  
+  $(document).ready(function() {
+    $('#loadingDialog').dialog({
+      modal: true
+    });
+    FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+      $('#loadingProgressBar').progressbar({
+        value: (1.0-(doneWeight/totalWeight))*100
+      });
+      if (nbRemaining===0) {
+        $('#loadingDialog').dialog('close');
+        var errors = scene.getErrors();
+        if (errors.length > 0) {
+          throw (errors.toString());
+        }
+        viewport.redraw();
+        fabricDemoSceneLoaded = true;
+        return true;
+      }
+    });
+  });
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              ModelViewer.<br>
+              The model seen in this sample is imported using FABRIC's OBJ parser, and then drawn using
+              a phong material. This very basic sample makes use of FABRIC's parser features, and illustrates
+              how to utilize external models for visualization resp. inspection.
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box">
+            <h2>MODEL</h2>
+            <div class="content">
+      	      <button id="importModel" style="margin-top:10px;">Import local OBJ File</button><br>
+      	      <button id="importCow" style="margin-top:10px;">Import Standard Cow</button>
+            </div>
+          </div>
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

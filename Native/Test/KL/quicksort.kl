@@ -1,0 +1,66 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Boolean qs_less( in Scalar a, in Scalar b )
+{
+	return a < b;
+}
+
+function Scalar[] quicksort( in Scalar data[] )
+{
+	var Scalar result[];
+	
+	if( data.size() <= 1 )
+		return data;
+		
+	if( data.size() <= 2 )
+	{
+		if( qs_less( data[0], data[1] ) )
+		{
+			result.push( data[0] );
+			result.push( data[1] );
+		}
+		else
+		{
+			result.push( data[1] );
+			result.push( data[0] );
+		}
+	}
+	else
+	{
+		// Pick a pivot
+		var Scalar pivot;
+		pivot = (data[0] + data[data.size()/2] + data[data.size()-1] ) / 3;
+	
+		var Scalar[] above, below;
+		var Size nbItems = data.size();
+		for( var Size i = 0; i < nbItems; i++ )
+		{
+			if( qs_less( data[i], pivot ) )
+				below.push( data[i] );
+			else
+				above.push( data[i] );
+		}
+		result = quicksort( below ) + quicksort( above );
+	}
+	return result;
+}
+
+function Scalar rand( io Integer seed )
+{
+  seed = 1664525*seed + 1013904223;
+  return Scalar( (seed / 256) & 8388607) / 8388607.0 ;
+} 
+
+operator entry()
+{
+	var Scalar a[];
+	var Integer seed;
+	seed = 314159625;
+	
+	for( var Size i = 0; i < 30; i++ )
+		a.push( Scalar( Integer( rand( seed ) * 1000.0 ) ) );
+	
+	report(quicksort( a ));
+}

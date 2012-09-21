@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Character Skinning</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+
+    <script type="text/javascript">
+    
+
+FABRIC.require(["SG/SceneGraph",
+                 "SG/Geometry",
+                 "SG/Materials",
+                 "SG/Manipulation",
+                 "SG/Characters",
+                 "SG/Parsers/parseCollada"], function() {
+
+  // Create the scene.
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    enableRaycasting: true,
+    windowElement: document.getElementById('FabricContainer')
+  });
+  
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+
+  // Create a camera to draw the scene from
+  var haveCameraManipulator = false;
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(1, 2, 10).multiplyScalar(0.5),
+      target: new FABRIC.RT.Vec3(0, 2, 0),
+      roll: 0,
+      nearDistance: 1.0,
+      farDistance: 200
+    });
+  
+    // create the scene grid
+  scene.constructNode('Instance', {
+    geometryNode: scene.constructNode('Grid', {
+      size_x: 40.0,
+      size_z: 40.0,
+      sections_x: 20,
+      sections_z: 20 }),
+    materialNode: scene.constructNode('FlatMaterial', {
+      color: new FABRIC.RT.rgb(0.3,0.3,0.3,1.0)
+    } )
+  });
+
+  var characterAnimationContainerNode;
+  scene.importAssetFile('Models/envelope.dae', { constructMaterialNodes:false }, function(assetNodes){
+     
+    var rigNode = assetNodes.polymshCharacterRig;
+    var rigInstanceNode = assetNodes.geometries_0Scene_MaterialCharacterInstance;
+  
+    var materialNode = scene.constructNode('PhongSkinningMaterial', {
+        lightNode: scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) }),
+        diffuseColor: FABRIC.RT.rgba(1.0, 0.0, 0.0, 1.0)
+      });
+    rigInstanceNode.addMaterialNode(materialNode);
+    
+    var skeletonGeometryNode = scene.constructNode("CharacterSkeletonDebug",{
+      characterRigNode:rigNode,
+      boneradius: 0.2
+    });
+   
+    characterAnimationContainerNode = assetNodes.LinearCharacterAnimationContainer;
+  });
+  
+
+  if (!haveCameraManipulator){
+    scene.constructNode('CameraManipulator', { targetNode: camera });
+    viewport.setCameraNode(camera);
+    haveCameraManipulator = true;
+  }
+  
+  $(document).ready(function() {
+ 
+  var $globalTimeSlider = $('#globalTime').slider({
+      min: 0.0,
+      max: 5.0,
+      step: 0.01
+    });
+
+  $('#curveEditor').button();
+
+  $globalTimeSlider.slider('value', 0.0);
+  $globalTimeSlider.bind('slide',
+    function(event, ui) {
+      scene.animation.setTime(ui.value);
+      scene.redrawAllViewports();
+    });
+
+  $('#curveEditor').button()
+    .click(function() {
+      characterAnimationContainerNode.openCurveEditor(0, false);
+    });
+    
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Character Skinning.<br>
+              This sample shows the use of FABRIC's character pipeline all the way to skinning.
+              The skeleton as well as the animation data is parsed from a Collada file. The pose
+              is evaluated using the FKHierarchy solver, and finally, the skinning is performed using
+              a GLSL shader on the GPU. Please have a look at the Character Pipeline documentation
+              to learn how this works in detail.
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div>Time:</div>
+              <div id="globalTime"></div>
+              <button id="curveEditor" style="margin-top:10px;">Open Curve Editor</button>
+            </div><!--content-->
+          </div><!--box-->
+
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

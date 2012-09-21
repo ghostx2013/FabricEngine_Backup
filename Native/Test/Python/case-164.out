@@ -1,0 +1,2 @@
+[u"binding 0: operator 'op': operator takes incorrect number of parameters (expected 2, actual 1)"]
+Fabric core exception: DG.node.evaluate(): cannot execute because of errors

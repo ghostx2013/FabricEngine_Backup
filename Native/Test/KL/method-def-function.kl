@@ -1,0 +1,28 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+function Vec3 ( Scalar x, Scalar y, Scalar z )
+{
+  this.x = x;
+  this.y = y;
+  this.z = z;
+}
+
+function Scalar Vec3.normSq()
+{
+  return this.x*this.x + this.y*this.y + this.z*this.z;
+}
+
+operator entry()
+{
+  var Vec3 vec3( 1.0, 2.0, 3.0 );
+  report(vec3.normSq());
+}

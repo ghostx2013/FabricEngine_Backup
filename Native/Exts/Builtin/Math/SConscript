@@ -1,0 +1,12 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv' )
+
+mathPluginEnv = extsEnv.Clone()
+mathManifest = mathPluginEnv.File('FabricMath.fpm.json'),
+mathKL = mathPluginEnv.File('FabricMath.kl'),
+mathFiles = [mathManifest, mathKL]
+
+Return( 'mathFiles' )

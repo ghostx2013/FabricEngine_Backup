@@ -1,0 +1,309 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+SConscript( dirs=['md5-1.4','glew-1.6.0','getopt']  )
+
+import os
+Import('nativeEnv', 'buildOS', 'buildArch', 'buildType')
+
+includeBaseDir = os.path.join( '#Native', 'ThirdParty', 'Private', 'include' )
+srcBaseDir = os.path.join( '#Native', 'ThirdParty', 'Private', 'src' )
+osArchIncludeBaseDir = os.path.join( '#Native', 'ThirdParty', 'Private', buildOS, buildArch, buildType, 'include' )
+if buildOS == 'Darwin':
+  libBaseDirs = [Dir(os.path.join( '#Native', 'ThirdParty', 'Private', buildOS, 'i386', buildType, 'lib' )).abspath, Dir(os.path.join( '#Native', 'ThirdParty', 'Private', buildOS, 'x86_64', buildType, 'lib' )).abspath]
+else:
+  libBaseDirs = [Dir(os.path.join( '#Native', 'ThirdParty', 'Private', buildOS, buildArch, buildType, 'lib' )).abspath]
+
+def staticLibFromLibName( libName ):
+  if buildOS == 'Windows':
+    return libName + ".lib"
+  else:
+    return "lib" + libName + ".a"
+
+def archLibs( libSubDirName, libNames ):
+  return map( lambda libBaseDir: map( lambda libName: File(os.path.join( libBaseDir, libSubDirName, staticLibFromLibName(libName) )), libNames ), libBaseDirs )
+
+# LLVM
+# [pzion 20110128] These *must* be in topo order since the Linux linker is stupid
+
+llvmLibNames = [
+  "LLVMX86Desc",
+  "LLVMBitWriter",
+  "LLVMBitReader",
+  "LLVMipo",
+  "LLVMAsmParser",
+  "LLVMX86AsmPrinter",
+  "LLVMAsmPrinter",
+  "LLVMX86CodeGen",
+  "LLVMX86Info",
+  "LLVMInstCombine",
+  "LLVMSelectionDAG",
+  "LLVMX86AsmPrinter",
+  "LLVMAsmPrinter",
+  "LLVMX86Utils",
+  "LLVMMCParser",
+  "LLVMJIT",
+  "LLVMCodeGen",
+  "LLVMExecutionEngine",
+  "LLVMScalarOpts",
+  "LLVMTransformUtils",
+  "LLVMipa",
+  "LLVMAnalysis",
+  "LLVMTarget",
+  "LLVMMC",
+  "LLVMCore",
+  "LLVMSupport"
+]
+
+llvmStaticLibs = map( staticLibFromLibName, llvmLibNames )
+llvmFlags = {
+	'CPPDEFINES': [ '__STDC_LIMIT_MACROS', '__STDC_CONSTANT_MACROS' ],
+	'CPPPATH': [
+	  os.path.join( includeBaseDir, 'llvm' ),
+	  os.path.join( osArchIncludeBaseDir, 'llvm' ),
+	],
+	'LIBS': archLibs( 'llvm', llvmLibNames ),
+}
+if buildOS == 'Windows':
+  llvmFlags['LIBS'] += ['Shell32']
+
+Export( 'llvmFlags' )
+
+# Node.js
+nodeFlags = {
+	'CPPPATH': [
+	  os.path.join( includeBaseDir, 'node', 'node' ),
+	  os.path.join( includeBaseDir, 'node', 'v8' ),
+	  os.path.join( includeBaseDir, 'node', 'uv' ),
+	],
+};
+if buildOS == 'Windows':
+  nodeFlags['LIBS'] = archLibs( 'node', ['node'] )
+Export( 'nodeFlags' )
+
+# libedit
+if buildOS != 'Windows':
+	libeditFlags = {
+		'CPPPATH': [
+		   os.path.join( includeBaseDir, 'libedit' ),
+		 ],
+    'LIBS': archLibs( 'libedit', ['edit'] ),
+	}
+	libeditFlags['LIBS'] += ['ncurses']
+	Export( 'libeditFlags' )
+
+# NPAPI
+npapiFlags = {
+    'CPPPATH': [
+      os.path.join( includeBaseDir, 'npapi' ),
+    ]
+}
+Export( 'npapiFlags' )
+
+# ilmbase+openexr
+openexrFlags = {}
+openexrFlags['CPPPATH'] = [os.path.join( includeBaseDir, 'ilmbase' ),os.path.join( osArchIncludeBaseDir, 'ilmbase' ),os.path.join( includeBaseDir, 'openexr' )]
+openexrFlags['LIBS'] = [archLibs( 'openexr', ['IlmImf'] ), archLibs( 'ilmbase', ['Half', 'Iex', 'IlmThread', 'Imath'] )]
+if buildOS == 'Windows':
+  openexrFlags['CPPPATH'].append( os.path.join( includeBaseDir, 'zlib' ) )
+  openexrFlags['LIBS'].append( archLibs( 'zlib', ['zlib'] ) )
+else:  
+  openexrFlags['LIBS'].append( 'z' )
+Export( 'openexrFlags' )
+
+# libpng
+if buildOS == 'Linux':
+    pngEnv = nativeEnv.Clone()
+    pngEnv.ParseConfig( 'pkg-config --cflags --libs libpng' )
+    libpngFlags = {
+        'CPPPATH': pngEnv['CPPPATH'],
+        'CCFLAGS': pngEnv['CCFLAGS'],
+        'CXXFLAGS': pngEnv['CXXFLAGS'],
+        'LIBS': pngEnv['LIBS'],
+    }
+else:
+    libpngFlags = {}
+    libpngFlags['CPPPATH'] = [os.path.join( includeBaseDir, 'libpng' )]
+    if buildOS == 'Windows':
+        libpngFlags['CPPPATH'].append( os.path.join( includeBaseDir, 'zlib' ) )
+        libpngFlags['LIBS'] = archLibs( 'libpng', ['libpng14','zlib'] )
+    else:  
+        libpngFlags['LIBS'] = [archLibs( 'libpng', ['png14'] ), 'z']
+Export( 'libpngFlags' )
+
+jpegFlags = {}
+jpegFlags['CPPPATH'] = [os.path.join( includeBaseDir, 'jpeg' ), os.path.join( osArchIncludeBaseDir, 'jpeg' )]
+if buildOS == 'Windows':
+  jpegFlags['LIBS'] = [archLibs( 'jpeg', ['libjpeg'] )]
+else:
+  jpegFlags['LIBS'] = [archLibs( 'jpeg', ['jpeg'] )]
+Export('jpegFlags')
+
+tiffFlags = {}
+tiffFlags['CPPPATH'] = [os.path.join( includeBaseDir, 'tiff' ), os.path.join( osArchIncludeBaseDir, 'tiff' )]
+if buildOS == 'Windows':
+  tiffFlags['CPPPATH'].append( os.path.join( includeBaseDir, 'zlib' ) )
+  tiffFlags['LIBS'] = archLibs( 'tiff', ['libtiff'] )
+  tiffFlags['LIBS'].append( archLibs( 'zlib', ['zlib'] ) )
+else:  
+  tiffFlags['LIBS'] = [archLibs( 'tiff', ['tiff'] ), 'z']
+Export('tiffFlags')
+
+# ffmpeg
+ffmpegFlags = {}
+if buildOS == 'Windows':
+  ffmpegFlags = {
+      'CPPDEFINES': [ '__STDC_LIMIT_MACROS', '__STDC_CONSTANT_MACROS' ],
+      'CPPPATH': [os.path.join( '..', '..', '..', 'ThirdParty', 'Private', 'Windows', buildArch, buildType, 'lib', 'ffmpeg', 'inc'), os.path.join( includeBaseDir, 'ffmpeg', 'Windows' )],
+      'LIBS': [archLibs( 'ffmpeg', ['swscale','avformat','avcodec','avutil'] )],
+  }
+else:
+  ffmpegFlags = {
+      'CPPDEFINES': [ '__STDC_LIMIT_MACROS', '__STDC_CONSTANT_MACROS' ],
+      'CPPPATH': [os.path.join( includeBaseDir, 'ffmpeg' )],
+      'LIBS': [archLibs( 'ffmpeg', ['swscale','avformat','avcodec','avutil'] ), 'z', 'bz2'],
+  }
+Export( 'ffmpegFlags' )
+
+# opencv
+opencvOSLibs = []
+if buildOS == 'Windows':
+  opencvOSLibs = archLibs( 'zlib', ['zlib'] )
+else:
+  opencvOSLibs = ['z']
+if buildOS == 'Linux':
+  opencvOSLibs.append('rt')
+opencvFlags = {}
+opencvFlags = {
+  'CPPPATH': [os.path.join( osArchIncludeBaseDir, 'OpenCV' ), os.path.join( osArchIncludeBaseDir, 'OpenCV', 'opencv' ), os.path.join( osArchIncludeBaseDir, 'OpenCV', 'opencv2' )],
+  'LIBS': [archLibs( 'OpenCV', ['opencv_calib3d', 'opencv_flann', 'opencv_legacy', 'opencv_contrib', 'opencv_gpu', 'opencv_ml', 'opencv_objdetect', 'opencv_features2d', 'opencv_imgproc', 'opencv_highgui', 'opencv_video', 'opencv_core'] ), opencvOSLibs],
+}
+if buildOS == 'Windows':
+	opencvFlags['CPPDEFINES'] = [ 'FLANN_STATIC' ]
+Export( 'opencvFlags' )
+
+# alembic
+alembicLibs = []
+if buildOS == 'Windows':
+  alembicLibs.extend( archLibs( 'zlib', ['zlib'] ) )
+  archLibs( 'zlib', ['zlib'] )
+else:  
+  alembicLibs.extend(['z'])
+  archLibs( 'zlib', ['z'] )
+
+# todo: make this more elegant.. on Windows the libs currently look for their 
+# original lib dependency name when linking so I can't just rename them to shorter names.
+# Maybe there's a compile option for that...
+if buildOS == 'Windows':
+  if buildType == 'Debug':
+    alembicLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-sgd-1_47', 'libboost_date_time-vc100-mt-sgd-1_47', 'libboost_iostreams-vc100-mt-sgd-1_47', 'libboost_thread-vc100-mt-sgd-1_47', 'libboost_system-vc100-mt-sgd-1_47', 'libboost_filesystem-vc100-mt-sgd-1_47'] ))
+  else:
+    alembicLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-s-1_47', 'libboost_date_time-vc100-mt-s-1_47', 'libboost_iostreams-vc100-mt-s-1_47', 'libboost_thread-vc100-mt-s-1_47', 'libboost_system-vc100-mt-s-1_47', 'libboost_filesystem-vc100-mt-s-1_47'] ))
+else:  
+  alembicLibs.extend(archLibs( 'boost', ['boost_program_options', 'boost_date_time', 'boost_iostreams', 'boost_thread'] ))
+
+alembicLibs.extend(archLibs( 'alembic', ['AlembicAbcCoreHDF5', 'AlembicAbcCoreAbstract', 'AlembicUtil', 'AlembicAbcGeom', 'AlembicAbc'] ))
+alembicLibs.extend(archLibs( 'hdf5', ['hdf5_hl', 'hdf5'] ))
+alembicLibs.extend(archLibs( 'ilmbase', ['Iex', 'Imath', 'Half', 'IlmThread'] ))
+alembicFlags = {
+    'CPPPATH': [
+      os.path.join( includeBaseDir, 'zlib' ),
+      os.path.join( includeBaseDir, 'ilmbase' ),
+      os.path.join( includeBaseDir, 'hdf5' ),
+      os.path.join( osArchIncludeBaseDir, 'hdf5' ),
+      os.path.join( includeBaseDir, 'boost' ),
+      os.path.join( includeBaseDir, 'alembic' )
+    ],
+    'LIBS': alembicLibs
+}
+Export( 'alembicFlags' )
+
+# fileSystem
+fileSystemLibs = []
+if buildOS == 'Windows':
+  if buildType == 'Debug':
+    fileSystemLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-sgd-1_47', 'libboost_serialization-vc100-mt-sgd-1_47', 'libboost_thread-vc100-mt-sgd-1_47', 'libboost_system-vc100-mt-sgd-1_47', 'libboost_filesystem-vc100-mt-sgd-1_47'] ))
+  else:
+    fileSystemLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-s-1_47', 'libboost_serialization-vc100-mt-s-1_47', 'libboost_thread-vc100-mt-s-1_47', 'libboost_system-vc100-mt-s-1_47', 'libboost_filesystem-vc100-mt-s-1_47'] ))
+else:  
+  fileSystemLibs.extend(archLibs( 'boost', ['boost_program_options', 'boost_serialization', 'boost_thread', 'boost_system', 'boost_filesystem'] ))
+fileSystemFlags = {
+    'CPPPATH': [
+      os.path.join( includeBaseDir, 'boost' )
+    ],
+    'LIBS': fileSystemLibs
+}
+
+Export( 'fileSystemFlags' )
+
+# secure serializers
+secureFlags = {
+    'CPPPATH': [],
+    'LIBS': []
+}
+if buildOS == 'Windows':
+  secureFlags['CPPPATH'].append( os.path.join( includeBaseDir, 'zlib' ) )
+  secureFlags['LIBS'].append( archLibs( 'zlib', ['zlib'] ) )
+else:  
+  secureFlags['LIBS'].append( 'z' )
+Export( 'secureFlags' )
+
+# lidar
+lidarLibs = []
+
+# todo: make this more elegant.. on Windows the libs currently look for their 
+# original lib dependency name when linking so I can't just rename them to shorter names.
+# Maybe there's a compile option for that...
+if buildOS == 'Windows':
+  if buildType == 'Debug':
+    lidarLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-sgd-1_47', 'libboost_serialization-vc100-mt-sgd-1_47', 'libboost_thread-vc100-mt-sgd-1_47'] ))
+  else:
+    lidarLibs.extend(archLibs( 'boost', ['libboost_program_options-vc100-mt-s-1_47', 'libboost_serialization-vc100-mt-s-1_47', 'libboost_thread-vc100-mt-s-1_47'] ))
+else:  
+  lidarLibs.extend(archLibs( 'boost', ['boost_program_options', 'boost_serialization', 'boost_thread'] ))
+
+lidarFlags = {
+    'CPPPATH': [
+      os.path.join( includeBaseDir, 'boost' )
+    ],
+    'LIBS': lidarLibs
+}
+Export( 'lidarFlags' )
+
+# GTKGL
+if buildOS == 'Linux':
+  gtkglFlags = {
+    'CPPPATH': [os.path.join( osArchIncludeBaseDir, 'gtkglext' ), os.path.join( osArchIncludeBaseDir, 'gtkglext', 'gdk' )],
+    'LIBS': archLibs( 'gtkglext', ['gtkglext-x11-1.0', 'gdkglext-x11-1.0'] ),
+  }
+  Export( 'gtkglFlags' )
+
+# OpenCL
+openclFlags = {}
+if buildOS == 'Windows' or buildOS == 'Linux':
+  openclFlags['CPPPATH'] = [os.path.join( osArchIncludeBaseDir, 'OpenCL' )]
+elif buildOS == 'Darwin':
+  openclFlags['FRAMEWORKS'] = ['OpenCL']
+Export( 'openclFlags' )
+
+# teem
+teemLibs = [archLibs( 'teem', ['teem'] )]
+if buildOS == 'Windows':
+  teemLibs.extend( archLibs( 'zlib', ['zlib'] ) )
+else:
+  teemLibs.extend(['z'])
+teemFlags = {
+  'CPPDEFINES': [ 'TEEM_STATIC' ],
+  'CPPPATH': [os.path.join( includeBaseDir, 'teem' ), os.path.join( includeBaseDir, 'zlib' )],
+  'LIBS': teemLibs
+}
+
+Export( 'teemFlags' )
+
+# Licenses
+licensesFlags = {
+    'CPPPATH': [os.path.join( includeBaseDir, 'licenses' )]
+}
+Export( 'licensesFlags' )
+

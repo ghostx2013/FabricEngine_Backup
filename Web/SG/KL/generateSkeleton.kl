@@ -1,0 +1,118 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Bone, Xfo;
+
+operator generateSkeleton(
+  io Container container,
+  io Bone bones[],
+  io Xfo pose[],
+  io Vec3 positions<>,
+  io Integer indices[],
+  io Scalar boneradius,
+  io Xfo offsetpose
+) {
+  // first loop over all bones and count the ones with a length
+  var Integer nbBones = 0;
+  var Integer nbAxes = 0;
+  var Xfo finalPose[];
+  finalPose.resize(pose.size());
+  for (var Integer i = 0; i < bones.size(); i++) {
+    if (bones[i].length != 0.0) {
+      nbBones++;
+    }else{
+      nbAxes++;
+    }
+    finalPose[i] =  pose[i];//offsetpose * pose[i];
+  }
+  container.resize(Size((nbBones * 12) + (nbAxes * 6)));
+
+  var Integer nbPos = (nbBones * 12) + (nbAxes * 6);
+  if (nbPos == 0) {
+    report('Warning: No drawable bones found in skeleton!');
+    return;
+  }
+  
+  // TODO: Clean up this op once we have sub-graph slicing working.
+  // We should only need one operator.
+  indices.resize(nbPos);
+
+  var Vec3 y(0.0, boneradius * 3.0, 0.0);
+  var Vec3 z(0.0, 0.0, boneradius);
+  var Vec3 tip;
+  var Vec3 center;
+    
+  var Integer offset = 0;
+  for (Integer i = 0; i < bones.size(); i++) {
+    Xfo xfo = finalPose[i];
+  //  Xfo xfo = bones[i].referencePose;
+    if (bones[i].length != 0.0) {
+      tip = xfo.transformVector(Vec3(bones[i].length, 0.0, 0.0));
+      center = xfo.tr * 0.8 + tip * 0.2;
+  
+      // create a line along positive z
+      indices[offset] = offset;
+      positions[offset] = xfo.tr;
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = center + xfo.ori.rotateVector(z * bones[i].radius);
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = positions[offset - 1];
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = tip;
+      offset++;
+  
+      // create a line along negative z
+      indices[offset] = offset;
+      positions[offset] = xfo.tr;
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = center - xfo.ori.rotateVector(z * bones[i].radius);
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = positions[offset - 1];
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = tip;
+      offset++;
+  
+      // create a line along positive y
+      indices[offset] = offset;
+      positions[offset] = xfo.tr;
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = center + xfo.ori.rotateVector(y * bones[i].radius);
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = positions[offset - 1];
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = tip;
+      offset++;
+    }
+    else{
+      Scalar size = boneradius * 2.0;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(-size, 0.0, 0.0));
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(size, 0.0, 0.0));
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(0.0, -size, 0.0));
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(0.0, size, 0.0));
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(0.0, 0.0, -size));
+      offset++;
+      indices[offset] = offset;
+      positions[offset] = xfo.transformVector(Vec3(0.0, 0.0, size));
+      offset++;
+    }
+  }
+}

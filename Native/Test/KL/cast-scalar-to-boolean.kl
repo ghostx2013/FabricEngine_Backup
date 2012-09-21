@@ -1,0 +1,10 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  report("Scalar");
+  report(Boolean(0.0));
+  report(Boolean(4.5));
+}

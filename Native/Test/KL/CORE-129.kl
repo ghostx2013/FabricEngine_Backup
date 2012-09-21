@@ -1,0 +1,15 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct S
+{
+  Integer i;
+};
+
+operator entry()
+{
+  S s;
+  report(s.dataSize);
+  report(s.data);
+}

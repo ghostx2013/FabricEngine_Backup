@@ -1,0 +1,2 @@
+operator entry() { report('Hello'); }
+entry

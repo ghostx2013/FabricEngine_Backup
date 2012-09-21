@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Scalar scalars[];
+  scalars.push( 3.141 );
+  report(scalars[0]);
+  scalars.push( 2.7182 );
+  report(scalars[1]);
+  report(scalars);
+}

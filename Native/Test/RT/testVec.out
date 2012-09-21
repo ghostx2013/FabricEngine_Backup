@@ -1,0 +1,110 @@
+****** Vec2 Tests ******
+Math.Warning: Vec2.inverse this.x: bad divisor: 0
+Math.Warning: Vec2.inverse this.y: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec2.inverse: this.x: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec2.inverse: this.y: bad divisor: 0
+'set': [ 1, 4 ]
+'setNull': [ 0, 0 ]
+'equal': [ 1 ]
+'equal2': [ 0 ]
+'equal3': [ 1 ]
+'add': [ 3, 5 ]
+'addInPlace': [ 5, 6 ]
+'subtract': [ -1, 3 ]
+'subtractInPlace': [ -3, 2 ]
+'multiply': [ 2, 4 ]
+'multiplyInPlace': [ 4, 4 ]
+'multiplyScalar': [ 2, 8 ]
+'multiplyScalarInPlace': [ 3, 12 ]
+'divide': [ 0.5000, 4 ]
+'divideInPlace': [ 0.2500, 4 ]
+'divideScalar': [ 0.5000, 2 ]
+'dividecalarInPlace': [ 0.3333, 1.333 ]
+'negate': [ -1, -4 ]
+'inverse': [ 1, 0.2500 ]
+'dot': [ 6 ]
+'lengthSquared': [ 17 ]
+'length': [ 4.123 ]
+'unit': [ 0.2425, 0.9701 ]
+'setUnit': [ 0.8944, 0.4472 ]
+'clampDown': [ 1, 4 ]
+'clampUp': [ -1, -4 ]
+'angleTo': [ 0.8622 ]
+'distanceTo': [ 3.162 ]
+'linearInterpolate': [ 1.250, 3.250 ]
+'cross': [ -7 ]
+****** Vec3 Tests ******
+Math.Warning: FABRIC.RT.Vec3.inverse this.x: bad divisor: 0
+Math.Warning: FABRIC.RT.Vec3.inverse this.y: bad divisor: 0
+Math.Warning: FABRIC.RT.Vec3.inverse this.z: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec3.inverse: this.x: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec3.inverse: this.y: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec3.inverse: this.z: bad divisor: 0
+'set': [ 1, 2, 3 ]
+'setNull': [ 0, 0, 0 ]
+'equal': [ 1 ]
+'equal2': [ 0 ]
+'equal3': [ 1 ]
+'add': [ 3, 4, 4 ]
+'addInPlace': [ 5, 6, 5 ]
+'subtract': [ -1, 0, 2 ]
+'subtractInPlace': [ -3, -2, 1 ]
+'multiply': [ 2, 4, 3 ]
+'multiplyInPlace': [ 4, 8, 3 ]
+'multiplyScalar': [ 2, 4, 6 ]
+'multiplyScalarInPlace': [ 3, 6, 9 ]
+'divide': [ 0.5000, 1, 3 ]
+'divideInPlace': [ 0.2500, 0.5000, 3 ]
+'divideScalar': [ 0.5000, 1, 1.500 ]
+'dividecalarInPlace': [ 0.3333, 0.6667, 1 ]
+'negate': [ -1, -2, -3 ]
+'inverse': [ 1, 0.5000, 0.3333 ]
+'dot': [ 9 ]
+'lengthSquared': [ 14 ]
+'length': [ 3.742 ]
+'unit': [ 0.2673, 0.5345, 0.8018 ]
+'setUnit': [ 0.6667, 0.6667, 0.3333 ]
+'clampDown': [ 1, 2, 3 ]
+'clampUp': [ -1, -2, -3 ]
+'angleTo': [ 0.6405 ]
+'distanceTo': [ 2.236 ]
+'linearInterpolate': [ 1.250, 2, 2.500 ]
+'cross': [ -4, 5, -2 ]
+****** Vec4 Tests ******
+Math.Warning: Vec4.inverse this.x: bad divisor: 0
+Math.Warning: Vec4.inverse this.y: bad divisor: 0
+Math.Warning: Vec4.inverse this.z: bad divisor: 0
+Math.Warning: Vec4.inverse this.t: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec4.inverse: this.x: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec4.inverse: this.y: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec4.inverse: this.z: bad divisor: 0
+[FABRIC] [MT] Math.Warning: Vec4.inverse: this.t: bad divisor: 0
+'set': [ 1, 2, 3, 4 ]
+'setNull': [ 0, 0, 0, 0 ]
+'equal': [ 1 ]
+'equal2': [ 0 ]
+'equal3': [ 1 ]
+'add': [ 3, 4, 4, 5 ]
+'addInPlace': [ 5, 6, 5, 6 ]
+'subtract': [ -1, 0, 2, 3 ]
+'subtractInPlace': [ -3, -2, 1, 2 ]
+'multiply': [ 2, 4, 3, 4 ]
+'multiplyInPlace': [ 4, 8, 3, 4 ]
+'multiplyScalar': [ 2, 4, 6, 8 ]
+'multiplyScalarInPlace': [ 3, 6, 9, 12 ]
+'divide': [ 0.5000, 1, 3, 4 ]
+'divideInPlace': [ 0.2500, 0.5000, 3, 4 ]
+'divideScalar': [ 0.5000, 1, 1.500, 2 ]
+'dividecalarInPlace': [ 0.3333, 0.6667, 1, 1.333 ]
+'negate': [ -1, -2, -3, -4 ]
+'inverse': [ 1, 0.5000, 0.3333, 0.2500 ]
+'dot': [ 13 ]
+'lengthSquared': [ 30 ]
+'length': [ 5.477 ]
+'unit': [ 0.1826, 0.3651, 0.5477, 0.7303 ]
+'setUnit': [ 0.6325, 0.6325, 0.3162, 0.3162 ]
+'clampDown': [ 1, 2, 3, 4 ]
+'clampUp': [ -1, -2, -3, -4 ]
+'angleTo': [ 0.7219 ]
+'distanceTo': [ 3.742 ]
+'linearInterpolate': [ 1.250, 2, 2.500, 3.250 ]

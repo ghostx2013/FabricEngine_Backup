@@ -1,0 +1,18 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'coreEnv', 'licensesFlags', 'buildOS' )
+
+quoteCString = coreEnv.File('quote-c-string.sed')
+wrappersINC = coreEnv.Command(
+  'FABRIC.Wrappers.js.inc',
+  ['FABRIC.Wrappers.js', quoteCString],
+  [[ 'sed', '-f', quoteCString.path, '$SOURCE', '>$TARGET' ]]
+)
+
+coreEnv.Depends( 'Context.cpp', wrappersINC )
+
+coreEnv.MergeFlags( licensesFlags )
+coreEnv.Prepend( LIBS = coreEnv.StaticLibrary( 'DG', [Glob('*.cpp')] ) )

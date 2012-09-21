@@ -1,0 +1,22 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct S
+{
+  Integer a[];
+  Scalar b;
+};
+
+function Scalar getB( S s )
+{
+  return s.b;
+}
+
+operator entry()
+{
+  var S s;
+  s.a.push( 17 );
+  s.b = 3.14;
+  report(getB( s ));
+}

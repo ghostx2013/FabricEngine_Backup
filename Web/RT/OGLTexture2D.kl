@@ -1,0 +1,446 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricOGL, FabricPNG, FabricTGA, FabricHDR, FabricEXR, FabricCIMG;
+use Vec2, Vec3, OGLShaderProgram;
+
+function OGLTexture2D.configure(
+  Size width,
+  Size height,
+  Data pixels,
+  Size nbPixels,
+  io Integer textureUnit
+) {
+  if(nbPixels > 0){
+    if(this.bufferID == 0){
+      var Integer buffers[];
+      buffers.resize(1);
+      glGenTextures(1, buffers);
+      this.bufferID = buffers[0];
+    }
+    glActiveTexture(GL_TEXTURE0 + textureUnit);
+    glBindTexture(GL_TEXTURE_2D, this.bufferID);
+    
+    //Generate the texture
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    
+    if (this.buildMipmaps){
+      glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+      glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+    }
+    
+    if(nbPixels == (width * height)){
+      glTexImage2D(GL_TEXTURE_2D, 0, this.glInternalFormat, width, height, 0, this.glFormat, this.glType, pixels);
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, this.textureMinFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, this.textureMaxFilter);
+    if (this.buildMipmaps){
+      glGenerateMipmap( GL_TEXTURE_2D );
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, this.wrapS);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, this.wrapT);
+
+    this.nbPixels = nbPixels;
+  }
+}
+
+function OGLTexture2D.bind(in Integer textureUnit){
+//  report("OGLTexture2D.bind bufferID:"+this.bufferID + " textureUnit:"+textureUnit  + " nbPixels:"+ this.nbPixels );
+  if (this.bufferID != 0) {
+    glActiveTexture(GL_TEXTURE0 + textureUnit);
+    glBindTexture(GL_TEXTURE_2D, this.bufferID);
+  }
+}
+
+function OGLTexture2D.bindImage(
+  io Size width,
+  io Size height,
+  Data bitmapData,
+  Size bitmapSize,
+  io Integer textureUnit
+) {
+  if (this.bufferID == 0 || this.forceRefresh) {
+    this.configure(width, height, bitmapData, bitmapSize, textureUnit);
+  }
+  this.bind(textureUnit);
+}
+
+function toUpperPowerOfTwo(io Size size) {
+  //Would be nice to support bit decal ops in KL: << >>
+  //The optimizer should transform those divisions to >> anyway.
+  Size remainingSize = size;
+  Size upperSize = 1;
+  if(remainingSize >= 65536){
+    upperSize = 65536;
+    remainingSize /= 65536;
+  }
+  if(remainingSize >= 256){
+    upperSize *= 256;
+    remainingSize /= 256;
+  }
+  if(remainingSize >= 16){
+    upperSize *= 16;
+    remainingSize /= 16;
+  }
+  if(remainingSize >= 4){
+    upperSize *= 4;
+    remainingSize /= 4;
+  }
+  if(remainingSize >= 2){
+    upperSize *= 2;
+    remainingSize /= 2;
+  }
+  if(upperSize < size)
+    upperSize *= 2;
+  //report("next power of two: " + size + " -> " + upperSize);
+  size = upperSize;
+}
+
+function OGLTexture2D.bindImageMatrix(
+  io Mat44 matrices<>,
+  io Mat44 matricesTempBuffer[],//Avoid reallocating at each frame if dynamic; has a very important cost
+  io Integer textureUnit,
+  io Size textureHeightIfLoaded//else: 0
+) {
+  if (this.bufferID == 0 || this.forceRefresh) {
+    if(this.glInternalFormat != GL_RGBA32F){
+      report('ERROR in bindImageMatrix: unexpected texture format. Expected GL_RGBA32F');
+      return;
+    }
+    textureHeightIfLoaded = (matrices.size()+127)/128;
+    toUpperPowerOfTwo(textureHeightIfLoaded);
+    matricesTempBuffer.resize(128*textureHeightIfLoaded);
+    for( Size i = 0; i < matrices.size(); ++i ) {
+      matricesTempBuffer[i] = matrices[i];
+    }
+    this.configure(Size(128*4), Size(textureHeightIfLoaded), matricesTempBuffer.data(), Size(128*4 * textureHeightIfLoaded), textureUnit);
+    if(!this.forceRefresh)
+      matricesTempBuffer.resize(0);
+  }
+  this.bind(textureUnit);
+}
+  
+function OGLTexture2D.bindImageMatrixArray(
+  io Mat44 matrices[],
+  io Integer textureUnit,
+  io Size textureHeightIfLoaded//else: 0
+) {
+  if (this.bufferID == 0 || this.forceRefresh) {
+    if(this.glInternalFormat != GL_RGBA32F){
+      report('ERROR in bindImageMatrix: unexpected texture format. Expected GL_RGBA32F');
+      return;
+    }
+    Size origSize = matrices.size();
+    textureHeightIfLoaded = (matrices.size()+127)/128;
+    toUpperPowerOfTwo(textureHeightIfLoaded);
+    matrices.resize(128*textureHeightIfLoaded);
+    this.configure(Size(128*4), Size(textureHeightIfLoaded), matrices.data(), Size(128*4 * textureHeightIfLoaded), textureUnit);
+    matrices.resize(origSize);
+  }
+  else
+    textureHeightIfLoaded = 0;
+  this.bind(textureUnit);
+}
+
+function OGLTexture2D.genTexture(
+  Size width,
+  Size height
+) {
+//  report("OGLTexture2D.genTexture width:" + width + " height:" + height);
+  
+  var Data NULL;
+  /////////////////////////////////////////////////////
+  // Color Texture
+  Integer bufferIDs[];
+  bufferIDs.push(0);
+  glGenTextures(1, bufferIDs);
+  this.bufferID = bufferIDs[0];
+  
+  glBindTexture(GL_TEXTURE_2D, this.bufferID);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  
+  if(this.glInternalFormat == GL_DEPTH_COMPONENT){
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+  }else{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+  
+  //NULL means reserve texture memory, but texels are undefined
+  glTexImage2D(GL_TEXTURE_2D, 0, this.glInternalFormat, width, height, 0, this.glFormat, this.glType, NULL);
+  
+  this.nbPixels = width * height;
+}
+
+
+function Boolean decodeRGBAImageData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io RGBA bitmap[]
+) {
+  if(resource.data.size() == 0 && !resource.dataExternalLocation)
+    return false;
+  String ext = resource.extension ? resource.extension : resource.mimeType;
+  
+  switch (ext) {
+    case 'jpg':
+    case 'JPG':
+    case 'jpeg':
+    case 'JPEG':
+    case 'image/jpg':
+    case 'tif':
+    case 'TIF':
+    case 'tiff':
+    case 'TIFF':
+    case 'image/tif':
+      if(resource.data.size() > 0) {
+        FabricCIMGDecode(resource.data.data(), resource.data.dataSize(), ext, imageWidth, imageHeight, bitmap);
+        resource.data.resize(0);
+      } else if(resource.dataExternalLocation) {
+        FabricCIMGOpenFileHandle(resource.dataExternalLocation, ext, imageWidth, imageHeight, bitmap);
+        resource.dataExternalLocation = "";
+      }
+      break;
+    case 'png':
+    case 'PNG':
+    case 'image/png':
+      if(resource.data.size() > 0) {
+        FabricPNGDecode(resource.data.data(), resource.data.dataSize(), imageWidth, imageHeight, bitmap);
+        resource.data.resize(0);
+      } else if(resource.dataExternalLocation) {
+        FabricPNGOpenFileHandle(resource.dataExternalLocation, imageWidth, imageHeight, bitmap);
+        resource.dataExternalLocation = "";
+      }
+      break;
+    case 'tga':
+    case 'TGA':
+    case 'image/tga':
+      if(resource.data.size() > 0) {
+        FabricTGADecode(resource.data.data(), resource.data.dataSize(), imageWidth, imageHeight, bitmap);
+        resource.data.resize(0);
+      } else if(resource.dataExternalLocation) {
+        FabricTGAOpenFileHandle(resource.dataExternalLocation, imageWidth, imageHeight, bitmap);
+        resource.dataExternalLocation = "";
+      }
+      break;
+    default:
+      report("ERROR: unsupported file type(" + ext + ") :"+resource.url);
+      resource.data.resize(0);
+      return false;
+  }
+  return true;
+}
+
+function Boolean decodeColorImageData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io Color bitmap[]
+) {
+  if(resource.data.size() == 0)
+    return false;
+  String ext = resource.extension ? resource.extension : resource.mimeType;
+  switch (ext) {
+    case'hdr':
+    case'HDR':
+    case'image/hdr':
+      if(resource.data.size() > 0) {
+        FabricHDRDecode(resource.data.data(), resource.data.dataSize(), imageWidth, imageHeight, bitmap);
+        resource.data.resize(0);
+      } else if(resource.dataExternalLocation) {
+        FabricHDROpenFileHandle(resource.dataExternalLocation, imageWidth, imageHeight, bitmap);
+        resource.dataExternalLocation = "";
+      }
+      break;
+    case'exr':
+    case'EXR':
+    case'image/exr':
+      if(resource.data.size() > 0) {
+        FabricEXRDecode(resource.data.data(), resource.data.dataSize(), imageWidth, imageHeight, bitmap);
+        resource.data.resize(0);
+      } else if(resource.dataExternalLocation) {
+        FabricEXROpenFileHandle(resource.dataExternalLocation, imageWidth, imageHeight, bitmap);
+        resource.dataExternalLocation = "";
+      }
+      break;
+    default:
+      report("ERROR: unsupported file type(" + ext + ") :"+resource.url);
+      resource.data.resize(0);
+      return false;
+  }
+  return true;
+}
+
+function decodeRGBImageData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io RGB bitmap[]
+) {
+  // todo
+  return;
+}
+
+function decodeScalarImageData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io Scalar bitmap[]
+) {
+  // todo
+  return;
+}
+
+function drawScreenQuad(
+  io Integer program,
+  Vec2 tl,
+  Vec2 br,
+  Boolean flipY
+) {
+  //report("drawTexture: textureUnit=" + textureUnit);
+
+  var String name = 'a_position';
+  var Integer posLocation = glGetAttribLocation(program, name);
+  name = 'a_texCoord';
+  var Integer texLocation = glGetAttribLocation(program, name);
+
+  glPushAttrib(GL_TEXTURE_BIT | GL_ENABLE_BIT | GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+  glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+
+  glEnable(GL_TEXTURE_2D);
+  glDisable(GL_DEPTH_TEST);
+  glDepthMask(GL_TRUE);
+  glDisable(GL_CULL_FACE); 
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);//Required to render properly depth textures
+  
+  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+  glEnable( GL_BLEND );
+
+  // Draw a quad in the upper left with debugging info
+  var Vec3 p[4];
+  p[0] = Vec3(tl.x, tl.y, 0.0);
+  p[1] = Vec3(br.x, tl.y, 0.0);
+  p[2] = Vec3(br.x, br.y, 0.0);
+  p[3] = Vec3(tl.x, br.y, 0.0);
+  
+  var Vec2 t[4];
+  if(flipY){
+    t[0] = Vec2(0.0, 0.0);
+    t[1] = Vec2(1.0, 0.0);
+    t[2] = Vec2(1.0, 1.0);
+    t[3] = Vec2(0.0, 1.0);
+  }else{
+    t[0] = Vec2(0.0, 1.0);
+    t[1] = Vec2(1.0, 1.0);
+    t[2] = Vec2(1.0, 0.0);
+    t[3] = Vec2(0.0, 0.0);
+  }
+  
+  var Integer idx[4];
+  idx[0] = 0; idx[1] = 1; idx[2] = 2; idx[3] = 3;
+
+  var Data NULL;
+
+  var Integer bufferIDArray[];
+  bufferIDArray.resize(1);
+
+  glGenBuffers(1, bufferIDArray);
+  var Integer bufferID0 = bufferIDArray[0];
+  glGenBuffers(1, bufferIDArray);
+  var Integer bufferID1 = bufferIDArray[0];
+  glGenBuffers(1, bufferIDArray);
+  var Integer bufferID2 = bufferIDArray[0];
+  
+  glBindBuffer(GL_ARRAY_BUFFER, bufferID0);
+  glBufferData(GL_ARRAY_BUFFER, Integer(p.dataSize()), p.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(posLocation);
+  glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+  if(texLocation != -1) {
+    glBindBuffer(GL_ARRAY_BUFFER, bufferID1);
+    glBufferData(GL_ARRAY_BUFFER, Integer(t.dataSize()), t.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(texLocation);
+    glVertexAttribPointer(texLocation, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  }
+
+  glBindBuffer(GL_ARRAY_BUFFER, bufferID2);
+  glBufferData(GL_ARRAY_BUFFER, Integer(idx.dataSize()), idx.data(), GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufferID2);
+  glDrawElements(GL_QUADS, idx.size(), GL_UNSIGNED_INT, NULL);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+  glPopClientAttrib();
+  glPopAttrib();
+
+  bufferIDArray[0] = bufferID0; glDeleteBuffers(1, bufferIDArray);
+  bufferIDArray[0] = bufferID1; glDeleteBuffers(1, bufferIDArray);
+  bufferIDArray[0] = bufferID2; glDeleteBuffers(1, bufferIDArray);
+  
+  glBindTexture( GL_TEXTURE_2D, 0 );
+//  report("<<<drawTexture");
+}
+
+function drawTexture(
+  Integer textureUnit,
+  io Integer program,
+  Vec2 tl,
+  Vec2 br,
+  Boolean flipY
+) {
+  //report("drawTexture: textureUnit=" + textureUnit);
+
+  if (!program) {
+    OGLShaderSource pixelShader;
+    OGLShaderSource fragmentShader;
+    pixelShader.type = GL_VERTEX_SHADER;
+    pixelShader.code = '\
+      attribute vec4 a_position; \
+      attribute vec2 a_texCoord; \
+      void main() { \
+        gl_TexCoord[0].st = a_texCoord; \
+        gl_Position = a_position; \
+      }';
+
+    fragmentShader.type = GL_FRAGMENT_SHADER;
+    fragmentShader.code = '\
+      uniform sampler2D u_rgbaImage; \
+      void main() \
+      { \
+        gl_FragColor = texture2D( u_rgbaImage, gl_TexCoord[0].st ); \
+      }';
+    
+    OGLShaderProgram shaderProgram('renderTextureToView');
+    shaderProgram.debug = false;
+    shaderProgram.shaderSources.push(pixelShader);
+    shaderProgram.shaderSources.push(fragmentShader);
+    shaderProgram.loadShader();
+    if (!shaderProgram.programId) {
+      report('Error in renderTextureToView');
+      return;
+    }
+    program = shaderProgram.programId;
+  }else{
+    glUseProgram(program);
+  }
+
+  String name = 'u_rgbaImage';
+  var Integer smpLocation = glGetUniformLocation(program, name);
+
+  glUniform1i( smpLocation, textureUnit );
+
+  drawScreenQuad( program, tl, br, flipY );
+//  report("<<<drawTexture");
+}
+
+

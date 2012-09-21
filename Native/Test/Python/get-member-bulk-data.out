@@ -1,0 +1,4 @@
+[u'bar-0', u'bar-1', u'bar-2']
+Caught exception: Fabric core exception: DG.n.getMembersBulkData('["bar"]'): index 1: no such member 'bar'
+{u'foo': [u'bar-0', u'bar-1', u'bar-2']}
+Caught exception: Fabric core exception: DG.n.getMembersBulkData('["foo", "bar"]'): index 2: no such member 'bar'

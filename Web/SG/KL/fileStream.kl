@@ -1,0 +1,92 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricFILESTREAM;
+use FabricFileStream;
+
+operator openFileStreamForWriting(
+  io String handle,
+  io FabricFileStream stream,
+  io String dataNames[],
+  io Size seekOffsetsLocation,
+  io Size seekOffsets[]
+){
+  stream.open(handle,"w");
+  
+  if(stream.isValid() && dataNames.size() > 0) {
+    stream.writeStringArray(dataNames);
+    seekOffsetsLocation = stream.getSeek();
+    
+    // Write an array of 0 so that we have
+    // allocated the space for the TOC later
+    seekOffsets.resize(dataNames.size());
+    for(Size i=0;i<dataNames.size();i++) {
+      stream.writeSize(0);
+    }
+  }else{
+    report("ERROR: unable to write file.");
+  }
+}
+
+operator openFileStreamForReading(
+  io FabricResource resource,
+  io FabricFileStream stream,
+  io String dataNames[],
+  io Size seekOffsets[]
+){
+  if(!stream.isValid()) {
+    stream.open(resource.dataExternalLocation,"r");
+    if(stream.isValid()) {
+      stream.readStringArray(dataNames);
+      seekOffsets.resize(dataNames.size);
+      Size offset;
+      for(Size i=0;i<dataNames.size();i++) {
+        stream.readSize(offset);
+        seekOffsets[i] = offset;
+      }
+    }
+  }
+}
+
+
+operator closeFileStream(
+  io String handle,
+  io FabricFileStream stream,
+  io Size seekOffsetsLocation,
+  io Size seekOffsets[]
+){
+  // Now we write the TOC. Each integer specifies the seek offset
+  // of the data for the indexed data member. 
+  stream.setSeek(seekOffsetsLocation);
+  
+  // Write an array of 0 so that we have
+  // allocated the space for the TOC later
+  for(Size i=0;i<seekOffsets.size();i++) {
+    stream.writeSize(seekOffsets[i]);
+  }
+  stream.close();
+}
+
+
+
+operator readTOCFromStream(
+  io FabricResource resource,
+  io String dataNames[],
+  io Size seekOffsets[]
+){
+  FabricFileStream stream;
+  stream.open(resource.dataExternalLocation,"r");
+  if(stream.isValid()) {
+    stream.readStringArray(dataNames);
+    seekOffsets.resize(dataNames.size);
+    Size offset;
+    for(Size i=0;i<dataNames.size();i++) {
+      stream.readSize(offset);
+      seekOffsets[i] = offset;
+    }
+    stream.close();
+  }
+}
+
+

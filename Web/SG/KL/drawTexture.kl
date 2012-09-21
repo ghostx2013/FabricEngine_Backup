@@ -1,0 +1,24 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, Vec3, OGLTexture2D, OGLShaderProgram;
+use FabricOGL;
+
+operator drawTextureFullScreen(
+  io Integer textureUnit,
+  io Integer program
+) {
+  Vec2 tl(-1.0, 1.0);
+  Vec2 br(1.0, -1.0);
+  drawTexture(textureUnit, program, tl, br, true);
+}
+
+operator drawTextureAt(
+  io Vec2 tl,
+  io Vec2 br,
+  io Integer textureUnit,
+  io Integer program
+) {
+  drawTexture(textureUnit, program, tl, br, true);
+}

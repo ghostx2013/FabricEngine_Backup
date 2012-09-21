@@ -1,0 +1,22 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function foo( in String strings[] )
+{
+  report(strings);
+}
+
+function bar( io String strings[] )
+{
+  foo( strings );
+}
+
+operator entry()
+{
+  var String strings[];
+  strings.push( "foo" );
+  strings.push( "bar" );
+  bar( strings );
+  bar( strings );
+}

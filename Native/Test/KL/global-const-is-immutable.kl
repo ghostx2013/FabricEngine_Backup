@@ -1,0 +1,9 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+const Scalar PI = 3.141;
+operator entry()
+{
+  PI = 2.718;
+}

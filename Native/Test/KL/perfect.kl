@@ -1,0 +1,23 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Size fsum(Size n) {
+  Size result = 0;
+  for (Size f=2; f*f<=n; ++f) {
+    if ( n % f == 0 ) {
+      if ( f*f == n )
+        result += f;
+      else
+        result += f + n/f;
+    }
+  }
+  return result;
+}
+
+operator entry() {
+  for (Size n=2; n<100000; ++n) {
+    if (fsum(n) == n - 1 )
+      report("*** " + n);
+  }
+}

@@ -1,0 +1,44 @@
+import os
+Import('coreEnv', 'npapiFlags', 'npapiSources', 'npapiDistDir')
+
+npapiEnv = coreEnv.Clone()
+npapiEnv.MergeFlags( npapiFlags )
+
+npapiPluginName = 'npFabricPlugin'
+
+npapiBuildPath = npapiEnv.Dir('.')
+
+npapiSources.append( Glob( '*.cpp' ) )
+
+npapiEnv.Append( CPPDEFINES = [ '_AFXDLL', 'FABRIC_INCLUDE_WINDOWS_UI' ] )
+npapiEnv.Append( CPPPATH = [ os.path.join( '#NPAPI', 'Windows' ), '.' ] )
+npapiEnv.Append( LIBS = [ 'User32', 'Gdi32', 'comdlg32', 'Shlwapi', 'advapi32' ] )
+
+defFile = npapiBuildPath.File( 'FabricPlugin.def' )
+
+npapiEnv.Append( LINKFLAGS = [ 
+  '/DEF:' + defFile.path,
+  '/MANIFEST',
+  '/ManifestFile:${TARGET}.manifest',
+  '/MANIFESTUAC:level=\'asInvoker\' uiAccess=\'false\''
+  ] )
+
+if npapiEnv['FABRIC_BUILD_TYPE'] == 'Debug':
+  npapiEnv.Append( PDB='${TARGET.base}.pdb' )
+  
+Import( 'glewFlags' )
+npapiEnv.MergeFlags( glewFlags )
+
+rcFile = npapiBuildPath.File( "FabricPlugin.rc" )
+npapiEnv.Template( rcFile, 'FabricPlugin.rc.template' )
+Depends( rcFile, 'resource.h' )
+Depends( rcFile, 'afxres.h' )
+Depends( rcFile, 'winres.h' )
+npapiSources += [npapiEnv.RES( 'FabricPlugin.rc' )]
+npapiPlugin = npapiEnv.LoadableModule( 'npFabricPlugin', npapiSources, register=1 )
+npapiEnv.Depends( npapiPlugin, defFile )
+
+npapiEnv.AddPostAction( npapiPlugin, 'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2' )
+
+npapiTarget = Install( npapiDistDir, npapiPlugin + Glob('*.bat') )
+Return('npapiTarget')

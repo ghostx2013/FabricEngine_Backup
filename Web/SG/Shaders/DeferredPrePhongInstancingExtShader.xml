@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>PhongInstancingExtMaterial</name>
+  <prototypeMaterialType>DeferredPrePassMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_materialDiffuseColor" constant="diffuseColor" type="Color" defaultValue="FABRIC.RT.rgba(0.8,0,0,1)"/>
+    <uniform name="u_materialSpecularFactor" constant="specularFactor" type="Scalar" defaultValue="1.0"/>
+
+    <uniform name="u_viewMatrix" constant="viewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_projectionMatrix" constant="projectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_samplerTransformMap" constant="transformTexture" type="Integer" owner="texture"/>
+    <uniform name="u_transformTextureHeight" constant="transformTextureHeight" type="Scalar"/>
+
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_normal" binding="normals"/>
+  </attributes>
+  
+	<textures>
+		<texture binding="transformTexture"/>
+	</textures>
+  
+  <vertexshader>
+    <source>
+      <![CDATA[
+      #version 140
+
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      uniform mat4 u_modelMatrix;
+      uniform vec4 u_lightPosition;
+      uniform sampler2D u_samplerTransformMap;
+      uniform float u_transformTextureHeight;
+      
+      in vec4 a_position;
+      in vec3 a_normal;
+      in int a_instanceID;
+
+      out vec3 normal;
+      out vec3 position;
+
+      ]]>
+      </source>
+      <include file="matrices.txt"/>
+      <source>
+      <![CDATA[
+
+      void main(){
+				mat4 modelViewMatrix = u_viewMatrix * loadMatrixFromTexture(u_samplerTransformMap, u_transformTextureHeight, gl_InstanceID);
+        mat4 modelViewProjectionMatrix = u_projectionMatrix * modelViewMatrix;
+        mat3 normalMatrix = inverseAndTransposeMat33(mat3(modelViewMatrix[0].xyz, modelViewMatrix[1].xyz, modelViewMatrix[2].xyz));
+    
+        normal = normalMatrix * a_normal;
+        position = (modelViewMatrix * a_position).xyz;
+        gl_Position = modelViewProjectionMatrix * a_position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform vec4 u_materialDiffuseColor;
+      uniform float u_materialSpecularFactor;
+      varying vec3 normal;
+      varying vec3 position;
+
+      void main(){
+        gl_FragData[0].xyz = position;
+        gl_FragData[1].xyz = normalize(normal);
+        gl_FragData[2] = vec4(u_materialDiffuseColor.rgb, u_materialSpecularFactor);
+       }
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

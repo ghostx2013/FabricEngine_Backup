@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Persistence</title> 
+        
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+<style type="text/css">
+#sidebar {
+  width:300px;
+}  
+#viewer {
+  right:300px;
+}
+</style>
+
+<script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Persistence",
+                "SG/Parsers/parseOBJ"], function() {
+ 
+$(document).ready(function() {
+
+  $('#saveResource').button()
+
+  scene = FABRIC.SceneGraph.createScene({ preDraw:false, postDraw:false });
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    backgroundColor: FABRIC.RT.rgb(0.0, 0.05, 0.15)
+  });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      nearDistance: 1,
+      farDistance: 300,
+      target: new FABRIC.RT.Vec3(0,0,0),
+      position: new FABRIC.RT.Vec3(15,5,1).multiplyScalar(1.5)
+    });
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+  
+  // create a light
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  
+  var instances = [];
+  scene.importAssetFile('Models/cow.obj', {
+      splitMaterials: true
+    },
+    function(assetNodes){
+      for(var name in assetNodes){
+         var material = scene.constructNode('PhongMaterial', {
+           diffuseColor: FABRIC.RT.rgb(Math.random(), Math.random(), Math.random(), 1),
+           lightNode: light
+         });
+        var instance = scene.constructNode('Instance', {
+          geometryNode: assetNodes[name],
+          materialNode: material,
+          transformNode: scene.constructNode('Transform', {
+            hierarchical: false,
+            globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 0, 5) })
+          }),
+        });
+        instances.push(instance);
+      }
+      viewport.redraw();
+    });
+  
+  var presetLoader = scene.constructManager('SceneDeserializer', { preLoadScene: false } );
+  var storage = new FABRIC.SceneGraph.XHRReader('Models/cow.json');
+  presetLoader.load(storage, function(nodeMap){
+    // The node map contains a map of all the nodes constructed from the loaded file.
+    for(var nodeName in nodeMap){
+      console.log("Constructed Node:" + nodeMap[nodeName].getName());
+    }
+  });
+  
+  $('#saveResource').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-disk'
+      }
+    })
+    .click(function() {
+     
+      var storage = new FABRIC.SceneGraph.FileWriterWithBinary(scene, 'PersistenceDemo', 'cow');
+   //   var storage = new FABRIC.SceneGraph.FileWriter(scene, 'PersistenceDemo', 'cow');
+      
+      var presetSaver = scene.constructManager('SceneSerializer',{
+        typeRemappings: { ObjTriangles: 'Triangles' },
+        filteredNodeTypes: ['ObjResource']
+      });
+      
+      for(var i=0; i<instances.length; i++){
+        presetSaver.addNode(instances[i]);
+      }
+      
+      presetSaver.save(storage);
+      // log the generated JSON files to the console.
+      storage.log();
+      
+    });
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              This sample shows how to save and load data using the persistence framework in Fabric.<br>
+              The cow on the right is loaded from an obj file, and the cow on the right is loaded from
+              a persisted JSON representation of the scene. The JSON scene graph persistence can save complete scenes including lights, materials and cameras. The persistence framework can also read and write our binary data files which can store much more data in a compact binary representation.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <button id="saveResource" style="margin-top:10px;">Save</button>
+            </div><!--content-->
+          </div><!--box-->
+            
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

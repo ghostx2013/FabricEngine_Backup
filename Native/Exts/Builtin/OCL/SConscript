@@ -1,0 +1,47 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'fabricExtsDistDir', 'buildOS', 'buildArch', 'buildType', 'openclFlags' )
+
+oclPluginEnv = extsEnv.Clone()
+
+if buildOS == 'Darwin' or buildOS == 'Windows':
+
+  oclPluginEnv.MergeFlags( openclFlags )
+  oclPlugin = oclPluginEnv.SharedLibrary( 'FabricOCL', Glob('*.cpp') ),
+  if buildOS == 'Windows':
+    oclPlugin = oclPlugin[0]
+  oclManifest = oclPluginEnv.File('FabricOCL.fpm.json'),
+
+  installAction = Install( fabricExtsDistDir, [oclPlugin,oclManifest] )
+  extsEnv.CopyToAppdataIfWindows( installAction )
+
+  Alias( 'oclExt', [
+    oclPlugin,
+    oclManifest,
+    installAction
+  ] )
+
+elif buildOS == "Linux":
+
+  # let's check if we have a valid opencl SDK
+  import os,sys
+  if not os.environ.has_key('OPENCL_SDK'):
+    print("--------- WARNING: For the OpenCL Extension to compile on Linux, you need to specify the path to the OpenCL SDK in the OPENCL_SDK environment variable.")
+    print("--------- Skipping OCL extension, no OpenCL SDK found.")
+  else:
+  
+    oclPluginEnv.Append(CPPPATH = [os.environ['OPENCL_SDK']+'/include'])
+    oclPlugin = oclPluginEnv.SharedLibrary( 'FabricOCL', Glob('*.cpp') ),
+    oclManifest = oclPluginEnv.File('FabricOCL.fpm.json'),
+  
+    installAction = Install( fabricExtsDistDir, [oclPlugin,oclManifest] )
+    extsEnv.CopyToAppdataIfWindows( installAction )
+  
+    Alias( 'oclExt', [
+      oclPlugin,
+      oclManifest,
+      installAction
+    ] )
+  

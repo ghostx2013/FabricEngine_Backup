@@ -1,0 +1,10 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator turningOp(io Scalar ms, io Integer id, io Integer nb_items, io Xfo xfo) {
+  var Scalar rho = (id / Scalar(nb_items)) * 2.0 * 3.14159265 + (ms / 1000.0);
+
+  xfo.tr = Vec3(cos(rho) * 40.0, 0.0, sin(rho) * 40.0);
+  xfo.sc = Vec3(1.0, 1.0, 1.0);
+}

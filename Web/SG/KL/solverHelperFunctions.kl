@@ -1,0 +1,297 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Math;
+use Xfo;
+use Vec2;
+use Vec3;
+use BezierKeyframe;
+
+use Xfo;
+use Bone;
+use DebugGeometry;
+
+function Scalar sq(Scalar v) {
+  return v * v;
+}
+
+function Scalar applySoftLimitBezierCurve(
+  Scalar val,
+  Scalar maxVal,
+  Vec2 maxValSoftening
+) {
+  //  report( "applySoftLimitBezierCurve val: " + val + " minVal: " + minVal + " minValSoftening: " + minValSoftening + " maxVal: " + maxVal + " maxValSoftening: " + maxValSoftening );
+
+  BezierKeyframe key1, key2;
+
+  if (val > (maxVal - maxValSoftening.x)) {
+    if (val > (maxVal + maxValSoftening.y)) {
+      return maxVal;
+    }
+
+    key1.time = maxVal - maxValSoftening.x;
+    key1.value = maxVal - maxValSoftening.x;
+    key1.outtangent.x = maxValSoftening.x * 0.5;
+    key1.outtangent.y = maxValSoftening.x * 0.5;
+
+    key2.time = maxVal + maxValSoftening.y;
+    key2.value = maxVal;
+    key2.intangent.x = maxValSoftening.y * - 0.5;
+    key2.intangent.y = 0;
+
+    return key1.interpolate(key2, val);
+  }
+  else {
+    return val;
+  }
+}
+
+
+function Scalar applySoftClampBezierCurve(
+  Scalar val,
+  Scalar minVal,
+  Vec2 minValSoftening,
+  Scalar maxVal,
+  Vec2 maxValSoftening
+) {
+  //  report( "applySoftLimitBezierCurve val: " + val + " minVal: " + minVal + " minValSoftening: " + minValSoftening + " maxVal: " + maxVal + " maxValSoftening: " + maxValSoftening );
+
+  BezierKeyframe key1, key2;
+
+  if (val < (minVal + minValSoftening.y)) {
+    if (val < (minVal - minValSoftening.x)) {
+      return minVal;
+    }
+
+    key1.time = minVal + minValSoftening.y;
+    key1.value = minVal + minValSoftening.y;
+    key1.intangent.x = minValSoftening.y * - 0.5;
+    key1.intangent.y = minValSoftening.y * - 0.5;
+
+    key2.time = minVal - minValSoftening.x;
+    key2.value = minVal;
+    key2.outtangent.x = minValSoftening.x * 0.5;
+    key2.outtangent.y = 0;
+
+    return key2.interpolate(key1, val);
+  }
+  else if (val > (maxVal - maxValSoftening.x)) {
+    if (val > (maxVal + maxValSoftening.y)) {
+      return maxVal;
+    }
+
+    key1.time = maxVal - maxValSoftening.x;
+    key1.value = maxVal - maxValSoftening.x;
+    key1.outtangent.x = maxValSoftening.x * 0.5;
+    key1.outtangent.y = maxValSoftening.x * 0.5;
+
+    key2.time = maxVal + maxValSoftening.y;
+    key2.value = maxVal;
+    key2.intangent.x = maxValSoftening.y * - 0.5;
+    key2.intangent.y = 0;
+
+    return key1.interpolate(key2, val);
+  }
+  else {
+    return val;
+  }
+}
+
+
+function applyFishingRod(
+  io Xfo boneXfo,
+  in Scalar boneLength,
+  in Xfo target,
+  in Vec3 boneLocalAxis,
+
+  in Scalar minLineLength,
+  in Vec2 minLineLengthSoftening,
+  in Scalar maxLineLength,
+  in Vec2 maxLineLengthSoftening,
+  
+  in Scalar maxDeltaBoneAngle,
+  in Scalar maxDeltaBoneAngleSoftening
+) {
+
+  Vec3 vecToTarget, boneLengthVector, bendAxis;
+  Scalar distBoneBaseToTarget, distBoneTipToTarget, newDistBoneTipToTarget;
+
+  vecToTarget = target.tr - boneXfo.tr;
+  distBoneBaseToTarget = vecToTarget.length();
+  vecToTarget *= 1.0 / distBoneBaseToTarget;
+
+  boneLengthVector = boneXfo.ori.rotateVector(boneLocalAxis);
+  distBoneTipToTarget = (boneXfo.tr + (boneLengthVector * boneLength)).distanceTo(target.tr);
+
+  newDistBoneTipToTarget = applySoftClampBezierCurve(
+    distBoneTipToTarget,
+    minLineLength,
+    minLineLengthSoftening,
+    maxLineLength,
+    maxLineLengthSoftening
+  );
+
+  if (abs(newDistBoneTipToTarget - distBoneTipToTarget) > 0.001) {
+
+    // this is the current angle of the bone.
+    Scalar fkBoneAngle = acos(boneLengthVector.dot(vecToTarget));
+
+    // Use trigonometry to determine the ikBoneAngle
+    // Law of cosines. a = BoneLength; b = newDistBoneTipToTarget; c = newDistBoneTipToTarget;
+    Scalar a = boneLength;
+    Scalar b = distBoneBaseToTarget;
+    Scalar c = newDistBoneTipToTarget;
+    
+    Scalar ikBoneAngle = acos(Math_clamp(((a * a) + (b * b) - (c * c)) / (2.0 * a * b), - 1.0, 1.0));
+
+    // Subtract off the current angle the bone has with the vecToTarget to keep the delta
+    Scalar deltaBoneAngle = (fkBoneAngle - ikBoneAngle);
+    
+    deltaBoneAngle = applySoftLimitBezierCurve(
+      deltaBoneAngle,
+      maxDeltaBoneAngle,
+      Vec2(maxDeltaBoneAngle-maxDeltaBoneAngleSoftening, maxDeltaBoneAngle+maxDeltaBoneAngleSoftening)
+    );
+
+    bendAxis = boneLengthVector.cross(vecToTarget);
+    
+    Quat offset;
+    offset.setFromAxisAndAngle(bendAxis, deltaBoneAngle);
+    boneXfo.ori = offset * boneXfo.ori;
+  }
+}
+
+
+
+function solveNCFIK(
+  io Xfo pose[],
+  in Bone bones[],
+  in Integer boneIndices[],
+  in Xfo target,
+  io DebugGeometry debugGeometry
+) {
+
+  Integer boneIndex, lastBoneIndex = boneIndices[boneIndices.size() - 1];
+  Scalar distToIkGoal, distToFkChainTip, remainingChainLength = 0;
+  Scalar fkBoneAngle, ikBoneAngle, deltaBoneAngle;
+  Scalar maxFkBoneAngle, maxIkBoneAngle;
+  Vec3 chainRootPos, vecToIkGoal, vecToFkChainTip, goalPosition, fkChainTip;
+  Quat boneOffsetRotation, chainOffsetRotation;
+  Xfo boneXfo, boneParentXfo;
+  Bone bone;
+
+  fkChainTip = pose[lastBoneIndex].transformVector(Vec3(bones[lastBoneIndex].length, 0.0, 0.0));
+  chainRootPos = pose[boneIndices[0]].tr;
+
+  for (Integer i = 0; i < boneIndices.size(); i++) {
+    remainingChainLength += bones[boneIndices[i]].length * pose[boneIndices[i]].sc.x;
+  }
+
+  // Apply the soft limit to the distance to the IK goal
+  vecToIkGoal = target.tr - chainRootPos;
+  distToIkGoal = vecToIkGoal.length();
+
+  // Limit the extention to 98% and ramp it up over 5% of the chains length
+  //  vecToIkGoal      *= ( limitValue( distToIkGoal, remainingChainLength * 0.98, remainingChainLength * 0.08 ) ) / distToIkGoal;
+  //  goalPosition    = chainRootPos + vecToIkGoal;
+
+  goalPosition = target.tr;
+
+  for (Integer i = 0; i < boneIndices.size(); i++) {
+    boneIndex = boneIndices[i];
+    bone = bones[boneIndex];
+    boneXfo = pose[boneIndices[i]];
+    if (i == 0) {
+      vecToFkChainTip = fkChainTip - boneXfo.tr;
+    }
+    else {
+      // Transform the bone position by the overall chain offset.
+      vecToFkChainTip = fkChainTip - (chainRootPos + (chainOffsetRotation.rotateVector((boneXfo.tr - chainRootPos))));
+
+      // Calculate a new pose position based on the parent bones new orientation
+      boneXfo.tr = pose[bone.parent].transformVector(Vec3(bones[bone.parent].length, 0.0, 0.0));
+    }
+    distToFkChainTip = vecToFkChainTip.length();
+    vecToFkChainTip *= 1.0 / distToFkChainTip;
+
+    vecToIkGoal = goalPosition - boneXfo.tr;
+    distToIkGoal = vecToIkGoal.length();
+    vecToIkGoal *= 1.0 / distToIkGoal;
+    Scalar boneLength = bone.length * boneXfo.sc.x;
+
+    if (i == 0) {
+      // For the first bone calculate and store the overall chain offset towards the ik target
+      chainOffsetRotation.setFrom2Vectors(vecToFkChainTip, vecToIkGoal);
+    
+      fkChainTip = boneXfo.tr + (vecToIkGoal * distToFkChainTip);
+      boneXfo.ori = chainOffsetRotation * boneXfo.ori;
+    }
+    else {
+      // Apply the chain offset, and apply any incremental correction.
+      // This additional correction is required due to a new bone position based on the new parent orientation
+      boneOffsetRotation.setFrom2Vectors(vecToFkChainTip, vecToIkGoal);
+      boneXfo.ori = boneOffsetRotation * chainOffsetRotation * boneXfo.ori;
+    }
+
+    // Based on the bone index, select an appropriate method to solve
+    if (i <= (boneIndices.size() - 2)) {
+      // Remove the current bones length from the chain.
+      remainingChainLength -= boneLength;
+      Vec3 boneLengthVector = boneXfo.ori.rotateVector(Vec3(1.0, 0.0, 0.0));
+      
+      // this is the current angle of the bone.
+      fkBoneAngle = acos(Math_clamp(boneLengthVector.dot(vecToIkGoal), -1.0, 1.0));
+      if(fkBoneAngle < 0.0001){
+        // If the bone is already pointing directly at the target, we can't work with it.
+        // in debug mode, report and error. 
+        continue;
+      }
+      
+      Vec3 bendAxis = vecToIkGoal.cross(boneLengthVector);
+      bendAxis.setUnit();
+      
+      if (i == (boneIndices.size() - 2)) {
+        // Use trigonometry to determine the ikBoneAngle
+        // Law of cosines. a = BoneLength; b = Child BoneLength; c = Distance to the Ik Goal;
+        ikBoneAngle = acos(Math_clamp((sq(boneLength) + sq(distToIkGoal) - sq(remainingChainLength)) / (2.0 * boneLength * distToIkGoal), - 1.0, 1.0));
+      }
+      else {
+        // distance from the bone tip to the ik gloal
+        if (distToFkChainTip > remainingChainLength) {
+          // Using the law of cosines, calculate the maximum angle of this bone using the fk Chain tip
+          maxFkBoneAngle = acos(Math_clamp((sq(boneLength) + sq(distToFkChainTip) - sq(remainingChainLength)) / (2.0 * boneLength * distToFkChainTip), - 1.0, 1.0));
+        }
+        else {
+          // Add on the remaining chain length as radians.
+          maxFkBoneAngle = acos(Math_clamp((boneLength * 0.5) / remainingChainLength, 0.0, 1.0));
+          maxFkBoneAngle += (remainingChainLength - distToFkChainTip) / boneLength;
+        }
+
+        // distance from the bone tip to the ik gloal
+        if (distToIkGoal > remainingChainLength) {
+          // Using the law of cosines, calculate the maximum angle of this bone using the fk Chain tip
+          maxIkBoneAngle = acos(Math_clamp((sq(boneLength) + sq(distToIkGoal) - sq(remainingChainLength)) / (2.0 * boneLength * distToIkGoal), - 1.0, 1.0));
+        }
+        else {
+          // Add on the remaining chain length as radians.
+          maxIkBoneAngle = acos(Math_clamp((boneLength * 0.5) / remainingChainLength, 0.0, 1.0));
+          maxIkBoneAngle += (remainingChainLength - distToIkGoal) / boneLength;
+        }
+
+        ikBoneAngle = maxIkBoneAngle * (fkBoneAngle / maxFkBoneAngle);
+      }
+
+      // Subtract off the current angle the bone has with the vecToIkGoal to keep the delta
+      deltaBoneAngle = (ikBoneAngle - fkBoneAngle);
+
+      // Apply the rotation to the current bones
+      Quat offset;
+      offset.setFromAxisAndAngle(bendAxis, deltaBoneAngle);
+      boneXfo.ori = offset * boneXfo.ori;
+      
+    }
+
+    pose[boneIndex] = boneXfo;
+  }
+}

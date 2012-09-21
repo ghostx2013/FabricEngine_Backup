@@ -1,0 +1,82 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3, Quat, Xfo;
+use KEYFRAMETYPETrackSet;
+
+function PoseVariables.addScalarValue(){
+  this.scalarValues.push(0.0);
+}
+
+/*
+function PoseVariables.addXfoValue() {
+  Xfo xfo;
+  this.xfoValues.push(xfo);
+}
+*/
+
+function PoseVariables PoseVariables.subtract(PoseVariables other) {
+  PoseVariables result;
+  Integer i=0;
+  if(this.scalarValues.size != other.scalarValues.size
+  || this.vec3Values.size != other.vec3Values.size
+  || this.quatValues.size != other.quatValues.size
+  || this.xfoValues.size != other.xfoValues.size
+  ){
+    report("ERROR in PoseVariables.subtract: 'other' PoseVariables must match in structure");
+    return result;
+  }
+  result.scalarValues.resize(this.scalarValues.size);
+  for(i=0; i<this.scalarValues.size; i++){
+    result.scalarValues[i] = this.scalarValues[i] - other.scalarValues[i];
+  }
+  result.vec3Values.resize(this.vec3Values.size);
+  for(i=0; i<this.vec3Values.size; i++){
+    result.vec3Values[i] = this.vec3Values[i] - other.vec3Values[i];
+  }
+  result.quatValues.resize(this.quatValues.size);
+  for(i=0; i<this.quatValues.size; i++){
+    result.quatValues[i] = this.quatValues[i].inverse() * other.quatValues[i];
+  }
+  result.xfoValues.resize(this.xfoValues.size);
+  for(i=0; i<this.xfoValues.size; i++){
+  //  result.xfoValues[i] = other.xfoValues[i].inverse() * this.xfoValues[i];
+    result.xfoValues[i].tr = this.xfoValues[i].tr - other.xfoValues[i].tr;
+    result.xfoValues[i].ori = this.xfoValues[i].ori * other.xfoValues[i].ori.inverse();
+  }
+  return result;
+}
+
+
+function PoseVariables.addWeighted(PoseVariables other, Scalar weight) {
+  if(this.scalarValues.size != other.scalarValues.size
+  || this.vec3Values.size != other.vec3Values.size
+  || this.quatValues.size != other.quatValues.size
+  || this.xfoValues.size != other.xfoValues.size
+  ){
+    report("ERROR in PoseVariables.subtract: 'other' PoseVariables must match in structure");
+    return;
+  }
+  Integer i=0;
+  for(i=0; i<this.scalarValues.size; i++){
+    this.scalarValues[i] += other.scalarValues[i] * weight;
+  }
+  this.vec3Values.resize(this.vec3Values.size);
+  for(i=0; i<this.vec3Values.size; i++){
+    this.vec3Values[i] += other.vec3Values[i] * weight;
+  }
+  for(i=0; i<this.quatValues.size; i++){
+    this.quatValues[i] = this.quatValues[i].sphericalLinearInterpolate(other.quatValues[i] * this.quatValues[i], weight);
+  }
+  for(i=0; i<this.xfoValues.size; i++){
+    this.xfoValues[i].tr += other.xfoValues[i].tr * weight;
+    this.xfoValues[i].ori = this.xfoValues[i].ori.sphericalLinearInterpolate(other.xfoValues[i].ori * this.xfoValues[i].ori, weight);
+  }
+}
+
+
+
+
+
+

@@ -1,0 +1,27 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function test( Integer val )
+{
+	if( val > 1 )
+	{
+		report("Value is greater than 1" );
+		return;
+	}
+	
+	report( "Value is less than or equal to 1" );
+}
+
+function Integer getInteger( Integer v )
+{
+	Integer	arr[];
+	arr.resize( 1 );
+	arr[0] = v;
+	return arr[0];
+}
+
+operator entry()
+{
+	test( getInteger( 2 ) );
+}

@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Integer a=7, b, c, d;
+  d = c = b = a;
+  report(a);
+  report(b);
+  report(c);
+  report(d);
+}

@@ -1,0 +1,29 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  String strings[];
+  strings.push( "" );
+  strings.push( "one" );
+  strings.push( "onePlusOne" );
+  strings.push( "onePlusTwo" );
+  strings.push( "two" );
+  strings.push( "twoPlusOne" );
+  strings.push( "twoPlusTwo" );
+
+  for ( Size i=0; i<strings.size; ++i )
+  {
+    for ( Size j=0; j<strings.size; ++j )
+    {
+      report("'"+strings[i]+"'.compare('"+strings[j]+"') = "+strings[i].compare(strings[j]));
+      report("'"+strings[i]+"' == '"+strings[j]+"') = "+(strings[i]==strings[j]));
+      report("'"+strings[i]+"' != '"+strings[j]+"') = "+(strings[i]!=strings[j]));
+      report("'"+strings[i]+"' < '"+strings[j]+"') = "+(strings[i]<strings[j]));
+      report("'"+strings[i]+"' <= '"+strings[j]+"') = "+(strings[i]<=strings[j]));
+      report("'"+strings[i]+"' > '"+strings[j]+"') = "+(strings[i]>strings[j]));
+      report("'"+strings[i]+"' >= '"+strings[j]+"') = "+(strings[i]>=strings[j]));
+    }
+  }
+}

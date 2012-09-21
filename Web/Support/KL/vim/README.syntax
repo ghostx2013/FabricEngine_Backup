@@ -1,0 +1,8 @@
+Simple Fabric Kernel Language (KL) syntax highlighting for vim.
+
+Copy kl.vim into your ~/.vim/syntax/ directory and add the following to your .vimrc:
+
+augroup filetype
+  au! BufRead,BufNewFile *.kl set filetype=kl
+augroup END
+

@@ -1,0 +1,15 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function double( io Scalar x )
+{
+  x *= 2;
+}
+
+operator entry()
+{
+  var Scalar x = 2;
+  double( x );
+  report(x);
+}

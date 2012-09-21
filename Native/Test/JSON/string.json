@@ -1,0 +1,6 @@
+""
+"fred"
+"a much longer string that won't fit into the short data"
+"\"\/\\\b\f\n\t\r"
+"piqu\u00E9"
+"piqué"

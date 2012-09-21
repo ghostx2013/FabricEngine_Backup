@@ -1,0 +1,11 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  report(Boolean(0));
+  report(Boolean(2387423));
+  report(Boolean(1));
+  report(Boolean(-23874));
+}

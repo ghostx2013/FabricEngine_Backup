@@ -1,0 +1,62 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Mat44, Xfo;
+use FabricOGL, OGLBuffer, OGLShaderProgram, OGLTexture2D;
+
+operator loadSkinningMatrices(
+  io OGLShaderProgram shaderProgram,
+  io Xfo pose[],
+  io Mat44 invMatrices[],
+  io Integer boneMapping[]
+) {
+//  report("loadSkinningMatrices");
+  Integer location = shaderProgram.getUniformLocation(SKINNING_MATRICES_ATTRIBUTE_ID);
+  if(location!=-1){
+    Mat44 skinningMatrices[];
+    skinningMatrices.resize(invMatrices.size());
+    for (var Integer i = 0; i < invMatrices.size(); i++) {
+      if(boneMapping[i] < 0)
+        continue;
+      skinningMatrices[i] = (pose[boneMapping[i]].toMat44() * invMatrices[i]).transpose();
+    }
+    shaderProgram.loadMat44TransposedUniformArray(location, skinningMatrices);
+  }
+}
+
+operator loadSkinningMatricesTexture(
+  io OGLShaderProgram shaderProgram,
+  io Xfo poses<>[],
+  io Mat44 invMatrices[],
+  io Integer boneMapping[],
+  io OGLTexture2D oglSkinningMatriciesTexture2D,
+  io Integer skinningMatriciesTextureUnit,
+  io Size textureHeight
+) {
+  // report("loadSkinningMatrices");
+
+  Integer location = shaderProgram.getUniformLocation(SKINNIMATRICIES_TEXTUREUNIT_ATTRIBUTE_ID);
+  if(location!=-1 && poses.size() > 0){
+    
+    Mat44 skinningMatrices[];
+    skinningMatrices.resize(poses.size() * invMatrices.size());
+    for (var Integer i = 0; i < poses.size(); i++) {
+      for (var Integer j = 0; j < invMatrices.size(); j++) {
+        if(boneMapping[j] < 0)
+          continue;
+        skinningMatrices[(i*invMatrices.size())+j] = (poses[i][boneMapping[j]].toMat44() * invMatrices[j]).transpose();
+      }
+    }
+    shaderProgram.loadIntegerUniform(location, skinningMatriciesTextureUnit);
+
+    Size height = 0;
+    oglSkinningMatriciesTexture2D.bindImageMatrixArray(skinningMatrices, skinningMatriciesTextureUnit, height);
+    if(height != 0)//height == 0 if texture is already bound
+      textureHeight = height;
+
+    location = shaderProgram.getUniformLocation( TRANSFORM_TEXTURE_HEIGHT_ATTRIBUTE_ID );
+    if(location != -1)
+      shaderProgram.loadScalarUniform(location, Scalar(textureHeight));
+  }
+}

@@ -1,0 +1,58 @@
+--- Testing Cached Generator
+vp = ValueProducer<String>
+Should run generator
+  Running generator!
+ vp.produce() = Hello
+Should not run generator (use cache)
+ vp.produce() = Hello
+Should run generator
+  Running generator!
+ vp.produce() = Hello
+ 
+--- Testing Cached Transform
+vp = ValueProducer<Integer>
+Should run transform
+  Running transform!
+ vp.produce() = 84
+Should not run transform (use cache)
+ vp.produce() = 84
+Should run transform
+  Running transform!
+ vp.produce() = 84
+ 
+--- Testing Nested Caches
+vp = ValueProducer<String>
+Should run generator
+  Running generator!
+ vp.produce() = Hello
+Should not run generator (use cache)
+ vp.produce() = Hello
+Should run generator
+  Running generator!
+ vp.produce() = Hello
+ 
+--- Testing Transform flush propagation
+vp = ValueProducer<Integer>
+Should run generator
+  Running generator!
+  Running transform!
+ vp.produce() = 246
+Should not run generator (use cache)
+  Running transform!
+ vp.produce() = 246
+Should run generator
+  Running generator!
+  Running transform!
+ vp.produce() = 246
+ 
+--- Testing Map flush propagation
+vp = ValueProducer<Scalar>
+Should run generator
+  Running generator!
+ vp.produce() = 386.22
+Should not run generator (use cache)
+ vp.produce() = 386.22
+Should run generator
+  Running generator!
+ vp.produce() = 386.22
+ 

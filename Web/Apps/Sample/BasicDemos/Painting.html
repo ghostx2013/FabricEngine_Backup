@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+<!--    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.    -->
+    <title>FABRIC - Painting</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/colorpicker/js/colorpicker.js"></script>
+    <link href="../../../ThirdParty/jQuery/colorpicker/css/colorpicker.css" rel="stylesheet" type="text/css" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <style type="text/css">
+    
+#sidebar {
+  width:400px;
+}  
+#viewer {
+  right:400px;
+}
+
+  
+  </style>
+    
+    <script type="text/javascript">
+    
+    
+ FABRIC.require(["SG/SceneGraph",
+                 "SG/Geometry",
+                 "SG/Materials",
+                 "SG/Manipulation",
+                 "SG/Parsers/parseOBJ"], function() {
+    
+FABRIC.SceneGraph.registerNodeType('PaintVertexColorsManipulator', {
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+      brushColor: FABRIC.RT.rgb(0.8, 0.0, 0.0)
+      });
+    
+    options.paintingOpDef = {
+          operatorName: 'paintVertexColors',
+          srcFile: 'KL/paintOp.kl',
+          entryPoint: 'paintVertexColors',
+          parameterLayout: [
+            'paintData.cameraMatrix',
+            'paintData.projectionMatrix',
+            'paintData.aspectRatio',
+
+            'paintData.baseColor',
+            'paintData.mode',
+            'paintData.brushStrength',
+            'paintData.brushPos',
+            'paintData.brushSize',
+            'paintData.brushColor',
+
+            'transform.globalXfo',
+            'geometryattributes.positions<>',
+            'geometryattributes.normals<>',
+            'geometryattributes.vertexColors<>'
+          ],
+          async: false
+        };
+    
+    var vertexColorsPaintManipulator = scene.constructNode('PaintManipulator', options);
+    
+    var paintEventHandler = vertexColorsPaintManipulator.getPaintEventHandler();
+    
+    paintEventHandler.addMember('mode', 'Integer');
+    vertexColorsPaintManipulator.addMemberInterface(paintEventHandler, 'mode', true);
+    
+    paintEventHandler.addMember('brushStrength', 'Scalar', 1.0);
+    vertexColorsPaintManipulator.addMemberInterface(paintEventHandler, 'brushStrength', true);
+    
+    paintEventHandler.addMember('brushColor', 'Color', options.brushColor);
+    paintEventHandler.addMember('baseColor', 'Color', options.baseColor);
+    vertexColorsPaintManipulator.addMemberInterface(paintEventHandler, 'brushColor', true);
+    
+    return vertexColorsPaintManipulator;
+  }});
+
+
+
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    backgroundColor: FABRIC.RT.rgb(0.3, 0.5, 0.7)
+  });
+  
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+
+  // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 0.01,
+      farDistance: 5,
+      position: new FABRIC.RT.Vec3(-0.03, 0.19, 0.21),
+      target: new FABRIC.RT.Vec3(-0.03, 0.06, -0.03)
+    });
+
+  var cameraManipulator = scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+  
+  /////////////////////////////////////////////////
+  // Set up the painting manipulator
+  var baseColor = FABRIC.RT.rgb(0.0, 0.6, 0.0);
+  var brushSize = 0.1;
+  var brushColor = FABRIC.RT.rgb(0.8, 0.0, 0.0);
+  var paintManipulator = scene.constructNode('PaintVertexColorsManipulator', {
+      brushSize: brushSize,
+      enabled:false,
+      brushColor: brushColor,
+      baseColor: baseColor
+    });
+    
+  //constraint a pointLight to the camera
+  var light = scene.constructNode('PointLight', { transformNode: camera.getTransformNode() });
+  var material = scene.constructNode('PhongVertexColorMaterial', { lightNode: light });
+
+  scene.importAssetFile('Models/bunny.obj', {
+     splitMaterials: false
+   },
+   function(assetNodes){
+     var geometry = assetNodes.bunny;
+     geometry.addVertexAttributeValue('vertexColors', 'Color', {
+       defaultValue:baseColor,
+       genVBO:true
+     });
+   
+     var instanceNode = scene.constructNode('Instance', { geometryNode: geometry, materialNode: material });
+   
+     paintManipulator.addPaintableNode(instanceNode);
+   
+     var onPaintFn = function(evt) {
+       if( evt.paintData.points.length == 0 ){
+         return;
+       }
+       geometry.reloadVBO('vertexColors');
+     };
+     paintManipulator.addEventListener('onpaint', onPaintFn);
+   });
+  
+
+  
+  // Switch to painting when the shiftKey key is pressed
+  var painting = false;
+  window.onkeydown = function(evt) {
+      if(evt.shiftKey || evt.keyCode == 16){
+        cameraManipulator.disable();
+        paintManipulator.enable();
+        painting = true;
+      }
+    };
+  window.onkeyup = function(evt) {
+      if(painting){
+        cameraManipulator.enable();
+        paintManipulator.disable();
+        painting = false;
+      }
+    };
+    
+$(document).ready(function() {
+    $('#play').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-play'
+      }
+    });
+
+    $('#step').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-step'
+      }
+    });
+
+  $( "#paintModeSet" ).buttonset()
+  .click(function(event) {
+    
+    console.log( $($(":checked")[0]).attr('id') );
+    switch($($(":checked")[0]).attr('id')){
+      case "paintModeAdd":
+        paintManipulator.setMode(0);
+        break;
+      case "paintModeSubtract":
+        paintManipulator.setMode(1);
+        break;
+      case "paintModeSmooth":
+        paintManipulator.setMode(2);
+        break;
+    }
+  })
+  
+  $( "#brushSizeSlider" ).slider({
+        value: brushSize,
+        min: 0,
+        max: 0.5,
+        step: 0.01,
+        slide: function( event, ui ) {
+          $( "#brushSizeValue" ).val( ui.value.toFixed(2) );
+          paintManipulator.setBrushSize( ui.value );
+        }
+      });
+  $( "#brushSizeValue" ).val( $( "#brushSizeSlider" ).slider( "value" ) );
+  
+  paintManipulator.addEventListener('brushsizechanged', function( evt ){
+    $( "#brushSizeSlider" ).slider('value', evt.brushSize.toFixed(2)  );
+    $( "#brushSizeValue" ).val( evt.brushSize.toFixed(2)  );
+  });
+
+  
+  $( "#brushStrengthSlider" ).slider({
+        value: 1.0,
+        min: 0,
+        max: 1.0,
+        step: 0.01,
+        slide: function( event, ui ) {
+          $( "#brushStrengthValue" ).val( Math.round(ui.value * 100) + '%' );
+          paintManipulator.setBrushStrength( ui.value );
+        }
+      });
+  $( "#brushStrengthValue" ).val( $( "#brushStrengthSlider" ).slider( "value" ) * 100 + '%' );
+
+  $('#brushColor').ColorPicker({
+      flat: true,
+      color: { r: brushColor.r * 255, g: brushColor.g * 255, b: brushColor.b * 255} ,
+      onChange: function(hsb, hex, rgb) {
+      //  paintManipulator.setBrushColor(FABRIC.RT.rgb255(rgb.r, rgb.g, rgb.b));
+        paintManipulator.setBrushColor( FABRIC.RT.rgb255(rgb.r, rgb.g, rgb.b));
+      }
+    });
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box ui-widget">
+            <h2  class="ui-widget-header ui-corner-all">INFO</h2>
+            <div class="content ui-widget-content">
+              Vertex Map Painting.<br>
+              The painting interface is built using event hanlders, and it very similar to ray casting.
+              With ray casting, we return the intersection data back to JavaScript, whereas with painting,
+              we return all points within range of the brush. Any data in the scene can be modified,
+              and in this example, we simply modify the vertex colors.<br><br>
+              Hold the shiftKey down to go into paint mode.<br>
+              Use the mouse wheel while in 'Paint' mode to resize the brush.
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box ui-widget">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <span id="paintModeSet" style="margin-bottom: 10px;">
+                <input type="radio" id="paintModeAdd" name="paintMode" checked="checked" /><label for="paintModeAdd">Add</label>
+                <input type="radio" id="paintModeSubtract" name="paintMode" /><label for="paintModeSubtract">Subtract</label>
+                <input type="radio" id="paintModeSmooth" name="paintMode" /><label for="paintModeSmooth">Smooth</label>
+              </span>
+              <br>
+            <!--  <p style="margin-bottom: 10px; margin-top: 10px" class="content"> -->
+                <label for="brushSizeValue" >Brush Size:</label>
+                <input type="text" id="brushSizeValue" style="border:0; font-weight:bold; margin-bottom: 10px; margin-top: 20px" />
+            <!--  </p> -->
+              <div id="brushSizeSlider" style="margin-bottom: 10px; margin-top: 2px"></div>
+                                                                                           
+            <!--  <p style="margin-bottom: 10px; margin-top: 10px" class="content"> -->
+                <label for="brushStrengthValue" >Brush Strength:</label>
+                <input type="text" id="brushStrengthValue" style="border:0; font-weight:bold; margin-bottom: 10px; margin-top: 10px" />
+            <!--  </p> -->
+              <div id="brushStrengthSlider" style="margin-bottom: 10px; margin-top: 2px"></div>
+              
+              <p id="brushColor" style="margin-bottom: 10px; margin-top: 10px"></p>
+            </div><!--content-->
+              
+          </div><!--box-->
+      
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>DeferredPrePassPhongMaterial</name>
+  <prototypeMaterialType>DeferredPrePassMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_materialDiffuseColor" constant="diffuseColor" type="Color" defaultValue="FABRIC.RT.rgba(0.8,0,0,1)"/>
+    <uniform name="u_materialSpecularFactor" constant="specularFactor" type="Scalar" defaultValue="1.0"/>
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_modelViewMatrix" constant="modelViewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_normalMatrix" constant="normalMatrix" type="Mat33" owner="instance"/>
+  </uniforms>
+
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_normal" binding="normals"/>
+  </attributes>
+
+  <vertexshader>
+    <source>
+      <![CDATA[
+      uniform mat4 u_modelViewProjectionMatrix;
+      uniform mat4 u_modelViewMatrix;
+      uniform mat3 u_normalMatrix;
+      
+      attribute vec4 a_position;
+      attribute vec3 a_normal;
+
+      varying vec3 normal;
+      varying vec3 position;
+
+      void main(){
+        normal = u_normalMatrix * a_normal;
+        position = (u_modelViewMatrix * a_position).xyz;
+        gl_Position = u_modelViewProjectionMatrix * a_position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform vec4 u_materialDiffuseColor;
+      uniform float u_materialSpecularFactor;
+      varying vec3 normal;
+      varying vec3 position;
+
+      void main(){
+        gl_FragData[0].xyz = position;
+        gl_FragData[1].xyz = normalize(normal);
+        gl_FragData[2] = vec4(u_materialDiffuseColor.rgb, u_materialSpecularFactor);
+       }
+
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

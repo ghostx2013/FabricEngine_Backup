@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Video Editor</title> 
+    
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    
+    <link href="../../../../ThirdParty/jQuery/colorpicker/css/colorpicker.css" rel="stylesheet" type="text/css" />
+
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/colorpicker/js/colorpicker.js"></script>
+
+    <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Math.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Vec2.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Vec3.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Vec4.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Mat22.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Mat33.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Mat44.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Quat.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Xfo.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/RGBA.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Color.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Euler.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/OGLShaderProgram.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/OGLTexture2D.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/OGLBuffer.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/OGLRenderTarget.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../RT/Ray.js" charset="utf-8"></script>
+
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Geometry.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Primitives.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Lights.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Images.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Materials.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Manipulation.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Kinematics.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Animation.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Alembic.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../../../SceneGraph/FABRIC.SceneGraph.Rendering.js" charset="utf-8"></script>
+
+    <style type="text/css">
+#sidebar {
+  width:200px;
+}  
+#viewer {
+  right:200px;
+  bottom:200px;
+}
+#timeControls {
+  right:190px;
+  height: 200px;
+}
+    </style>
+    <script type="text/javascript">
+FABRIC.SceneGraph.registerNodeType('VideoClipList', {
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+      videoNode: undefined
+    });
+    
+    // check if we have a videonode
+    if(!options.videoNode)
+      throw('The VideoClipList node constructor requires a videoNode to be set!');
+    
+    // create the offscreennode and the uv material
+    var clipListNode = scene.constructNode('SceneGraphNode', options);
+
+    // create the member to be able to query
+    var dgnode = clipListNode.constructDGNode('DGNode');
+    dgnode.addMember('io','Vec2');
+    
+    return clistListNode;
+  }});
+
+$(document).ready(function() {
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer')
+  });
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+    position: new FABRIC.RT.Vec3(20, 20, 20),
+    target: new FABRIC.RT.Vec3(0, 0, 0),
+    nearDistance: 0.01,
+    farDistance: 1000
+  });
+  viewport.setCameraNode(camera);
+  
+  // load the video
+  var videoNode = scene.constructNode('Video', {
+    url: '../../BasicDemos/Resources/bee_960.mov',
+    nbCachedFrames: 0,
+    loop: true
+  });
+
+  // set the video to be the background
+  viewport.setBackgroundTextureNode(videoNode);
+  
+  $('#globalTime').slider({
+    min: 0.0,
+    max: 13.4,
+    step: 0.04
+  }).bind('slide', function(event, ui) {
+    if ($('#play').text() == 'Pause') {
+      $('#play').button('option', {
+        label: 'Play',
+        icons: {
+          primary: 'ui-icon-play'
+        }
+      });
+      scene.animation.pause();
+    }
+    scene.animation.setTime(ui.value);
+    viewport.redraw();
+  });
+  
+  scene.addEventListener('timechanged', function(evt){
+    if(evt.playing){
+        $('#globalTime').slider('value',
+          videoNode.getAnimationControllerNode().getLocalTime());
+    }
+  });
+  $('#play').button({
+    text: true,
+    icons: {
+      primary: 'ui-icon-play'
+    }
+  }).click(function() {
+    var options;
+    if ($(this).text() == 'Play') {
+      $(this).button('option', {
+        label: 'Pause',
+        icons: {
+          primary: 'ui-icon-pause'
+        }
+      });
+      scene.animation.play();
+    } else {
+      $(this).button('option', {
+        label: 'Play',
+        icons: {
+          primary: 'ui-icon-play'
+        }
+      });
+      scene.animation.pause();
+    }
+  });
+  
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      
+      viewport.redraw();
+      return true;
+    }
+  });
+  
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc">Downloading Video File.<br>This may take some time.</h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>Instructions</h2>
+            <div class="content">
+              You can do stuff.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>Controls</h2>
+            <div class="content">
+              You can do stuff.<br>
+              <button id="play">Play</button>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+        
+        <div id="timeControls">
+          <div class="box">
+            <h2>Time Controls</h2>
+            <div class="content">
+                <div id='globalTime'></div>
+            </div><!--content-->
+            <h2>ClipList</h2>
+            <div style="margin: 10px">
+              <div style="width: 50px; height: 40px; background-color:#707070; margin-right: 1px; display: inline-block"></div>
+              <div style="width: 80px; height: 40px; background-color:#70A070; margin-right: 1px; display: inline-block"></div>
+              <div style="width: 20px; height: 40px; background-color:#A07070; margin-right: 1px; display: inline-block"></div>
+              <div style="width: 150px; height: 40px; background-color:#7070A0; margin-right: 1px; display: inline-block"></div>
+              <div style="width: 70px; height: 40px; background-color:#202020; margin-right: 1px; display: inline-block"></div>
+            </div>
+          </div><!--box-->
+        </div><!--timeControls-->
+        
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

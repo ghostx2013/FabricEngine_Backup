@@ -1,0 +1,50 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricSECURE;
+
+operator secureContainerClear(
+  io SecureContainer container,
+  io SecureElement elements[]
+) {
+  container.clear();
+  elements.resize(0);
+}
+
+operator secureContainerLoad(
+  io String url,
+  io FabricResource resource,
+  io String key,
+  io SecureContainer container,
+  io SecureElement elements[]
+) {
+  if(resource.data.dataSize() > 0 && !container.localData) {
+    container.loadResource(resource,key);
+    Size elementCount = 0;
+    container.getNbElements(elementCount);
+    elements.resize(0);
+    for(Integer i=0;i<Integer(elementCount);i++) {
+      SecureElement element;
+      container.getElement(i,element);
+      elements.push(element);
+    }
+  }
+}
+
+operator secureContainerSave(
+  io SecureContainer container,
+  io FabricResource resource,
+  io Integer level,
+  io String key
+) {
+  container.saveResource(resource,level,key);
+}
+
+operator secureContainerResize(
+  io Container container,
+  io Integer elementIndex,
+  io SecureElement elements[]
+) {
+  container.resize( elements[elementIndex].slicecount );
+}

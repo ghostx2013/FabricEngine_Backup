@@ -1,0 +1,1 @@
+destructor-type-nonexistent.kl:5:1: error: 'Foo': type not registered

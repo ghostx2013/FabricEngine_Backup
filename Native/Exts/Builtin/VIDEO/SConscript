@@ -1,0 +1,22 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'fabricExtsDistDir', 'ffmpegFlags', 'ExtSLName', 'buildOS', 'buildArch', 'buildType')
+import os.path
+
+videoPluginEnv = extsEnv.Clone()
+videoPluginEnv.MergeFlags( ffmpegFlags )
+videoPlugin = videoPluginEnv.SharedLibrary( ExtSLName('FabricVIDEO'), Glob('*.cpp') )
+if buildOS == 'Windows':
+  videoPlugin = videoPlugin[0]
+videoManifest = videoPluginEnv.File('FabricVIDEO.fpm.json'),
+videoKL = videoPluginEnv.File('FabricVIDEO.kl'),
+videoFiles = [videoManifest, videoPlugin, videoKL]
+if buildOS == "Windows":
+    videoFiles.append(videoPluginEnv.File(os.path.join('..','..','..','ThirdParty','Private','Windows',buildArch,buildType,'lib','ffmpeg','swscale-2.dll')))
+    videoFiles.append(videoPluginEnv.File(os.path.join('..','..','..','ThirdParty','Private','Windows',buildArch,buildType,'lib','ffmpeg','avformat-53.dll')))
+    videoFiles.append(videoPluginEnv.File(os.path.join('..','..','..','ThirdParty','Private','Windows',buildArch,buildType,'lib','ffmpeg','avcodec-53.dll')))
+    videoFiles.append(videoPluginEnv.File(os.path.join('..','..','..','ThirdParty','Private','Windows',buildArch,buildType,'lib','ffmpeg','avutil-51.dll')))
+
+Return( 'videoFiles' )

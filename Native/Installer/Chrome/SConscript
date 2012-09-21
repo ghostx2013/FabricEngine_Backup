@@ -1,0 +1,83 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+# Note that the installer with the .crx extension should be served
+# with the MIME type application/x-chrome-extension
+
+import os
+Import( 'baseEnv', 'buildOS', 'buildArch', 'FABRIC_VERSION', 'archDistDir', 'fabricExtsDistDir', 'npapiDistDir', 'browserExtFiles' )
+
+installerName = 'FabricEngine-ChromeExtension-' + buildOS + '-' + buildArch + '-' + FABRIC_VERSION
+
+chromeExtensionDir = archDistDir.Dir(installerName)
+
+installedFiles = []
+
+srcManifest = baseEnv.Template( "manifest.json", "manifest.json."+buildOS+".template" )
+dstManifest = chromeExtensionDir.File( "manifest.json" )
+installedFiles.append( baseEnv.Command(
+  dstManifest,
+  srcManifest,
+  [ Copy( '$TARGET', '$SOURCE' ) ]
+) )
+
+for res in ["16", "48", "128"]:
+  installedFiles.append( baseEnv.Command(
+    chromeExtensionDir.File( 'fabric-engine_' + res + '.png' ),
+    'fabric-engine_' + res + '.png',
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+  ) )
+
+if buildOS == "Linux":
+  installedFiles.append( baseEnv.Command(
+    chromeExtensionDir.File('libFabricPlugin.so'),
+    npapiDistDir.File('libFabricPlugin.so'),
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+   ) )
+if buildOS == "Windows":
+  installedFiles.append( baseEnv.Command(
+    chromeExtensionDir.File('npFabricPlugin.dll'),
+    npapiDistDir.File('npFabricPlugin.dll'),
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+   ) )
+if buildOS == "Darwin":
+  npapiPluginBundleDir = npapiDistDir.Dir( 'Fabric.'+buildArch+'.plugin' )
+  pluginDir = chromeExtensionDir.Dir( 'Fabric.'+buildArch+'.plugin' )
+  installedFiles.append( baseEnv.Command(
+    pluginDir.Dir('Contents').Dir('MacOS').File('FabricNPAPI'),
+    npapiPluginBundleDir.Dir('Contents').Dir('MacOS').File('FabricNPAPI'),
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+  ) )
+  installedFiles.append( baseEnv.Command(
+    pluginDir.Dir('Contents').File('Info.plist'),
+    npapiPluginBundleDir.Dir('Contents').File('Info.plist'),
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+  ) )
+
+installedFiles.append( Install(
+  chromeExtensionDir,
+  browserExtFiles
+) )
+
+pemFile = baseEnv.File('ChromeExtension.pem')
+
+chromeInstallerFile = archDistDir.File(installerName+'.crx')
+if buildOS == 'Windows':
+  chrome = os.environ['LOCALAPPDATA']+'\Google\Chrome\Application\chrome.exe'
+if buildOS == 'Darwin':
+  chrome = "'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'"
+if buildOS == 'Linux':
+  chrome = "DISPLAY="+os.environ['DISPLAY']+" /opt/google/chrome/chrome"
+baseEnv.Command(
+  chromeInstallerFile,
+  installedFiles,
+  [
+    chrome+" --pack-extension="+chromeExtensionDir.abspath+" --pack-extension-key="+pemFile.abspath+" --no-message-box",
+    Move( chromeInstallerFile, archDistDir.File(installerName+'.crx') ),
+  ]
+)
+chromeUpdateFile = baseEnv.Template( archDistDir.File("crx-update-"+buildOS+"-"+buildArch+".xml"), "crx-update.xml.template" )[0]
+chromeInstaller = [chromeInstallerFile, chromeUpdateFile]
+Alias( 'chromeInstaller', chromeInstaller )
+Return( 'chromeInstaller' )

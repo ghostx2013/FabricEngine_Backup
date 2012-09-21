@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>VideoDemoMaterial</name>
+  
+  <uniforms>
+    <uniform name="u_sampler0" constant="texture" type="Integer" owner="texture"/>
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_enableBloom" constant="enableBloom" type="Boolean"  DefaultValue="false"/>
+    <uniform name="u_blurSize" constant="blurSize" type="Scalar"  DefaultValue="0.0"/>
+    <uniform name="u_enableNegative" constant="enableNegative" type="Boolean" DefaultValue="false"/>
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_texCoord" binding="uvs0"/>
+  </attributes>
+  
+  <textures>
+    <texture binding="texture"/>
+  </textures>
+  
+  <vertexshader>
+    <source>
+      uniform mat4 u_modelViewProjectionMatrix;
+      
+      attribute vec4 a_position;
+      attribute vec2 a_texCoord;
+      
+      void main()
+      {
+        gl_TexCoord[0].xy = a_texCoord;
+        gl_Position =  u_modelViewProjectionMatrix * a_position;
+      }
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+        uniform sampler2D u_sampler0;
+        uniform bool u_enableBloom;
+        uniform float u_blurSize;
+        uniform bool u_enableNegative;
+        
+        void main()
+        {
+          vec2 texcoord = gl_TexCoord[0].st;
+          vec4 color = texture2D( u_sampler0, texcoord );
+          
+          if(u_enableBloom)
+          {
+            vec4 sum = vec4(0);
+            int j;
+            int i;
+            for( i = -4 ;i<4; i++)
+            {
+              for (j = -3;j<3; j++)
+              {
+                sum += texture2D(u_sampler0, texcoord + vec2(j, i)*0.004) * 0.25;
+              }
+            }
+            if (texture2D(u_sampler0, texcoord).r < 0.3)
+            {
+              color = sum*sum*0.012 + texture2D(u_sampler0, texcoord);
+            }
+            else
+            {
+              if (texture2D(u_sampler0, texcoord).r < 0.5)
+              {
+                color = sum*sum*0.009 + texture2D(u_sampler0, texcoord);
+              }
+              else
+              {
+                color = sum*sum*0.0075 + texture2D(u_sampler0, texcoord);
+              }
+            }
+          }
+          
+          if(u_blurSize > 0.0)
+          {
+            color = vec4(0.0);
+          
+            // blur in y (vertical)
+            // take nine samples, with the distance u_blurSize between them
+            color += texture2D(u_sampler0, vec2(texcoord.x - 4.0*u_blurSize, texcoord.y)) * 0.05;
+            color += texture2D(u_sampler0, vec2(texcoord.x - 3.0*u_blurSize, texcoord.y)) * 0.09;
+            color += texture2D(u_sampler0, vec2(texcoord.x - 2.0*u_blurSize, texcoord.y)) * 0.12;
+            color += texture2D(u_sampler0, vec2(texcoord.x - u_blurSize, texcoord.y)) * 0.15;
+            color += texture2D(u_sampler0, vec2(texcoord.x, texcoord.y)) * 0.16;
+            color += texture2D(u_sampler0, vec2(texcoord.x + u_blurSize, texcoord.y)) * 0.15;
+            color += texture2D(u_sampler0, vec2(texcoord.x + 2.0*u_blurSize, texcoord.y)) * 0.12;
+            color += texture2D(u_sampler0, vec2(texcoord.x + 3.0*u_blurSize, texcoord.y)) * 0.09;
+            color += texture2D(u_sampler0, vec2(texcoord.x + 4.0*u_blurSize, texcoord.y)) * 0.05;
+          }
+          
+          if(u_enableNegative)
+            color.rgb = vec3(1.0,1.0,1.0) - color.rgb;
+          
+          gl_FragColor = color;
+        }
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

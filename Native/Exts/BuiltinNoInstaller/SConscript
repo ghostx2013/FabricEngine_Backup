@@ -1,0 +1,15 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'baseEnv', 'buildOS' )
+
+dirs = [
+  'FILESYSTEM',
+  'KINECT'
+]
+
+builtinNoInstallerExtFiles = SConscript( dirs=dirs )
+
+Return( 'builtinNoInstallerExtFiles' )

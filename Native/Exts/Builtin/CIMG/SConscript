@@ -1,0 +1,19 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'ExtSLName', 'buildOS', 'tiffFlags', 'jpegFlags' )
+
+cimgPluginEnv = extsEnv.Clone()
+sources = Glob('*.cpp')
+
+cimgPluginEnv.MergeFlags(tiffFlags)
+cimgPluginEnv.MergeFlags(jpegFlags)
+cimgPlugin = cimgPluginEnv.SharedLibrary( ExtSLName('FabricCIMG'), sources )
+if buildOS == 'Windows':
+  cimgPlugin = cimgPlugin[0]
+cimgManifest = cimgPluginEnv.File('FabricCIMG.fpm.json'),
+cimgKL = cimgPluginEnv.File('FabricCIMG.kl'),
+cimgFiles = [cimgManifest, cimgPlugin, cimgKL]
+
+Return( 'cimgFiles' )

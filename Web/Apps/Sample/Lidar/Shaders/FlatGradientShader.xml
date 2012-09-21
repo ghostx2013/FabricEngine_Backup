@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+	<name>VertexColorMaterial</name>
+	<uniforms>
+		<uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_bottomColor" constant="bottomColor" type="Color" defaultValue="FABRIC.RT.rgba(0.0,0.0,0.0,1)"/>
+    <uniform name="u_middleColor" constant="middleColor" type="Color" defaultValue="FABRIC.RT.rgba(1.0,0.0,0.0,1)"/>
+    <uniform name="u_topColor" constant="topColor" type="Color" defaultValue="FABRIC.RT.rgba(1.0,1.0,1.0,1)"/>
+    <uniform name="u_axis" constant="axis" type="Integer" defaultValue="1"/>
+    <uniform name="u_minimum" constant="minimum" type="Scalar" defaultValue="0"/>
+    <uniform name="u_maximum" constant="maximum" type="Scalar" defaultValue="1"/>
+    <uniform name="u_center" constant="center" type="Scalar" defaultValue="0.5"/>
+	</uniforms>
+	<attributes>
+		<attribute name="a_position" binding="positions"/>
+	</attributes>
+	
+	<vertexshader>
+		<source>
+		
+			uniform mat4 u_modelViewProjectionMatrix;
+      uniform vec4 u_bottomColor;
+      uniform vec4 u_middleColor;
+      uniform vec4 u_topColor;
+      uniform int u_axis;
+      uniform float u_minimum;
+      uniform float u_maximum;
+      uniform float u_center;
+
+			attribute vec4 a_position;
+      
+			varying vec4 color;
+
+			void main(){
+				gl_Position = u_modelViewProjectionMatrix * a_position;
+        float value = a_position.z;
+        if(u_axis == 0)
+          value = a_position.x;
+        else if(u_axis == 1)
+          value = a_position.y;
+        value = (clamp(value,u_minimum,u_maximum) - u_minimum) / (u_maximum - u_minimum);
+        
+        if(value > u_center)
+        {
+          value = (value - u_center) / (1.0 - u_center);
+          color = u_topColor * value + u_middleColor * (1.0 - value);
+        }
+        else
+        {
+          value = value / u_center;
+          color = u_middleColor * value + u_bottomColor * (1.0 - value);
+        }
+			}
+			
+		</source>
+	</vertexshader>
+	
+	<fragmentshader>
+		<source>
+			
+			varying vec4 color;
+			
+			void main(){
+				gl_FragColor = color;
+			}
+
+		</source>
+	</fragmentshader>
+</shader>

@@ -1,0 +1,92 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+# Note that the installer with the .xpi extension should be served
+# with the MIME type application/x-xpinstall
+
+import os
+Import( 'baseEnv', 'buildOS', 'buildArch', 'FABRIC_VERSION', 'archDistDir', 'fabricExtsDistDir', 'npapiDistDir', 'generateDistZip', 'browserExtFiles', 'generateDistZip' )
+
+installerName = 'FabricEngine-FirefoxExtension-' + buildOS + '-' + buildArch + '-' + FABRIC_VERSION
+
+firefoxExtensionDir = archDistDir.Dir( installerName )
+
+installerFiles = []
+
+installerFiles.append( baseEnv.Command(
+  firefoxExtensionDir.File('chrome.manifest'),
+  'chrome.manifest',
+  [ Copy( '$TARGET', '$SOURCE' ) ]
+) )
+
+baseEnv.Template( "install.rdf", "install.rdf."+buildOS+"."+buildArch+".template" )
+installerFiles.append( baseEnv.Command(
+  firefoxExtensionDir.File('install.rdf'),
+  'install.rdf',
+  [ Copy( '$TARGET', '$SOURCE' ) ]
+) )
+
+for res in ["48", "64"]:
+  installerFiles.append( baseEnv.Command(
+    firefoxExtensionDir.Dir('content').File('fabric-engine_'+res+'.png'),
+    baseEnv.Dir('content').File('fabric-engine_'+res+'.png'),
+    [ Copy( '$TARGET', '$SOURCE' ) ]
+  ) )
+
+if buildOS == 'Darwin':
+  npapiPluginBundleDir = npapiDistDir.Dir( 'Fabric.'+buildArch+'.plugin' )
+  pluginDir = firefoxExtensionDir.Dir('plugins').Dir( 'Fabric.'+buildArch+'.plugin' )
+  installerFiles.append( baseEnv.Command(
+    pluginDir.Dir('Contents').Dir('MacOS').File('FabricNPAPI'),
+    npapiPluginBundleDir.Dir('Contents').Dir('MacOS').File('FabricNPAPI'),
+    Copy( '$TARGET', '$SOURCE' )
+  ) )
+  installerFiles.append( baseEnv.Command(
+    pluginDir.Dir('Contents').File('Info.plist'),
+    npapiPluginBundleDir.Dir('Contents').File('Info.plist'),
+    Copy( '$TARGET', '$SOURCE' )
+  ) )
+if buildOS == 'Linux':
+  installerFiles.append( baseEnv.Command(
+    firefoxExtensionDir.Dir('plugins').File('libFabricPlugin.so'),
+    npapiDistDir.File('libFabricPlugin.so'),
+    Copy( '$TARGET', '$SOURCE' )
+  ) )
+if buildOS == 'Windows':
+  installerFiles.append( baseEnv.Command(
+    firefoxExtensionDir.Dir('plugins').File('npFabricPlugin.dll'),
+    npapiDistDir.File('npFabricPlugin.dll'),
+    Copy( '$TARGET', '$SOURCE' )
+  ) )
+
+installerFiles.append( Install(
+  firefoxExtensionDir.Dir('plugins'),
+  browserExtFiles
+) )
+
+installerEnv = baseEnv.Clone()
+generateDistZip( installerEnv )
+installerEnv.Append( DISTZIP_ROOTDIR = firefoxExtensionDir )
+installerFile = archDistDir.File(installerName + ".xpi")
+installerEnv.DistZip(
+  installerFile,
+  installerFiles
+)
+
+xpiUpdateKey = baseEnv.File("xpi-update.pem")
+if buildOS == 'Windows':
+  perlCmd = 'c:\\cygwin\\bin\\perl'
+else:
+  perlCmd = 'perl'
+updateFile = baseEnv.Command(
+  archDistDir.File("xpi-update-"+buildOS+"-"+buildArch+".rdf"),
+  installerFile,
+  [[perlCmd, baseEnv.File('#Native/ThirdParty/Private/uhura.pl'), '-o', '$TARGET', '-k', '$KEY', '$SOURCE', 'http://dist.fabric-engine.com/' + FABRIC_VERSION + '/' + installerName + '.xpi']],
+  KEY=xpiUpdateKey
+  )[0]
+baseEnv.Depends( updateFile, xpiUpdateKey )
+
+firefoxInstaller = [installerFile, updateFile]
+Alias( 'firefoxInstaller', firefoxInstaller )
+Return( 'firefoxInstaller' )

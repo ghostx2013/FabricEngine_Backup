@@ -1,0 +1,29 @@
+cap.getCount() = 10
+ValueProducer<Scalar>
+45
+ValueProducer<Scalar>
+45
+ValueProducer<Scalar>
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+map4: count=10
+45
+ValueProducer<Scalar>
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+map5: count=10 shared=hello
+45

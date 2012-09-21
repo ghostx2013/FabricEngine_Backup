@@ -1,0 +1,3 @@
+To use the python libraries, such as closure-linter,
+you need to add this path to you PYTHONPATH environment
+variable, for ex. in linux: export PYTHONPATH=~/Fabric/ThirdParty/Python

@@ -1,0 +1,2 @@
+Import('coreEnv')
+coreEnv.Prepend( LIBS = coreEnv.StaticLibrary( 'IO', Glob('*.cpp') ) )

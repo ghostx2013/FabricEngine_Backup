@@ -1,0 +1,7 @@
+Import('coreEnv')
+
+klEnv = coreEnv.Clone();
+klEnv.Append( YACCFLAGS = ['-d'] )
+klEnv.CXXFile( ['Parser.cpp', 'Parser.hpp'], 'Parser.yy' )
+
+coreEnv.Prepend( LIBS = coreEnv.StaticLibrary( 'KL', Glob('*.cpp') ) )

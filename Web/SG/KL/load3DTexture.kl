@@ -1,0 +1,257 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use OGLTexture3D;
+use OGLShaderProgram;
+use FabricTEEM;
+use Mat44;
+
+function decode3DImageUShortData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io Size imageDepth,
+  io Byte imageUShortVoxels[],
+  io Mat44 xfoMat
+) {
+  xfoMat.setIdentity();
+  String ext = resource.extension ? resource.extension : resource.mimeType;
+  if(ext == "")
+    return;
+  switch (ext) {
+    case'nrrd':
+      if(resource.data.size() > 0)
+        FabricTeemNRRDLoadUShort(resource.data.data(), resource.data.dataSize(), imageWidth, imageHeight, imageDepth, imageUShortVoxels, xfoMat);
+      else if(resource.dataExternalLocation)
+        FabricTeemNRRDLoadUShortFromFileHandle(resource.dataExternalLocation, imageWidth, imageHeight, imageDepth, imageUShortVoxels, xfoMat);
+      break;
+    default:
+      report("Unsupported 3D image format: " + ext);
+  }
+}
+
+operator load3DImageUShortData(
+  io FabricResource resource,
+  io Size imageWidth,
+  io Size imageHeight,
+  io Size imageDepth,
+  io Byte imageUShortVoxels[],
+  io Mat44 xfoMat
+) {
+  decode3DImageUShortData( resource, imageWidth, imageHeight, imageDepth, imageUShortVoxels, xfoMat );
+}
+
+operator bindRGBATexture3D(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io RGBA bitmap[],
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(forceSingleRefresh)
+    oglTexture3D.forceRefresh = true;
+
+  oglTexture3D.bindRGBAImage(width, height, depth, bitmap, textureUnit);
+
+  if(forceSingleRefresh) {
+    oglTexture3D.forceRefresh = false;
+    forceSingleRefresh = false;
+  }
+}
+
+operator bindByteTexture3D(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte bitmap[],
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(forceSingleRefresh)
+    oglTexture3D.forceRefresh = true;
+
+  oglTexture3D.bindByteImage(width, height, depth, bitmap, textureUnit);
+
+  if(forceSingleRefresh) {
+    oglTexture3D.forceRefresh = false;
+    forceSingleRefresh = false;
+  }
+}
+
+operator bindUShortTexture3D(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte bitmap[],//KL has no UShort; so we assume properly packed ushorts
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(forceSingleRefresh)
+    oglTexture3D.forceRefresh = true;
+
+  oglTexture3D.bindUShortImage(width, height, depth, bitmap, textureUnit);
+
+  if(forceSingleRefresh) {
+    oglTexture3D.forceRefresh = false;
+    forceSingleRefresh = false;
+  }
+}
+
+// This operator takes a resource, decodes it, and immediately
+// uploads it to the GPU. This simplifies the graph, because 
+// a node is not created to store the data in main memory. 
+operator loadAndBindUShortTexture(
+  io FabricResource resource,
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(resource.data.size() == 0)
+    return;
+  if(oglTexture3D.bufferID == 0 || oglTexture3D.forceRefresh){
+    Size width, height, depth;
+    Mat44 xfoMat;
+    Byte imageUShortVoxels[];
+    decode3DImageUShortData(resource, width, height, depth, imageUShortVoxels, xfoMat);
+    oglTexture3D.configure(width, height, depth, imageUShortVoxels.data(), Size(imageUShortVoxels.size()/2), textureUnit);
+    resource.data.resize(0);
+  }
+  oglTexture3D.bind(textureUnit);
+}
+
+operator bindColorTexture3D(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Color bitmap[],
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(forceSingleRefresh)
+    oglTexture3D.forceRefresh = true;
+
+  oglTexture3D.bindColorImage(width, height, depth, bitmap, textureUnit);
+
+  if(forceSingleRefresh) {
+    oglTexture3D.forceRefresh = false;
+    forceSingleRefresh = false;
+  }
+}
+
+operator bindScalarTexture3D(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Scalar bitmap[],
+  io OGLTexture3D oglTexture3D,
+  io Integer textureUnit,
+  io Boolean forceSingleRefresh
+) {
+  if(forceSingleRefresh)
+    oglTexture3D.forceRefresh = true;
+
+  oglTexture3D.bindScalarImage(width, height, depth, bitmap, textureUnit);
+
+  if(forceSingleRefresh) {
+    oglTexture3D.forceRefresh = false;
+    forceSingleRefresh = false;
+  }
+}
+
+operator unbindTextures(
+  io Size numTextures
+){
+  for(Integer i=0; i<numTextures; i++){
+    glActiveTexture(GL_TEXTURE0 + i);
+    glBindTexture(GL_TEXTURE_3D, 0);
+  }
+}
+
+operator initImageFromRGBA(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io RGBA color,
+  io RGBA pixels[],
+  io Boolean initiated
+) {
+  if(!initiated) {
+    pixels.resize(width * height * depth);
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = color;
+    initiated = true;
+  }
+}
+
+operator initImageFromByte(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte color,
+  io Byte pixels[],
+  io Boolean initiated
+) {
+  if(!initiated) {
+    pixels.resize(width * height * depth);
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = color;
+    initiated = true;
+  }
+}
+
+operator initImageFromUShort(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte color,
+  io Byte pixels[],
+  io Boolean initiated
+) {
+  if(!initiated) {
+    Size nbPix = width * height * depth;
+    pixels.resize(nbPix * 2);
+    for(Size i=0;i<nbPix;i++) {
+      pixels[i*2] = 0;
+      pixels[i*2+1] = color;
+    }
+    initiated = true;
+  }
+}
+
+operator initImageFromColor(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Color color,
+  io Color pixels[],
+  io Boolean initiated
+) {
+  if(!initiated) {
+    pixels.resize(width * height * depth);
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = color;
+    initiated = true;
+  }
+}
+
+operator initImageFromScalar(
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Scalar color,
+  io Scalar pixels[],
+  io Boolean initiated
+) {
+  if(!initiated) {
+    pixels.resize(width * height * depth);
+    for(Size i=0;i<pixels.size();i++)
+      pixels[i] = color;
+    initiated = true;
+  }
+}

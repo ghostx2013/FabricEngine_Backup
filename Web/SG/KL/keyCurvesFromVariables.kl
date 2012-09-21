@@ -1,0 +1,20 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, PoseVariables, KEYFRAMETRACKSETTYPEBindings;
+
+operator keyCurvesFromVariables(
+  io Scalar time,
+  io PoseVariables poseVariables,
+  io Integer boundTrackSet,
+  io KEYFRAMETRACKSETTYPE trackSet<>,
+  io KEYFRAMETRACKSETTYPEBindings bindings<>
+) {
+   bindings[boundTrackSet].setTrackValues(
+    time,
+    poseVariables,
+    trackSet[boundTrackSet]
+  );
+}
+

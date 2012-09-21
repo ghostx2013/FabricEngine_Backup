@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Character Animation Tool</title> 
+        
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../ga.js" charset="utf-8"></script>
+
+  <script type="text/javascript" src="../../../../SG/CurveEditor/CurveEditor.js" charset="utf-8"></script>
+  <link type="text/css" href="../../../../SG/CurveEditor/CurveEditor.css" rel="stylesheet" />
+
+  <script type="text/javascript" src="../../../../Core/Vec2.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../../../Core/Color.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../../../Core/FABRIC.SVG.js"></script>
+
+    <style type="text/css">
+    
+
+#editor {
+  width:100%;
+  height:100%;
+}
+/*
+  .ui-resizable-handle {
+    background: #78AB46;
+    height: 16px;
+  }
+    .ui-icon-grip-dotted-horizontal {
+     margin-left:50%;
+    }
+*/
+
+#sidebar {
+  width:240px;
+}  
+#viewer {
+  right:240px;
+  bottom:115px;
+}
+#timeControls {
+  right:240px;
+}
+
+  #feedback { font-size: 1.4em; }
+  #animationLibraryList .ui-selecting { background: #78AB46; }
+  #animationLibraryList .ui-selected { background: #659D32; color: white; }
+  #animationLibraryList { list-style-type: none; margin: 0; padding: 0; width: 100%; }
+  #animationLibraryList li { margin: 3px; padding: 0.4em; font-size: 1.0em; height: 16px; }
+  
+  </style>
+
+    <script type="text/javascript">
+    
+$(document).ready(function() {
+ 
+ /*
+ var $resizerHandle = $( "#editor" ).resizable({ handles: 's', maxHeight: '95%' }).find( ".ui-resizable-handle" );
+ $resizerHandle.css('background', '#78AB46');
+
+ 
+ var resizeCurveEditor = function(){
+   $( "#curveEditorContainer" ).css( 'top', ($( "#editor" ).height()+8)+'px' );
+ }
+  $( "#editor" ).bind('resize',
+    function(event, ui) {
+     $( "#editor" ).css( 'width', '100%' );
+      resizeCurveEditor();
+    });
+  window.onresize = function () {
+    resizeCurveEditor();
+  };
+ resizeCurveEditor();
+ */
+ 
+  $( "#undoRedoSet" ).buttonset();
+  
+  $('#ikblendLArm').slider({
+      min: 0,
+      max: 1.0,
+      step: 0.1
+  });
+  
+  $('#ikblendRArm').slider({
+      min: 0,
+      max: 1.0,
+      step: 0.1
+  });
+  
+  $('#newAnimation').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-document'
+      }
+    });
+  
+  $('#deleteAnimation').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-trash'
+      }
+    });
+  
+  $('#saveResource').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-triangle-1-s'
+      }
+    });
+  
+  $('#exportResource').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-disk'
+      }
+    });
+  
+   $('#tesslation').slider();
+  
+  
+  $('#undoButton').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-undo'
+      }
+    });
+  $('#redoButton').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-redo'
+      }
+    });
+  
+  // append icon to the slider handle
+  $('#timeSlider').slider().find( ".ui-slider-handle" )
+  .append( "<span class='ui-icon ui-icon-grip-dotted-vertical'></span>" )
+  .wrap( "<div class='ui-handle-helper-parent'></div>" ).parent();
+  
+  $('#stop').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-stop'
+      }
+    });
+    
+  $('#play').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-play'
+      }
+    });
+  
+  /*
+  $('#curveEditorButton').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-image'
+      }
+    });
+  */
+  
+  $('#presetNameDialog').dialog({
+    autoOpen: false,
+    modal: true
+  });
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  
+  $('#presetNameDialog').dialog({
+    autoOpen: false,
+    modal: true
+  });
+  
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Characters",
+                "SG/CharacterLocomotion",
+                "SG/Bullet",
+                "SG/Persistence",
+                "SG/Undo",
+                "SG/Parsers/parseCollada",
+                "RT/LinearKeyframe",
+                "RT/BezierKeyframe"], function() {
+    
+FABRIC.SceneGraph.defineEffectFromFile('MonsterMaterial', 'Shaders/MonsterShader.xml');
+    
+  
+  var scene = FABRIC.SceneGraph.createScene({
+    timeStep: 1/30 /* 30 fps */
+  });
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    enableRaycasting: true,
+    rayIntersectionThreshold: 0.1
+  });
+ 
+   viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+     url: '../../BasicDemos/Resources/fabric-demo-gradient.png'
+   }));
+ 
+   // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 0.1,
+      farDistance: 300,
+      target: new FABRIC.RT.Vec3(1.44, 6.6, 1.96),
+      position: new FABRIC.RT.Vec3(-30, 10, 27)
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+  // create the scene grid
+  scene.constructNode('Instance', {
+    geometryNode: scene.constructNode('Grid', {
+      size_x: 40.0,
+      size_z: 40.0,
+      sections_x: 20,
+      sections_z: 20 }),
+    materialNode: scene.constructNode('FlatMaterial', {
+      color: new FABRIC.RT.rgb(0.3,0.3,0.3,1.0)
+    } )
+  });
+  
+  // create the undo manager
+  var undoManager = scene.constructManager("UndoManager");
+  undoManager.addEventListener('undo', scene.redrawAllViewports );
+  undoManager.addEventListener('redo', scene.redrawAllViewports );
+  $('#undoButton').button().click(function() { undoManager.undo(); });
+  $('#redoButton').button().click(function() { undoManager.redo(); });
+  window.onkeypress = function(evt) {
+    if(evt.ctrlKey && evt.keyCode==26){ // 'z' not sure why ctrl-z, the keycode is not 90
+      undoManager.undo();
+    }
+    if(evt.ctrlKey && evt.keyCode==25){ // 'y'
+      undoManager.redo();
+    }
+  }
+  var layerManager = scene.constructNode('LayerManager');
+  
+  layerManager.addLayer('geometries');
+  layerManager.addLayer('rig');
+  
+  
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  
+    
+   
+  var selectedAnimation = 0;
+  var setSelectedAnimation = function(val){
+    selectedAnimation = val;
+    rigNode.setBoundTrackSet(selectedAnimation);
+  }
+  $( "#animationLibraryList" ).selectable({
+    selected: function(event, ui) {
+      setSelectedAnimation($(ui.selected).val());
+    }
+  });
+  var rebuildAnimationLibraryList = function(){
+    $('#animationLibraryList').empty();
+    for(var i=0; i<bezierKeyCharacterAnimationContainer.getTrackSetCount(); i++){
+      var presetName = bezierKeyCharacterAnimationContainer.getTrackSetName(i);
+      var li = $(document.createElement('li'));
+      li.addClass('ui-widget-content'); li.text(presetName); li.val(i);
+      if(selectedAnimation == i){
+        li.addClass('ui-selected');
+      }
+      $('#animationLibraryList').append(li);
+      
+    }
+  }
+  
+  var createNewAnimation = function(name){
+    rigNode.generateAnimationTracks(bezierKeyCharacterAnimationContainer, name, true, controllerNode);
+    rebuildAnimationLibraryList();
+  }
+  
+  $('#newAnimation').button()
+    .click(function() {
+      var closeDialogAndNewAnimation = function(){
+        createNewAnimation($("#presetName").val());
+        $("#presetNameDialog").dialog( "close" );
+      }
+      $('#presetNameDialog').dialog({
+        autoOpen: true,
+        position: 'right top',
+        width: 190,
+        buttons: {
+          Ok: function() {
+            closeDialogAndNewAnimation();
+          }
+        },
+        closeOnEscape: true
+      })
+      .keyup(function(e) {
+        if (e.keyCode == 13) { // Enter key
+          closeDialogAndNewAnimation();
+        }
+      });
+    });
+  
+  $('#deleteAnimation').button()
+    .click(function() {
+      bezierKeyCharacterAnimationContainer.removeTrackSet(selectedAnimation);
+      if(selectedAnimation>0){
+        setSelectedAnimation(selectedAnimation-1);
+      }else{
+        setSelectedAnimation(selectedAnimation+1);
+      }
+      rebuildAnimationLibraryList();
+    });
+  
+  $('#saveResource').button()
+    .click(function() {
+      presetSaver.save(localStorage);
+      localStorage.log();
+    });
+  
+  $('#exportResource').button()
+    .click(function() {
+      var fileWriter = new FABRIC.SceneGraph.FileWriter(scene, 'Animation', 'Test');
+      fileWriter.querySavePath();
+      presetSaver.save(fileWriter);
+      fileWriter.log();
+    });
+    
+    
+  var setPlayButtonToPlay = function(){
+    $('#play').button('option', {
+      label: 'Play',
+      icons: {
+	primary: 'ui-icon-play'
+      }
+    });
+  }
+  
+  
+  $('#stop').button()
+    .click(function() {
+      scene.animation.reset();
+      setPlayButtonToPlay();
+      $('#timeSlider').slider().slider('value', scene.animation.getTime());
+    });
+    
+  $('#play').button()
+    .click(function() {
+      if ($(this).text() == 'Play') {
+        $(this).button('option', {
+          label: 'Pause',
+          icons: {
+            primary: 'ui-icon-pause'
+          }
+        });
+        scene.animation.play();
+      } else {
+        $(this).button('option', {
+          label: 'Play',
+          icons: {
+            primary: 'ui-icon-play'
+          }
+        });
+        scene.animation.pause();
+      }
+    });
+ 
+  var sceneTimeRange 
+  var editingTimeFromTimeSlider = false;
+  var timeSlider = $('#timeSlider').slider({
+      min: 0,
+      max: 4,
+      step: 0.01
+    }).bind('slide',
+      function(event, ui) {
+        editingTimeFromTimeSlider = true;
+	setPlayButtonToPlay();
+        scene.animation.pause();
+        scene.animation.setTime(ui.value);
+        scene.redrawAllViewports();
+        editingTimeFromTimeSlider = false;
+    });
+  
+  scene.addEventListener('timechanged', function(evt){
+    if(!editingTimeFromTimeSlider){
+      $('#timeSlider').slider().slider('value', scene.animation.getTime());
+    }
+  });
+  
+  /*
+  $('#curveEditorButton').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-image'
+      }
+    })
+    .click(function() {
+      curveEditorWindow = bezierKeyCharacterAnimationContainer.openCurveEditor({
+        trackFilters: trackFilters,
+        trackSetId: selectedAnimation
+      });
+      curveEditorWindow.addEventListener('load', function(){
+       curveEditorWindow.addEventListener('unload', function(){
+         curveEditorWindow = undefined;
+       }, true);
+      });
+    });
+  */
+  
+  $('#frameX').button()
+    .click(function() {
+    });
+    
+  $('#frameY').button()
+    .click(function() {
+    });
+  
+  
+  var rigNode, rigInstances = {};
+  var skeletonGeometryNode;
+  
+  var bezierKeyCharacterAnimationContainer = scene.constructNode('BezierCharacterAnimationContainer');
+  var presetSaver = scene.constructManager('SceneSerializer');
+  presetSaver.addNode(bezierKeyCharacterAnimationContainer);
+  
+  var animationLibraryLoader = scene.constructManager('SceneDeserializer');
+  animationLibraryLoader.setPreLoadedNode(bezierKeyCharacterAnimationContainer);
+  var localStorage = new FABRIC.SceneGraph.LocalStorage('TestAnimation');
+  
+  animationLibraryLoader.load(localStorage, function(nodeMap){
+    rebuildAnimationLibraryList();
+    viewport.redraw();
+  });
+  
+  rebuildAnimationLibraryList();
+  
+  var controllerNode = scene.constructNode('AnimationController');
+  
+  /////////////////////////////////////////
+  // Set up the Curve Editor in the bottom panel.
+  var curveEditor;
+  /*
+  var  curveEditor = constructCurveEditor('curveContainer', scene, bezierKeyCharacterAnimationContainer, {
+    timeRange : new FABRIC.Vec2(0, 4),
+    fitEditorToKeyRanges: false
+  });
+  window.addEventListener('resize', curveEditor.resize, true);
+  $( "#editor" ).bind('resize',
+   function(event, ui) {
+     curveEditor.resize();
+   });
+  */
+  
+  var curveEditorWindow;
+  var trackFilters;
+  scene.addEventListener('endmanipulation', function(evt){
+    if(evt.manipulatorNode.getTargetName){
+      trackFilters = [evt.manipulatorNode.getTargetName()];
+			if(curveEditor){
+			 curveEditor.setCurveFilters(trackFilters);
+			}
+    }
+  });
+  
+  scene.importAssetFile('Resources/Monster.DAE', { flipUVs: false, constructMaterialNodes:false }, function(assetNodes){
+    
+    rigNode = assetNodes.BodyCharacterRig;
+    
+    rigInstances['body'] = assetNodes.BodyMeshMaterial__56CharacterInstance;
+    rigInstances['horns'] = assetNodes.HornsMeshMaterial__56CharacterInstance;
+    rigInstances['eyes'] = assetNodes.eyesMeshMaterial__56CharacterInstance;
+    rigInstances['nails'] = assetNodes.nailsMeshMaterial__56CharacterInstance;
+    
+    var bodyMaterial = scene.constructNode('MonsterMaterial', {
+        wireColor: FABRIC.RT.rgb(0.3, 0.3, 0.3, 1),
+        lightNode: light,
+        displacementTextureNode: scene.constructNode('Image2D', { url: 'Textures/body_Disp.png' }),
+        diffuseTextureNode: scene.constructNode('Image2D', { url: 'Textures/body_D.png' }),
+        normalTextureNode: scene.constructNode('Image2D', { url: 'Textures/body_N.png' }),
+        displacementMin: -0.35,
+        displacementMax: 0.35
+      });
+      
+      $("#displayWireframe").attr('checked', false).change(function(event, ui) {
+        var checked = $('#displayWireframe').attr('checked') === 'checked';
+        bodyMaterial.setWireOpacity(checked ? 1.0 : 0.0);
+        viewport.redraw();
+      });
+      
+      var tesslationSlider = $('#tesslation').slider({
+          min: 1,
+          max: 12.0,
+          step: 1.0,
+          value: bodyMaterial.getTesselationInner()
+      }).bind('slide',
+        function(event, ui) {
+          bodyMaterial.setTesselationInner(ui.value);
+          bodyMaterial.setTesselationOuter(ui.value);
+          viewport.redraw();
+        });
+    
+    var materialNode = scene.constructNode('PhongSkinningMaterial', {
+      lightNode: light,
+      diffuseColor: FABRIC.RT.rgba(0.6, 0.1, 0.1, 1.0)
+    });  
+     
+    for(var i in rigInstances){
+      if(i=='body'){
+	rigInstances[i].addMaterialNode(bodyMaterial);
+      }else{
+	rigInstances[i].addMaterialNode(materialNode);
+      }
+    }
+    
+    skeletonGeometryNode = scene.constructNode("CharacterSkeletonDebug",{
+      characterRigNode:rigNode,
+      boneradius: 0.2
+    });
+    
+    rigNode.constructVariablesNode(rigNode.getName() + 'Variables', true);
+    
+    rigNode.addSolver('Hubs', 'HubSolver', {
+      hubs: [
+        { bone: '_Pelvis', neutralXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0,12,-5) }) },
+        { bone: '_Ribcage',
+          spineBones:[
+            '_Spine1',
+            '_Spine2',
+            '_Spine3',
+            '_Spine4',
+            '_Spine5'
+          ],
+	  neutralXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(8,0,0) })
+        },
+        { bone: '_Skull',
+          spineBones:[
+            '_Neck1',
+            '_Neck2',
+            '_Neck3'
+          ],
+	  neutralXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(4,3,0) })
+        }
+      ],
+      createManipulators: true,
+      manipulatorSizes: [ 2.5, 3.0, 2.0 ]
+    } );
+    
+    rigNode.addSolver('PubicMound', 'FKHierarchySolver', {
+      bones: {
+        bones:[
+          '_PubicMound',
+        ]
+      }
+    });
+    
+    rigNode.addSolver('face', 'FKHierarchySolver', {
+      bones: {
+        bones:[
+          '_Jaw', '_LEyebrow', '_REyebrow',
+        ]
+      }
+    });
+    
+    rigNode.addSolver('Legs', 'HumanoidLegSolver', {
+      limbs: [
+	 { bones:['_LLeg1', '_LLeg2'], ankle:'_LLegAnkle' },
+         { bones:['_RLeg1', '_RLeg2'], ankle:'_RLegAnkle' }
+      ],
+      createManipulators: true,
+      manipulatorSizes: [ 1.8, 2.0, 1.9, 2.0 ],
+      ikGoalManipulatorSizes: [ new FABRIC.RT.Vec2(6.0, 3.0), new FABRIC.RT.Vec2(6.0, 3.0) ]
+    });
+    
+    rigNode.addSolver('toes', 'DigitSolver', {
+      digits:[
+	{ bones:['_LLegDigit11', '_LLegDigit12'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_LLegDigit21', '_LLegDigit22'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_LLegDigit31', '_LLegDigit32'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_LLegDigit41', '_LLegDigit42'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_LLegDigit51', '_LLegDigit52'], tipBoneLength:1.0, projectToGround:true },
+	
+	{ bones:['_RLegDigit11', '_RLegDigit12'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_RLegDigit21', '_RLegDigit22'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_RLegDigit31', '_RLegDigit32'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_RLegDigit41', '_RLegDigit42'], tipBoneLength:1.0, projectToGround:true },
+	{ bones:['_RLegDigit51', '_RLegDigit52'], tipBoneLength:1.0, projectToGround:true }
+      ]
+    });
+    
+    var armsSolver = rigNode.addSolver('Arms', 'ArmSolver', {
+      limbs: [
+	{ bones:['_LArmCollarbone', '_LArm1', '_LArm21'], wrist:'_LArmPalm' },
+        { bones:['_RArmCollarbone', '_RArm1', '_RArm21'], wrist:'_RArmPalm' }
+      ],
+      createManipulators: true,
+      manipulatorSizes: [ 1.0, 2.0, 1.9, 1.9 ],
+      ikGoalManipulatorSizes: [ 2.0, 2.0 ]
+    });
+    
+    rigNode.addSolver('shoulderBlades', 'FKHierarchySolver', {
+      bones: {
+        bones:[
+          '_LShoulderblade','_RShoulderblade'
+        ]
+      }
+    });
+    
+    rigNode.addSolver('fingers', 'DigitSolver', {
+      digits:[
+	{ bones:['_LArmDigit11', '_LArmDigit12', '_LArmDigit13'], tipBoneLength:1.8 },
+	{ bones:['_LArmDigit21', '_LArmDigit22', '_LArmDigit23'], tipBoneLength:1.6 },
+	{ bones:['_LArmDigit31', '_LArmDigit32', '_LArmDigit33'], tipBoneLength:1.4 },
+	{ bones:['_LArmDigit41', '_LArmDigit42', '_LArmDigit43'], tipBoneLength:1.4 },
+	{ bones:['_LArmDigit51', '_LArmDigit52', '_LArmDigit53'], tipBoneLength:1.4 },
+	
+	{ bones:['_RArmDigit11', '_RArmDigit12', '_RArmDigit13'], tipBoneLength:1.8 },
+	{ bones:['_RArmDigit21', '_RArmDigit22', '_RArmDigit23'], tipBoneLength:1.6 },
+	{ bones:['_RArmDigit31', '_RArmDigit32', '_RArmDigit33'], tipBoneLength:1.4 },
+	{ bones:['_RArmDigit41', '_RArmDigit42', '_RArmDigit43'], tipBoneLength:1.4 },
+	{ bones:['_RArmDigit51', '_RArmDigit52', '_RArmDigit53'], tipBoneLength:1.4 }
+      ],
+      createManipulators: true
+    });
+    
+    rigNode.addSolver('twistBones', 'TwistBoneSolver', {
+      twistBones:[
+	{ start:'_LArm21', end:'_LArmPalm', twistBones:['_LArm22', '_LArm23'] },
+	{ start:'_RArm21', end:'_RArmPalm', twistBones:['_RArm22', '_RArm23'] }
+      ]
+    });
+    
+    rigNode.addSolver('FatJiggle', 'VerletBoneSolver', {
+      verletBones: [
+	{ bone:'_LFat1', simulationWeight:0.7, springStrength:20.0, dampening: 0.05, softLimitBounds: 1.3 },
+	{ bone:'_LFat2', simulationWeight:0.7, springStrength:20.0, dampening: 0.05, softLimitBounds: 1.3 },
+	{ bone:'_RFat1', simulationWeight:0.7, springStrength:20.0, dampening: 0.05, softLimitBounds: 1.3 },
+	{ bone:'_RFat2', simulationWeight:0.7, springStrength:20.0, dampening: 0.05, softLimitBounds: 1.3 }
+      ]
+    });
+    
+    rigNode.addSolver('verletMuscles', 'VerletMuscleBoneSolver', {
+      muscles:[
+	{ bone:'_LLat', baseAttachment:'_LArm1', tipAttachment:'_Neck2', baseOffset:1, tipOffset:3, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	{ bone:'_LBicep', baseAttachment:'_LArm1', tipAttachment:'_LArm21', baseOffset:2, tipOffset:3, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	{ bone:'_LTricep', baseAttachment:'_LArmCollarbone', tipAttachment:'_LArm21', baseOffset:1, tipOffset:5, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	
+	{ bone:'_RLat', baseAttachment:'_RArm1', tipAttachment:'_Neck2', baseOffset:1, tipOffset:3, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	{ bone:'_RBicep', baseAttachment:'_RArm1', tipAttachment:'_RArm21', baseOffset:2, tipOffset:3, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	{ bone:'_RTricep', baseAttachment:'_RArmCollarbone', tipAttachment:'_RArm21', baseOffset:1, tipOffset:5, simulationWeight:0.7, springStrength:40, dampening:0.2, softLimitBounds: 1.3 },
+	
+	
+	{ bone:'_LThighAnterior', baseAttachment:'_LLeg1', tipAttachment:'_LLeg2', baseOffset:2, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 },
+	{ bone:'_LThighPosterior', baseAttachment:'_LLeg1', tipAttachment:'_LLeg2', baseOffset:2, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 },
+	{ bone:'_LCalf', baseAttachment:'_LLeg2', tipAttachment:'_LLegAnkle', baseOffset:3, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 },
+	
+	{ bone:'_RThighAnterior', baseAttachment:'_RLeg1', tipAttachment:'_RLeg2', baseOffset:2, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 },
+	{ bone:'_RThighPosterior', baseAttachment:'_RLeg1', tipAttachment:'_RLeg2', baseOffset:2, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 },
+	{ bone:'_RCalf', baseAttachment:'_RLeg2', tipAttachment:'_RLegAnkle', baseOffset:3, tipOffset:4, simulationWeight:0.7, springStrength:40, dampening:0.1, softLimitBounds: 1.3 }
+      ]
+    });
+    
+    rigNode.addSolver('buttocks', 'BlendBoneSolver', {
+      blendBones:[
+        { bone:'_LButtock', base:'_Pelvis', target:'_LLeg1', blendWeight: 0.6 },
+        { bone:'_RButtock', base:'_Pelvis', target:'_RLeg1', blendWeight: 0.6 }
+      ]
+    });
+    
+    rigNode.addSolver('kneeCaps', 'BlendBoneSolver', {
+      blendBones:[
+        { bone:'_LKneecap', base:'_LLeg1', target:'_LLeg2', blendWeight: 0.6 },
+        { bone:'_RKneecap', base:'_RLeg1', target:'_RLeg2', blendWeight: 0.6 }
+      ]
+    });
+    
+    rigNode.addSolver('neckChains', 'VerletChainSolver', {
+      gravity: new FABRIC.RT.Vec3(0,-10,0),
+      verletChains: [
+        { bones:['_NeckChain1', '_NeckChain2', '_NeckChain3'], baseAttachment: '_Jaw', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.9, springStrength:10.0, dampening: 0.02 },
+        { bones:['_RNeckChain1', '_RNeckChain2', '_RNeckChain3'], baseAttachment: '_Skull', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.9, springStrength:10.0, dampening: 0.02 },
+        { bones:['_LNeckChain1', '_LNeckChain2', '_LNeckChain3'], baseAttachment: '_Skull', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.9, springStrength:10.0, dampening: 0.02 },
+        
+        { bones:['_StomachChain1', '_StomachChain2', '_StomachChain3'], baseAttachment: '_Pelvis', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.75, springStrength:10.0, dampening: 0.02 },
+        { bones:['_LStomachChain11','_LStomachChain12','_LStomachChain13'], baseAttachment: '_Pelvis', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.75, springStrength:10.0, dampening: 0.02 },
+        { bones:['_LStomachChain21','_LStomachChain22','_LStomachChain23'], baseAttachment: '_Pelvis', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.75, springStrength:10.0, dampening: 0.02 },
+        { bones:['_RStomachChain11','_RStomachChain12','_RStomachChain13'], baseAttachment: '_Pelvis', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.75, springStrength:10.0, dampening: 0.02 },
+        { bones:['_RStomachChain21','_RStomachChain22','_RStomachChain23'], baseAttachment: '_Pelvis', tipAttachment: '_Ribcage', baseOffset:1, tipOffset:1, simulationWeight:0.75, springStrength:10.0, dampening: 0.02 }
+      ]
+    });
+    
+    rigNode.addSolver('moobs', 'VerletBoneSolver', {
+      verletBones: [
+	{ bone:'_LMoob', simulationWeight:0.7, springStrength:30.0, dampening: 0.05, softLimitBounds: 1.3 },
+	{ bone:'_RMoob', simulationWeight:0.7, springStrength:30.0, dampening: 0.05, softLimitBounds: 1.3 }
+      ]
+    });
+    
+    
+    var leftarmIKBlendSlider = $('#ikblendLArm').slider().bind('slide',
+      function(event, ui) {
+	armsSolver.setIKBlend0(ui.value);
+	viewport.redraw();
+      });
+    
+    var rightarmIKBlendSlider = $('#ikblendRArm').slider().bind('slide',
+      function(event, ui) {
+	armsSolver.setIKBlend1(ui.value);
+	viewport.redraw();
+      });
+    
+    rigNode.generateAnimationTracks(bezierKeyCharacterAnimationContainer, 'test', true, controllerNode);
+    rebuildAnimationLibraryList();
+    
+    /*
+    curveEditor = constructCurveEditor('curveContainer', scene, bezierKeyCharacterAnimationContainer, {
+      timeRange : new FABRIC.Vec2(0, 4),
+      fitEditorToKeyRanges: false,
+      trackFilters: ['none']
+    });
+    window.addEventListener('resize', curveEditor.resize, true);
+		*/
+    
+    $( "#editor" ).bind('resize',
+     function(event, ui) {
+       curveEditor.resize();
+     });
+  });
+  
+  $("#displaySkeleton").attr('checked', true).change(function() {
+    skeletonGeometryNode.getInstanceNode().setDrawToggle($("#displaySkeleton").is(":checked"));
+    viewport.redraw();
+  });
+  
+  $("#displayRig").attr('checked', true).change(function(event, ui) {
+    var checked = $('#displayRig').attr('checked') === 'checked';
+    layerManager.setRig(checked);
+    viewport.redraw();
+  });
+  
+  $("#displayRigging").attr('checked', true).change(function(event, ui) {
+    var checked = $('#displayRigging').attr('checked') === 'checked';
+    rigNode.setDebuggingEnabled(checked);
+    viewport.redraw();
+  });
+  
+  
+  
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw(); 
+      if(!viewport.getGlewSupported('GL_ARB_tessellation_shader')){
+        alert("This demo requires OpenGL 4.0 features such as 'GL_ARB_tessellation_shader' to run.\n\nIt appears that your graphics card does not support tesselation shaders.");
+        throw("This demo requires OpenGL 4.0 features such as 'GL_ARB_tessellation_shader' to run.\n\nIt appears that your graphics card does not support tesselation shaders.");
+      }
+      return true;
+    }
+  });
+  
+});
+
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="presetNameDialog" title="Preset Name" >
+      <input type="text" id="presetName" style="border:0; font-weight:bold;" />
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          
+          <!--
+          <div class="box">
+            <h2 id="agents">PERFORMANCE</h2>
+            <div class="content" id="frameRate">Frame Rate:</div><p></p>
+          </div>
+            -->
+          
+          <div class="box">
+            <h2>DATA</h2>
+            <div class="content">
+              <button id="newAnimation">New</button>
+              <button id="deleteAnimation">Delete</button>
+              <button id="saveResource" style="margin-top:5px;">Save</button>
+              <button id="exportResource" style="margin-top:5px;">Export</button>
+              <ol id="animationLibraryList">
+              </ol>
+              <!--
+              <button id="curveEditorButton" style="margin-top:10px;">Open Curve Editor</button><br>
+            -->
+              <label for="displaySkeleton">Display Skeleton</label><input type="checkbox" id="displaySkeleton" style="margin-top:10px;"/><br>
+	      <label for="displayRigging">Display Rigging</label><input type="checkbox" id="displayRigging" style="margin-top:10px;" /><br>
+	      <label for="displayWireframe">Display Wireframe</label><input type="checkbox" id="displayWireframe" style="margin-top:10px;" /><br>
+            
+              <label for="ikblendLArm">Tesselation Level</label><div id='tesslation'></div><br>
+            </div><!--content-->
+          </div><!--box-->
+	  
+	  
+          <div class="box">
+            <h2>MANIPULATION</h2>
+            <div class="content">
+              <button id="undoButton">Undo</button>
+              <button id="redoButton">Redo</button>
+              <br>
+              <label for="ikblendLArm">Left Arm IK Blend</label><div id='ikblendLArm'></div><br>
+              <label for="ikblendRArm">Right Arm IK Blend</label><div id='ikblendRArm'></div><br>
+            </div><!--content-->
+          </div><!--box-->
+          
+        </div><!--sidebar-->
+        
+        <div id="timeControls">
+          <div class="box">
+            <div class="content">
+              <button id="stop">Stop</button>
+              <button id="play">Play</button>
+              <div id='timeSlider' style="margin-top:15px;"></div>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--timeControls-->
+        
+      </div> <!--editor-->
+			<!--
+      <div id="curveEditorContainer">
+      <div id="curveViewer">
+        <div id="curveContainer" style="background-color: #696969;">
+        </div>
+      </div><!--viewer- ->
+
+      <div id="sidebar">
+        <div class="box">
+          <h2>TRACKS</h2>
+          <div class="content">
+            <input type="checkbox" id="displayKeys" style="margin-top:10px;"/><label for="displayKeys">Display Keys</label><br>
+            <button id="frameX">FrameX</button>
+            <button id="frameY">FrameY</button>
+            <ul id="keyframeTracks">
+            </ul>
+          </div><!--content- ->
+        </div><!--box- ->
+      </div><!--sidebar- ->
+      </div><!--curveEditorContainer->
+       -->
+    </div><!--wrapper-->
+  </body> 
+  </html>

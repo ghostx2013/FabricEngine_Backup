@@ -1,0 +1,105 @@
+
+
+#curveEditorContainer {
+  position: absolute;
+  width:100%;
+  left: 0;
+  right: 0;
+  bottom: 0; 
+}
+
+#curveViewer {
+  position:absolute;
+  left:0;
+  right:251px;
+  top:0;
+  bottom:0;
+}
+
+#curveContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: solid 1px #CCC;
+  box-shadow: inset 0 1px 3px #bebebe;
+/*  background: #E1DDDC url(images/bg-page.jpg) repeat left top;*/
+}
+
+
+#curveEditorSVGRoot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+#keyframeTracks {
+  left:0;
+  right:0;
+  top:0;
+}
+
+#keyframeTracks li ul {
+  margin:0;
+  padding:0;
+  padding-left:6px;
+}
+
+/*#keyframeTracks li span {
+  float: left; 
+  width: 10px;
+  height: 3px;
+  margin: 8px 6px 0;
+}
+*/
+
+#keyframeTracks li input {
+  float:left;
+}
+
+#keyframeTracks li ul.hide {
+  display:none;
+}
+#keyframeTracks span {
+  color:#000;
+  font-family:"Courier New", Courier, monospace;
+  cursor:default;
+}
+#keyframeTracks span.expanded, #keyframeTracks span.collapsed {
+  cursor:pointer;
+}
+
+path.CurvePath {
+  fill: none;
+  stroke-opacity:1.0;
+  stroke-width:1.5;
+}
+
+path.TimeStripePath {
+  fill: none;
+  stroke:black;
+  stroke-opacity:1.0;
+  stroke-width:1;
+}
+
+path.KeyframeHandle {
+  fill: none;
+  stroke:black;
+  stroke-opacity:1.0;
+  stroke-width:1.0;
+}
+
+rect.EventCatcher {
+  fill-opacity:0.0;
+  stroke-opacity:0.0;
+}
+
+
+rect.Selected {
+  stroke:white;
+}
+
+

@@ -1,0 +1,11 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Scalar foo( Scalar x ) = "bar" {
+  return 1.0/x;
+}
+
+operator entry() {
+  report(foo(2));
+}

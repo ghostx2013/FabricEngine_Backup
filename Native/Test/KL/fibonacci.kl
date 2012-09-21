@@ -1,0 +1,18 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Integer fibonacci( Integer n )
+{
+  if ( n <= 1 )
+    return 1;
+  else
+    return fibonacci( n - 2 ) + fibonacci( n - 1 );
+}
+
+operator entry()
+{
+  var Integer i;
+  for ( i=0; i<10; ++i )
+    report(fibonacci( i ));
+}

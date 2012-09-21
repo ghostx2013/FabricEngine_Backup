@@ -1,0 +1,113 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricFILESTREAM;
+use FabricFileStream;
+use FabricFILESYSTEM;
+use FabricFileHandleWrapper;
+
+operator initFileStreamFromString
+(
+  io String path,
+  io FabricFileStream stream,
+  io String names[],
+  io Size seekOffsets[]
+)
+{
+  if(!stream.isWritable() && path.length() > 0) {
+    FabricFileHandleWrapper wrapper;
+    FabricFileHandle_SetAbsolutePath(wrapper,path);
+    wrapper.setAbsolutePath(path);
+    stream.open(wrapper.getHandle(),"w");
+  }
+  if(stream.isWritable() && names.size() > 0) {
+    seekOffsets.resize(names.size());
+    stream.writeStringArray(names);
+    for(Size i=0;i<names.size();i++)
+    {
+      // store the seek offsets of these
+      // size values, so that we can seek later
+      seekOffsets[i] = stream.getSeek();
+      stream.writeSize(0);
+    }
+  }
+}
+
+operator saveTrianglesToStream
+(
+  io String path,
+  io FabricFileStream stream,
+  io String names[],
+  io Size seekOffsets[],
+  io String name,
+  io Vec3 positions<>,
+  io Vec3 normals<>,
+  io Integer indices[]
+)
+{
+  if(!stream.isWritable() && path.length() > 0) {
+    FabricFileHandleWrapper wrapper;
+    wrapper.setAbsolutePath(path);
+    stream.open(wrapper.getHandle(),"a");
+    path = "";
+  }
+  if(stream.isWritable()) {
+    stream.setSeekEnd();
+    Size seekOffset = stream.getSeek();
+    stream.writeSize(positions.size());
+    stream.writeDataCompressed(positions.data(),positions.dataSize());
+    stream.writeDataCompressed(normals.data(),normals.dataSize());
+    stream.writeSize(indices.size());
+    stream.writeDataCompressed(indices.data(),indices.dataSize());
+    for(Size i=0;i<names.size();i++) {
+      if(name == names[i]) {
+        stream.setSeek(seekOffsets[i]);
+        stream.writeSize(seekOffset);
+      }
+    }
+    stream.close();
+  }
+}
+
+operator loadTrianglesFromStream
+(
+  io Container container,
+  io String path,
+  io String name,
+  io FabricFileStream stream,
+  io Vec3 positions<>,
+  io Vec3 normals<>,
+  io Integer indices[]
+)
+{
+  if(!stream.isValid() && path.length() > 0) {
+    FabricFileHandleWrapper wrapper;
+    wrapper.setAbsolutePath(path);
+    stream.open(wrapper.getHandle(),"r");
+    path = "";
+  }
+  if(stream.isValid()) {
+    stream.setSeekStart();
+    String names[];
+    stream.readStringArray(names);
+    Size offset = 0;
+    for(Size i=0;i<names.size();i++) {
+      Size storedOffset = 0;
+      stream.readSize(storedOffset);
+      if(names[i] == name)
+        offset = storedOffset;
+    }
+    stream.setSeek(offset);
+    Size newCount;
+    stream.readSize(newCount);
+    container.resize(newCount);
+
+    stream.readDataCompressed(positions.data(),positions.dataSize());
+    stream.readDataCompressed(normals.data(),normals.dataSize());
+    Size nbIndices = 0;
+    stream.readSize(nbIndices);
+    indices.resize(nbIndices);
+    stream.readDataCompressed(indices.data(),indices.dataSize());
+  }
+}

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>FabricNPAPI</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.fabric-engine.FabricNPAPIPlugin</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>BRPL</string>
+	<key>CFBundleVersion</key>
+	<string>{{FABRIC_VERSION_MAJ}}.{{FABRIC_VERSION_MIN}}.{{FABRIC_VERSION_REV}}</string>
+	<key>CFBundleShortVersionString</key>
+	<string>{{FABRIC_VERSION_MAJ}}.{{FABRIC_VERSION_MIN}}.{{FABRIC_VERSION_REV}}{{FABRIC_VERSION_SUFFIX}}</string>
+	<key>WebPluginDescription</key>
+	<string>{{FABRIC_DESC}}</string>
+	<key>WebPluginMIMETypes</key>
+	<dict>
+		<key>application/fabric</key>
+		<dict>
+			<key>WebPluginTypeDescription</key>
+			<string>Fabric application</string>
+		</dict>
+	</dict>
+	<key>WebPluginName</key>
+	<string>{{FABRIC_NAME}}</string>
+</dict>
+</plist>

@@ -1,0 +1,149 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo;
+use Bone;
+use DebugGeometry;
+
+use SolverHelperFunctions;
+
+
+operator solveArmRig(
+  io Xfo controllerXfoSlices<>,
+  io Xfo pose[],
+  io Bone bones[],
+  io Limb arms[],
+  io PoseVariables poseVariableSlices<>,
+  Size index,
+  io DebugGeometry debugGeometry
+) {
+  Xfo controllerXfo = controllerXfoSlices[index];
+  PoseVariables poseVariables = poseVariableSlices[index];
+  for( Integer i=0; i<arms.size; i++){
+    Limb arm = arms[i];
+    
+    // Calculate the FK pose of the limb.
+    Xfo fkPose[];
+    fkPose.resize(arm.boneIds.size+1);
+    for (Integer j = 0; j < arm.boneIds.size; j++) {
+      if(j==0){
+        if (bones[arm.boneIds[j]].parent == -1) {
+          fkPose[j] = controllerXfo * poseVariables.xfoValues[j];
+        }
+        else {
+          fkPose[j] = pose[bones[arm.boneIds[j]].parent] * poseVariables.xfoValues[arm.xfoIds[j]];
+        }
+      }
+      else {
+        fkPose[j] = fkPose[j-1] * poseVariables.xfoValues[arm.xfoIds[j]];
+      }
+      pose[arm.boneIds[j]] = fkPose[j];
+    }
+    fkPose[arm.boneIds.size] = pose[bones[arm.ankleId].parent] * poseVariables.xfoValues[arm.xfoIds[arm.boneIds.size]];
+    pose[arm.ankleId] = fkPose[arm.boneIds.size];
+      
+    Scalar ikBlend = poseVariables.scalarValues[arm.ikblendId];
+    if (ikBlend > 0.0) {
+      Xfo handControlXfo = controllerXfo * poseVariables.xfoValues[arm.ikGoalXfoId];
+      Xfo targetXfo = handControlXfo * arm.ikGoalOffsetXfo;
+      
+      Scalar maxLineLength = 0.0;
+      Integer ikboneIndices[];
+      ikboneIndices.resize(arm.boneIds.size-1);
+      for (Integer j = 1; j < arm.boneIds.size; j++) {
+        maxLineLength += bones[arm.boneIds[j]].length;
+        ikboneIndices[j-1] = arm.boneIds[j];
+      }
+      
+      Vec2 maxLineLengthSoftening(maxLineLength * 0.03, maxLineLength * 0.03);
+      Integer firstBoneId = arm.boneIds[0];
+      Integer lastBoneId = arm.boneIds[arm.boneIds.size-1];
+      
+      applyFishingRod(
+        pose[firstBoneId],
+        bones[firstBoneId].length,
+        targetXfo,
+        Vec3(1.0, 0.0, 0.0),
+  
+        0.0,
+        Vec2(0.0, 0.0),
+        maxLineLength,
+        maxLineLengthSoftening,
+        
+        0.6,
+        0.2
+      );
+      
+      for (Integer j = 1; j < arm.boneIds.size; j++) {
+        pose[arm.boneIds[j]] = pose[arm.boneIds[j-1]] * poseVariables.xfoValues[arm.xfoIds[j]];
+      }
+  
+      solveNCFIK(pose, bones, ikboneIndices, targetXfo, debugGeometry);
+      
+      pose[arm.ankleId].tr = pose[lastBoneId].transformVector(Vec3(bones[lastBoneId].length, 0.0, 0.0));
+      pose[arm.ankleId].ori = targetXfo.ori;
+      
+      if (ikBlend < 1.0) {
+        // Now blend the IK pose with the FK pose.
+        Integer j;
+        for (j = 0; j < arm.boneIds.size; j++) {
+          pose[arm.boneIds[j]].ori = fkPose[j].ori.sphericalLinearInterpolate(pose[arm.boneIds[j]].ori, ikBlend);
+          if (j > 0) {
+            pose[arm.boneIds[j]].tr = pose[arm.boneIds[j - 1]].transformVector(bones[arm.boneIds[j]].referenceLocalPose.tr);
+          }
+        }
+        j = arm.boneIds.size;
+        pose[arm.ankleId].ori = fkPose[j].ori.sphericalLinearInterpolate(pose[arm.ankleId].ori, ikBlend);
+        pose[arm.ankleId].tr = pose[arm.boneIds[j - 1]].transformVector(bones[arm.ankleId].referenceLocalPose.tr);
+      }
+      
+      
+      //////////////////////////////////////////////
+      // Debugging
+      /*
+      Xfo rot90;
+      rot90.setIdentity();
+      rot90.ori.setFromAxisAndAngle(Vec3(0.0, 0.0, 1.0), HALF_PI);
+      debugGeometry.drawSquare(handControlXfo * rot90, 1.0, 0.8, Color(0.0, 1.0, 1.0, 1.0));
+      for (Integer j = 1; j <= arm.boneIds.size; j++) {
+        debugGeometry.drawLine(fkPose[j-1].tr, fkPose[j].tr, Color(1.0, 1.0, 0.0, 1.0));
+      }
+      for (Integer j = 1; j < arm.boneIds.size; j++) {
+        debugGeometry.drawLine(pose[arm.boneIds[j - 1]].tr, pose[arm.boneIds[j]].tr, Color(0.0, 1.0, 1.0, 1.0));
+      }
+      debugGeometry.drawLine(pose[arm.boneIds[arm.boneIds.size - 1]].tr, pose[arm.ankleId].tr, Color(0.0, 1.0, 1.0, 1.0));
+      debugGeometry.drawAxis(pose[arm.ankleId], 1.0, Color(0.0, 1.0, 1.0, 1.0));
+      debugGeometry.drawAxis(targetXfo, 1.0, Color(0.0, 1.0, 1.0, 1.0));
+      */
+    }
+  }
+}
+
+
+operator invertArmRig(
+  io Xfo pose[],
+  io Bone bones[],
+  io Limb arms[],
+  io PoseVariables poseVariables,
+  io DebugGeometry debugGeometry
+) {
+  for( Integer i=0; i<arms.size; i++){
+    Limb arm = arms[i];
+    
+    Integer j;
+    for (j = 0; j < arm.boneIds.size; j++) {
+      if (bones[arm.boneIds[j]].parent == - 1)
+        poseVariables.xfoValues[arm.xfoIds[j]] = pose[arm.boneIds[j]];
+      else
+        poseVariables.xfoValues[arm.xfoIds[j]] = pose[bones[arm.boneIds[j]].parent].inverse() * pose[arm.boneIds[j]];
+    }
+    j = arm.boneIds.size;
+    poseVariables.xfoValues[arm.xfoIds[j]] = pose[bones[arm.ankleId].parent].inverse() * pose[arm.ankleId];
+    
+    
+    Xfo ankleTipXfo = pose[arm.ankleId];
+    ankleTipXfo.tr = ankleTipXfo.transformVector(Vec3(bones[arm.ankleId].length, 0.0, 0.0));
+    poseVariables.xfoValues[arm.ikGoalXfoId] = ankleTipXfo * arm.ikGoalOffsetXfo.inverse();
+  }
+}

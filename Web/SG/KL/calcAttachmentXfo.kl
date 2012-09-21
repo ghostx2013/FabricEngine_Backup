@@ -1,0 +1,60 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Mat44, Xfo;
+use PoseVariables;
+
+
+operator calcManipulatorAttachmentXfo(
+  io Xfo controllerXfo,
+  io PoseVariables poseVariables,
+  io Size xfoIndex,
+  io Xfo localXfo,
+  io Xfo parentXfo,
+  io Xfo targetXfo,
+  io Xfo globalXfo
+) {
+  //report( "calcManipulatorAttachmentXfo\n" );
+  parentXfo = controllerXfo;
+  targetXfo = parentXfo * poseVariables.xfoValues[xfoIndex];
+  globalXfo = targetXfo * localXfo;
+}
+
+operator calcManipulatorPoseAttachmentXfo(
+  io Bone bones[],
+  io PoseVariables poseVariables,
+  io Xfo pose[],
+  io Size xfoIndex,
+  io Size boneIndex,
+  io Xfo localXfo,
+  io Xfo parentXfo,
+  io Xfo targetXfo,
+  io Xfo globalXfo
+) {
+  //report( "calcManipulatorAttachmentXfo\n" );
+  parentXfo = pose[bones[boneIndex].parent];
+  targetXfo = parentXfo * poseVariables.xfoValues[xfoIndex];
+  globalXfo = targetXfo * localXfo;
+}
+
+operator calcManipulatorChainAttachmentXfo(
+  io Bone bones[],
+  io PoseVariables poseVariables,
+  io Xfo pose[],
+  io Size rootBoneIndex,
+  io Size xfoIndexChain[],
+  io Xfo localXfo,
+  io Xfo parentXfo,
+  io Xfo targetXfo,
+  io Xfo globalXfo
+) {
+//  report( "calcManipulatorChainAttachmentXfo rootBoneIndex:" + rootBoneIndex + " xfoIndexChain:" + xfoIndexChain );
+  
+  parentXfo = pose[bones[rootBoneIndex].parent];
+  for(Integer i=0; i<(xfoIndexChain.size-1); i++){
+    parentXfo = parentXfo * poseVariables.xfoValues[xfoIndexChain[i]];
+  }
+  targetXfo = parentXfo * poseVariables.xfoValues[xfoIndexChain[xfoIndexChain.size-1]];
+  globalXfo = targetXfo * localXfo;
+}

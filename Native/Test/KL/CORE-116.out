@@ -1,0 +1,1 @@
+CORE-116.kl:6:1: error: type 'Foo' already registered with a different definition

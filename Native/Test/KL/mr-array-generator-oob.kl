@@ -1,0 +1,21 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator generator(
+  io Integer value
+  )
+{
+  report("generator: value=" + value);
+  value = 42;
+}
+
+operator entry() {
+  ValueProducer<Size> cvg = createConstValue(Size(10));
+
+  ArrayProducer<Integer> ag = createArrayGenerator(cvg, generator);
+  report(ag);
+  report(ag.getCount());
+  report(ag.produce(0));
+  report(ag.produce(10));
+}

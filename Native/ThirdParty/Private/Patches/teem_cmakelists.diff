@@ -1,0 +1,12 @@
+--- ./CMakeLists.txt	2008-12-10 01:43:06.000000000 +0100
++++ CMakeLists.txt	2011-11-10 09:39:50.979218759 +0100
+@@ -384,9 +384,6 @@
+   ARCHIVE DESTINATION lib${EXTRA_INSTALL_PATH}
+   ) 
+ 
+-# Now compile the binaries
+-ADD_SUBDIRECTORY(src/bin)
+-
+ # Stand-alone programs to process hex encoding of data
+ OPTION(BUILD_HEX "Build dehex and enhex" OFF)
+ IF(BUILD_HEX)

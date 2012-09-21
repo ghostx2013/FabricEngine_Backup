@@ -1,0 +1,197 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Math, Vec3, Quat, Mat44, RotationOrder, Euler;
+
+function Xfo() {
+  this.setIdentity();
+}
+
+function Xfo(Vec3 tr) {
+  this.set(tr);
+}
+
+function Xfo(Vec3 tr, Quat ori) {
+  this.set(tr,ori);
+}
+
+function Xfo(Vec3 tr, Quat ori, Vec3 sc) {
+  this.set(tr,ori,sc);
+}
+
+function Xfo.set(Vec3 tr) {
+  this.tr = tr;
+  this.sc = Vec3(1.0, 1.0, 1.0);
+}
+
+function Xfo.set(Vec3 tr, Quat ori) {
+  this.tr = tr;
+  this.ori = ori;
+  this.sc = Vec3(1.0, 1.0, 1.0);
+}
+
+function Xfo.set(Vec3 tr, Quat ori, Vec3 sc) {
+  this.tr = tr;
+  this.ori = ori;
+  this.sc = sc;
+}
+
+function Xfo.setIdentity() {
+  this.tr.setNull();
+  this.ori.setIdentity();
+  this.sc = Vec3(1.0, 1.0, 1.0);
+}
+
+
+function Xfo.setFromMat44(Mat44 m) {
+
+  if (abs(1.0 - m.row3.t) > 0.001) {
+    Math_reportWarning('Mat44.setFromMat44: Cannot handle denormalized matrices: ' + m.row3.t);
+    this.setIdentity();
+    return;
+  }
+
+  if (m.row3.x != 0.0 || m.row3.y != 0.0 || m.row3.z != 0.0) {
+    Math_reportWarning('Mat44.setFromMat44: Cannot handle perspective projection matrices');
+    this.setIdentity();
+    return;
+  }
+
+  // Grab the translation
+  this.tr.x = m.row0.t;
+  this.tr.y = m.row1.t;
+  this.tr.z = m.row2.t;
+
+  Vec3 col0(m.row0.x, m.row1.x, m.row2.x);
+  Vec3 col1(m.row0.y, m.row1.y, m.row2.y);
+  Vec3 col2(m.row0.z, m.row1.z, m.row2.z);
+
+  // Grab the X scale and normalize the first column
+  this.sc.x = col0.length();
+  if( Math_badDivisor( this.sc.x ) )//Perf: check first to avoid building the report(string
+    Math_reportBadDivisor( this.sc.x, "Mat44.setFromMat44: Matrix is singular" );
+  col0 /= this.sc.x;
+
+  // Make the 2nd row orthogonal to the 1st
+  col1 -= col0 * col0.dot(col1);
+
+  // Grab the Y scale and normalize
+  this.sc.y = col1.length();
+  if( Math_badDivisor( this.sc.y ) )//Perf: check first to avoid building the report(string
+    Math_reportBadDivisor( this.sc.y, "Mat44.setFromMat44: Matrix is singular" );
+  col1 /= this.sc.y;
+
+  // Make the 3rd row orthogonal to the 1st and 2nd
+  col2 -= col0 * col0.dot(col2);
+  col2 -= col1 * col1.dot(col2);
+
+  this.sc.z = col2.length();
+  if( Math_badDivisor( this.sc.z ) )//Perf: check first to avoid building the report(string
+    Math_reportBadDivisor( this.sc.z, "Mat44.setFromMat44: Matrix is singular" );
+  col2 /= this.sc.z;
+
+  Mat33 mat33(col0.x, col1.x, col2.x,
+              col0.y, col1.y, col2.y,
+              col0.z, col1.z, col2.z);
+
+  // Fix negative scaling
+  Scalar det = mat33.determinant();
+  if( det < -PRECISION ) {
+    //Negative scales on 2 axis is the same as a 180 deg rot, and negative scales on 3 axis is the same as a 180 deg rot + negative scale on 1 axis.
+    //So we we'll just pick X axis and scale it negatively.
+    this.sc.x = -this.sc.x;
+    mat33.row0.x = -mat33.row0.x;
+    mat33.row1.x = -mat33.row1.x;
+    mat33.row2.x = -mat33.row2.x;
+  }
+
+  this.ori.setFromMat33(mat33);
+}
+
+function Mat44 Xfo.toMat44() {
+  Mat44 scl, rot, trn;
+
+  scl.setNull();
+  scl.setDiagonal(Vec4(this.sc.x, this.sc.y, this.sc.z, 1.0));
+
+  Quat q = this.ori;
+  rot.setNull();
+  rot.row0.x = 1.0 - 2.0 * (q.v.y * q.v.y + q.v.z * q.v.z);
+  rot.row0.y = 2.0 * (q.v.x * q.v.y - q.v.z * q.w);
+  rot.row0.z = 2.0 * (q.v.x * q.v.z + q.v.y * q.w);
+
+  rot.row1.x = 2.0 * (q.v.x * q.v.y + q.v.z * q.w);
+  rot.row1.y = 1.0 - 2.0 * (q.v.x * q.v.x + q.v.z * q.v.z);
+  rot.row1.z = 2.0 * (q.v.y * q.v.z - q.v.x * q.w);
+
+  rot.row2.x = 2.0 * (q.v.x * q.v.z - q.v.y * q.w);
+  rot.row2.y = 2.0 * (q.v.y * q.v.z + q.v.x * q.w);
+  rot.row2.z = 1.0 - 2.0 * (q.v.x * q.v.x + q.v.y * q.v.y);
+
+  rot.row3.t = 1.0;
+
+  trn.setIdentity();
+  trn.row0.t = this.tr.x;
+  trn.row1.t = this.tr.y;
+  trn.row2.t = this.tr.z;
+
+  return trn * rot * scl;
+}
+
+function Xfo * (in Xfo local, in Xfo global) {
+  //[jcg] We shouldn't need this, and it's not done in JS
+  Quat lcl_ori = local.ori.unit();
+  Quat glb_ori = global.ori.unit();
+
+  if(local.sc.x != local.sc.y || local.sc.x != local.sc.z) {
+    Scalar relativePrecision = abs(local.sc.x)*PRECISION*10.0;
+    if( abs(local.sc.x - local.sc.y) > relativePrecision || abs(local.sc.x - local.sc.z) > relativePrecision ) {
+      Math_reportWarning('Xfo.multiply: Cannot multiply to xfos when having non-uniform scaling without causing shearing. Use Mat44s instead.');
+    }
+  }
+
+  Xfo result;
+  result.tr = local.tr + lcl_ori.rotateVector(local.sc * global.tr);
+  result.ori = lcl_ori * glb_ori;
+  result.ori.setUnit();
+  result.sc = local.sc * global.sc;
+  return result;
+}
+
+function Xfo. *= (in Xfo global) {
+  this = this * global;
+}
+
+function Vec3 Xfo.transformVector(in Vec3 v) {
+  return this.ori.rotateVector(v * this.sc) + this.tr;
+}
+
+function Xfo Xfo.inverse() {
+  Xfo result;
+  if(this.sc.x != this.sc.y || this.sc.x != this.sc.z) {
+    Scalar relativePrecision = abs(this.sc.x)*PRECISION*10.0;
+    if( abs(this.sc.x - this.sc.y) > relativePrecision || abs(this.sc.x - this.sc.z) > relativePrecision ) {
+      Math_reportWarning('Mat44.setFromMat44: Cannot invert xfo with non-uniform scaling without causing shearing. Try using inverseTransformVector, use Mat44s instead.');
+    }
+  }
+  result.sc = this.sc.inverse();
+  result.ori = this.ori.inverse();
+  result.tr = result.ori.rotateVector(this.tr.negate()*result.sc);
+  return result;
+}
+
+//Note: we have 'inverseTransformVector' because Xfos with non-uniform scaling cannot be inverted as Xfos
+function Vec3 Xfo.inverseTransformVector(in Vec3 vec) {
+  return this.ori.inverse().rotateVector(vec - this.tr) * this.sc.inverse();
+}
+
+function Xfo Xfo.linearInterpolate(in Xfo other, in Scalar t) {
+  Xfo result;
+  result.tr = this.tr.linearInterpolate(other.tr, t);
+  result.ori = this.ori.linearInterpolate(other.ori, t);
+  result.sc = this.sc.linearInterpolate(other.sc, t);
+  return result;
+}
+
+

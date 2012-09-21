@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>VolumeMaterial</name>
+
+  <uniforms>
+    <uniform name="u_alphaFactor" constant="alphaFactor" type="Scalar" defaultValue="0.02"/>
+    <uniform name="u_transparency" constant="transparency" type="Scalar" defaultValue="1.0"/>
+    <uniform name="u_brightness" constant="brightness" type="Scalar" defaultValue="0.5"/>
+    <uniform name="u_invertColor" constant="invertColor" type="Integer" defaultValue="0"/>
+    <uniform name="u_specularFactor" constant="scaledSpecularFactor" type="Scalar" defaultValue="1.0"/>
+
+    <uniform name="u_lightPosition" constant="lightPosition" type="Vec3" owner="light"/>
+
+    <uniform name="u_materialShininess" constant="shininess" type="Scalar" defaultValue="10.0"/>
+
+    <uniform name="u_samplerOpacityMap" constant="opacityTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerGradientMap" constant="gradientTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerTransferFunctionMap" constant="transferFunctionTexture" type="Integer" owner="texture"/>
+
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_modelViewMatrix" constant="modelViewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_normalMatrix" constant="normalMatrix" type="Mat33" owner="instance"/>
+
+  </uniforms>
+
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_normal" binding="normals"/>
+  </attributes>
+
+  <lights>
+    <light type="Light" binding="light"/>
+  </lights>
+
+  <textures>
+    <texture binding="opacityTexture"/>
+    <texture binding="gradientTexture"/>
+    <texture binding="transferFunctionTexture"/>
+  </textures>
+
+  <openglstateparams>
+    <enableOptions>
+      <option>GL_BLEND</option>
+    </enableOptions>
+    <blendModeSfactor>GL_SRC_ALPHA</blendModeSfactor>
+    <blendModeDfactor>GL_ONE_MINUS_SRC_ALPHA</blendModeDfactor>
+  </openglstateparams>
+
+  <vertexshader>
+    <source>
+      <![CDATA[
+      uniform mat4 u_modelViewProjectionMatrix;
+      uniform mat4 u_modelViewMatrix;
+      uniform vec4 u_lightPosition;
+
+      attribute vec4 a_position;
+      attribute vec3 a_normal;
+
+      varying vec3 lightDir;
+      varying vec3 viewDir;
+
+      void main()
+      {
+        gl_TexCoord[0].xyz = a_normal.xyz;
+
+        vec4 modelCameraPosition = u_modelViewMatrix * a_position;
+        lightDir = vec3(u_lightPosition - modelCameraPosition);
+        viewDir = vec3(-modelCameraPosition);
+        gl_Position = u_modelViewProjectionMatrix * a_position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform float u_alphaFactor;
+      uniform float u_transparency;
+      uniform float u_brightness;
+      uniform int u_invertColor;
+
+      uniform float u_specularFactor;
+      uniform mat3 u_normalMatrix;
+      uniform float u_materialShininess;
+
+      uniform sampler3D u_samplerOpacityMap;
+      uniform sampler3D u_samplerGradientMap;
+      uniform sampler2D u_samplerTransferFunctionMap;
+      
+      varying vec3 lightDir;
+      varying vec3 viewDir;
+
+      void main(){
+
+        //Lighting computations
+        vec3 Ln = normalize(lightDir);
+        vec3 Vn = normalize(viewDir);
+
+        float opacity = texture3D( u_samplerOpacityMap, gl_TexCoord[0].xyz).r;
+        vec4 gradient = texture3D( u_samplerGradientMap, gl_TexCoord[0].xyz);
+        vec4 transferFunction = texture2D( u_samplerTransferFunctionMap, vec2(opacity, 0.5) );
+        float opacityFactor = transferFunction.a;
+
+        transferFunction.rgb *= u_brightness;
+        
+        //Here, there is some magic going in. From empirical testing, the u_transparency mixes better with alpha
+        //if there is a quadratic progression ((1.0-u_transparency)^2). The reason is that the alpha is ajusted with
+        //u_alphaFactor so that the accumulation over all the slices sums properly (u_alphaFactor depends on number of slices).
+        //Because alphas are summing up in a non-linear fashion, we can't just modulate it linearly based on the transparency factor...
+        float alpha = opacityFactor * min( mix( 1.0-u_transparency, u_brightness * u_alphaFactor, u_transparency ), 1.0 );
+        
+        float gradientWeight = gradient.a;
+
+        //Modulate gradient weight with cranked up transferFunction.a
+        //Note: could be improved by having a transfer function for modulating gradient weight but we will keep it simple
+        float factor = 1.0 - opacityFactor;
+        factor = 1.0 - factor*factor;
+        gradientWeight *= factor;
+
+        vec4 volumeColor = u_invertColor == 0 ? 
+                              vec4(transferFunction.rgb, alpha ) : 
+                              max( vec4(1.0-transferFunction.r, 1.0-transferFunction.g, 1.0-transferFunction.b, alpha ), vec4(0.0, 0.0, 0.0, 0.0) );
+        
+        //Point light phong shading with additive-only specular
+        vec3 Nn = normalize( u_normalMatrix * (gradient.xyz - vec3(0.5, 0.5, 0.5)) );
+        vec4 shadedColor = volumeColor;
+
+        //float lightBehind = dot(Nn,Ln);
+        vec3 Rn = reflect(-Ln, Nn);
+        float specular = pow( max(dot(Rn, Vn), 0.0), u_materialShininess );
+
+        float specColor = specular * u_specularFactor * gradientWeight;
+        shadedColor.a += min( shadedColor.a+specColor, 1.0 );
+        if(shadedColor.a > 0.0001)
+          specColor /= shadedColor.a;//Try to maintain specular contibution no matter how much alpha
+        shadedColor.rgb += vec3( specColor, specColor, specColor );
+        shadedColor.a = min( shadedColor.a, 1.0 );
+        gl_FragColor = shadedColor;
+      }
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

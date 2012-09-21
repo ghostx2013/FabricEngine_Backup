@@ -1,0 +1,126 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricOBJ;
+use Vec2;
+use Vec3;
+
+function decodeObj(
+  io FabricResource resource,
+  Boolean printDetailedInfo,
+  Boolean splitByObject,
+  Boolean splitByGroup,
+  Boolean splitByMaterial,
+  io OBJDataHandle objParseHandle,
+  
+  io String objectNames[],
+  io String groupNames[],
+  io String materialNames[]
+) {
+
+  if(!objParseHandle.handle) {
+    if(resource.data.size() > 0) {
+      FabricOBJDecode(resource.data.data(), resource.data.dataSize(), splitByObject, splitByGroup, splitByMaterial, objParseHandle);
+      resource.data.resize(0);//Note: this might not be safe if loadObj is called twice on the same data; maybe it should be an option?
+    } else if(resource.dataExternalLocation) {
+      FabricOBJOpenFileHandle(resource.dataExternalLocation, splitByObject, splitByGroup, splitByMaterial, objParseHandle);
+    }
+  }
+
+  Boolean hadErrors;
+  FabricOBJHadErrors( objParseHandle, hadErrors );
+  if( hadErrors )
+  {
+    String errors[];
+    FabricOBJGetErrors( objParseHandle, errors );
+    for( Integer i = 0; i < errors.size; i++ )
+      report('Error while parsing obj file ' + resource.url + ': ' + errors[i]);
+  }
+  else{
+    Size nbEntities;
+    FabricOBJGetNbEntities(objParseHandle, nbEntities);
+    for( Size i = 0; i < nbEntities; ++i ) {
+      String objName, groupName, matName;
+      FabricOBJGetEntityObjectName(objParseHandle, i, objName);
+      objectNames.push(objName);
+      FabricOBJGetEntityGroupName(objParseHandle, i, groupName);
+      groupNames.push(groupName);
+      FabricOBJGetEntityMaterialName(objParseHandle, i, matName);
+      materialNames.push(matName);
+    }
+  }
+
+  if( printDetailedInfo ) {
+    Size nbEntities, nbPts, nbTris;
+    FabricOBJGetNbEntityPoints(objParseHandle, -1, nbPts);
+    FabricOBJGetNbEntityTriangles(objParseHandle, -1, nbTris);
+    FabricOBJGetNbEntities(objParseHandle, nbEntities);
+    report("OBJ " + resource.url + ": " + nbEntities + " entities: " + nbPts + " vertices, " + nbTris + " triangles");
+    String values[];
+    FabricOBJGetMaterialLibraries(objParseHandle, values);
+    report("  Materials libraries: " + values);
+    FabricOBJGetMaterialNames(objParseHandle, values);
+    report("  Materials: " + values);
+    
+    for( Size i = 0; i < nbEntities; ++i ) {
+      String objName, groupName, matName;
+      FabricOBJGetEntityObjectName(objParseHandle, i, objName);
+      FabricOBJGetEntityGroupName(objParseHandle, i, groupName);
+      FabricOBJGetEntityMaterialName(objParseHandle, i, matName);
+      FabricOBJGetNbEntityPoints(objParseHandle, i, nbPts);
+      FabricOBJGetNbEntityTriangles(objParseHandle, i, nbTris);
+      report("  Entity #" + i + ": objName: " + (objName != "" ? objName : "(none)") + ", groupName: " + (groupName != "" ? groupName : "(none)") + ", matName: " + (matName != "" ? matName : "(none)") + ", " + nbPts + " vertices, " + nbTris + " triangles");
+    }
+    
+  }
+}
+operator parseObj(
+  io FabricResource resource,
+  io OBJDataHandle objParseHandle,
+  io Boolean splitByObject,
+  io Boolean splitByGroup,
+  io Boolean splitByMaterial,
+  io Boolean reload,
+  io Boolean printDetailedInfo,
+  
+  io String objectNames[],
+  io String groupNames[],
+  io String materialNames[]
+) {
+  Boolean validHandle;
+  FabricOBJIsHandleValid( objParseHandle, validHandle );
+  if( !validHandle )
+    decodeObj( resource, printDetailedInfo, splitByObject, splitByGroup, splitByMaterial, objParseHandle, objectNames, groupNames, materialNames);
+}
+
+operator setObjGeom(
+  io Container container,
+  io OBJDataHandle objParseHandle,
+  io Integer entityIndex,
+  io Integer indices[],
+  io Vec3 positions<>,
+  io Vec3 normals<>,
+  io Vec2 uvs<>,
+  io Boolean reload
+) {
+  Size count;
+  FabricOBJGetNbEntityPoints(objParseHandle, entityIndex, count);
+  container.resize(count);
+  FabricOBJGetEntityTriangleIndices( objParseHandle, entityIndex, indices );
+  FabricOBJGetEntityPointsSliced( objParseHandle, entityIndex, positions );
+  FabricOBJGetEntityNormalsSliced( objParseHandle, entityIndex, normals );
+
+  Boolean hasTexture = false;
+  FabricOBJHasTextureCoords( objParseHandle, hasTexture );
+  if( hasTexture )
+  {
+    FabricOBJGetEntityTextureCoordsSliced( objParseHandle, entityIndex, uvs );
+  }
+}
+
+operator freeObjParsedData(
+  io OBJDataHandle objParseHandle
+) {
+  FabricOBJFreeParsedData(objParseHandle);
+}

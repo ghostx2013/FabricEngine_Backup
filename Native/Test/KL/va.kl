@@ -1,0 +1,16 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry() {
+  String va[];
+  va.push("foo");
+  va.push("bar");
+  va.push("baz");
+  report(va);
+  va.swap(Size(0), Size(2));
+  report(va);
+  va.swap(Size(1), Size(1));
+  report(va);
+  va.swap(Size(0), Size(3));
+}

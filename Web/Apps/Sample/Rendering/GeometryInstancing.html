@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Geometry Instancing</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Parsers/parseOBJ",
+                "RT/OGLRenderTarget"], function() {
+    
+//FABRIC.SceneGraph.defineEffectFromFile('PhongInstancingShaderBase', './Shaders/PhongInstancingShader.xml');
+    
+$(document).ready(function() {
+  
+  var scene = FABRIC.SceneGraph.createScene();
+  
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer')
+  });
+  
+viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 1,
+      farDistance: 1200,
+      position: new FABRIC.RT.Vec3(10,10,10),
+      target: new FABRIC.RT.Vec3(0, 0, 0)
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  
+  var gridSize = 150;
+  var numInstances = 128 * 8;
+  var instanceTransforms = [];
+  
+  //////////////////////////////////////
+  // add some cows
+  for (i = 0; i < numInstances; i++) {
+    var scl = Math.random() * 0.5 + 0.5;
+    instanceTransforms.push(new FABRIC.RT.Xfo( {
+      tr: new FABRIC.RT.Vec3(
+        (Math.random() - 0.5) * gridSize * 0.95,
+        -2.5/scl,
+        (Math.random() - 0.5) * gridSize * 0.95),
+      ori: new FABRIC.RT.Quat().setFromAxisAndAngle( new FABRIC.RT.Vec3(0,1,0), (Math.random() - 0.5) * Math.TWO_PI ),
+      sc: new FABRIC.RT.Vec3(scl, scl, scl)
+    })
+    );
+  }
+  
+  // create a sliced transform node
+  var slicedTransform = scene.constructNode("Transform");
+  slicedTransform.setGlobalXfo(instanceTransforms);
+  
+  
+  scene.importAssetFile('../BasicDemos/Models/cow.obj', {
+     splitMaterials: false
+    },
+    function(assetNodes){
+      var geometry = assetNodes.cow;
+      scene.constructNode('Instance', {
+        geometryNode: geometry,
+        materialNode: scene.constructNode('PhongInstancingExtMaterial', {
+          diffuseColor: FABRIC.RT.rgb255(139,69,19),
+          lightNode: light,
+          transformTextureNode: scene.constructNode('TransformTexture', {
+            transformNode: slicedTransform
+          })
+        }),
+        constructDefaultTransformNode: false
+      });
+    });
+
+
+  /*
+  //////////////////////////////////////
+  // Now add some bunnys
+  instanceTransforms = [];
+  for (i = 0; i < numInstances; i++) {
+    var scl = (Math.random() + 0.5) * 15;
+    instanceTransforms.push(new FABRIC.RT.Xfo( {
+      tr: new FABRIC.RT.Vec3(
+        (Math.random() - 0.5) * gridSize * 0.95,
+        -7,
+        (Math.random() - 0.5) * gridSize * 0.95),
+      ori: new FABRIC.RT.Quat().setFromAxisAndAngle( new FABRIC.RT.Vec3(0,1,0), (Math.random() - 0.5) * Math.TWO_PI ),
+      sc: new FABRIC.RT.Vec3(scl, scl, scl)
+    })
+    );
+  }
+
+  // create a sliced transform node
+  slicedTransform = scene.constructNode("Transform");
+  slicedTransform.setGlobalXfo(instanceTransforms);
+  
+  scene.constructNode('Instance', {
+    geometryNode: scene.importAssetFile('../BasicDemos/Models/bunny.obj')['bunny'],
+    materialNode: scene.constructNode('PhongInstancingExtMaterial', {
+      diffuseColor: FABRIC.RT.rgb255(205,192,176),
+      lightNode: light,
+      transformTextureNode: slicedTransform.getTransformTexture(false)
+    }),
+    transformNode: slicedTransform
+  });
+  */
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      if(!viewport.getGlewSupported('GL_EXT_draw_instanced')){
+        alert("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+        throw("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+      }
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Geometry Instancing.<br>
+              The instances in this sample are drawn using glDrawElementsInstanced, which utilizes hardware instancing.
+              Due to this, the sample requires the OpenGL 3.2 profile to run properly.
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

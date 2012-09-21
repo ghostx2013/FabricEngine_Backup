@@ -1,0 +1,84 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use OGLShaderProgram;
+use Vec3;
+use Mat33;
+use Mat44;
+use RotationOrder;
+use FabricOGL;
+
+operator loadLight(
+  io OGLShaderProgram shaderProgram,
+  io Integer type,
+  io Color color,
+  io Mat44 cameraMatrix,
+  io Mat44 lightMatrix
+) {
+//  report("loadLight");
+  Integer location;
+
+  location = shaderProgram.getUniformLocation(LIGHTTYPE_ATTRIBUTE_ID); // LIGHTTYPE ATTRIBUTE ID
+  if(location!=-1){
+    shaderProgram.loadIntegerUniform(location, type);
+  }
+  location = shaderProgram.getUniformLocation(LIGHTCOLOR_ATTRIBUTE_ID); // LIGHTCOLOR ATTRIBUTE ID
+  if(location!=-1){
+    shaderProgram.loadColorUniform(location, color);
+  }
+  location = shaderProgram.getUniformLocation(LIGHTPOSITION_ATTRIBUTE_ID); // LIGHTPOS ATTRIBUTE ID
+  if(location!=-1){
+    Vec3 lightPos = lightMatrix.translation();
+    Vec4 viewPos = cameraMatrix * Vec4(lightPos.x, lightPos.y, lightPos.z, 1.0);
+    shaderProgram.loadVec4Uniform(location, viewPos);
+  }
+}
+
+operator loadDirectionalLight(
+  io OGLShaderProgram shaderProgram,
+  io Mat44 cameraMatrix,
+  io Mat44 lightMatrix
+) {
+//  report("loadDirectionalLight");
+  Integer location = shaderProgram.getUniformLocation(LIGHTDIR_ATTRIBUTE_ID); // LIGHTDIR ATTRIBUTE ID
+  if(location!=-1){
+    Vec3 viewDir = cameraMatrix.upperLeft() * lightMatrix.upperLeft() * Vec3(0.0, 0.0, -1.0);
+    viewDir = viewDir.unit(); //lightMatrix might have scaling
+    shaderProgram.loadVec3Uniform(location, viewDir);
+  }
+}
+
+operator loadSpotLight(
+  io OGLShaderProgram shaderProgram,
+  io Scalar coneAngle,
+  io Mat44 cameraMatrix,
+  io Mat44 lightMatrix
+) {
+//  report("loadSpotLight");
+  Integer location;
+
+  location = shaderProgram.getUniformLocation(LIGHTDIR_ATTRIBUTE_ID); // LIGHTDIR ATTRIBUTE ID
+  if(location!=-1){
+    var Vec3 viewDir = cameraMatrix.upperLeft() * lightMatrix.upperLeft() * Vec3(0.0, 0.0, -1.0) ;
+    viewDir = viewDir.unit(); //lightMatrix might have scaling
+    shaderProgram.loadVec3Uniform(location, viewDir);
+  }
+  location = shaderProgram.getUniformLocation(LIGHTCOSCUTOFF_ATTRIBUTE_ID); // LIGHTCOSCUTOFF ATTRIBUTE ID
+  if(location!=-1){
+    shaderProgram.loadScalarUniform(location, cos(coneAngle * 0.5));
+  }
+}
+
+operator loadLightMatrixUniform(
+  io OGLShaderProgram shaderProgram,
+  io Mat44 lightShadowMapMatrix,
+  io Mat44 cameraMatrix
+) {
+//  report("loadLightMatrixUniform");
+  Integer location = shaderProgram.getUniformLocation(LIGHTVIEWMATRIX_ATTRIBUTE_ID); // LIGHTVIEWMATRIX ATTRIBUTE ID
+  if(location!=-1){
+    Mat44 lightViewMatrix = lightShadowMapMatrix * cameraMatrix.inverse();//inverse: to isolate the modelMat from modelViewMat (in shader multiplication)
+    shaderProgram.loadMat44Uniform(location, lightViewMatrix);
+  }
+}

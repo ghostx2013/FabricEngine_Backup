@@ -1,0 +1,48 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'coreEnv', 'npapiSources', 'npapiDistDir', 'buildArch', 'npapiFlags', 'glewFlags' )
+
+npapiEnv = coreEnv.Clone()
+npapiEnv.MergeFlags( npapiFlags )
+npapiEnv.MergeFlags( glewFlags )
+
+npapiEnv.Append( FRAMEWORKS = ['AppKit', 'AGL', 'QuartzCore'] )
+npapiSources.append( ['WindowedCAViewPort.mm','WindowedInvalidatingCAViewPort.mm'] )
+if buildArch != 'x86_64':
+  npapiSources.append( ['WindowlessCGViewPort.cpp'] )
+  
+npapiEnv.Append( FRAMEWORKS = ['OpenGL','OpenCL'] )
+
+npapiPlugin = npapiEnv.LoadableModule( 'FabricNPAPI', npapiSources )
+
+npapiPluginBundleDir = npapiDistDir.Dir( 'Fabric.'+npapiEnv['FABRIC_BUILD_ARCH']+'.plugin' )
+npapiPluginBundleContentsDir = npapiPluginBundleDir.Dir('Contents')
+
+npapiPluginBundleBinary = npapiPluginBundleContentsDir.File( 'MacOS/FabricNPAPI' )
+Command(
+  npapiPluginBundleBinary,
+  npapiPlugin,
+  [
+    Copy( "$TARGET", "$SOURCE" )
+  ])
+
+npapiPluginBundlePlistTemplate = 'Info.plist.template'
+npapiPluginBundlePlistSrc = 'Info.plist'
+npapiEnv.Template( npapiPluginBundlePlistSrc, npapiPluginBundlePlistTemplate )
+
+npapiPluginBundlePlist = npapiPluginBundleContentsDir.File( 'Info.plist' )
+Command(
+  npapiPluginBundlePlist,
+  npapiPluginBundlePlistSrc,
+  [
+    Copy( "$TARGET", "$SOURCE" )
+  ])
+
+npapiTarget = [
+  npapiPluginBundlePlist,
+  npapiPluginBundleBinary,
+]
+Return('npapiTarget')

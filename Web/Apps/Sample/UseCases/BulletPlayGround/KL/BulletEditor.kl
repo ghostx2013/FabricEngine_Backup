@@ -1,0 +1,41 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3;
+use Quat;
+use Xfo;
+
+operator projectWorkPlane(
+  io Xfo workPlaneXfo,
+  io Xfo cameraXfo,
+  io Vec3 cameraTarget
+) {
+  workPlaneXfo = cameraXfo;
+  workPlaneXfo.tr = cameraTarget;
+  
+  Vec3 cameraDirection = cameraXfo.ori.getZaxis();
+  Vec3 xz = Vec3(cameraDirection.x,0.0,cameraDirection.z).unit();
+  Scalar angle = xz.angleTo(Vec3(1.0,0.0,0.0));
+  Vec3 yAxis = Vec3(1.0,0.0,0.0).cross(xz);
+  angle = floor(angle / (3.14 * 0.25) + 0.5) * (3.14 * 0.25);
+  Quat rotation;
+  rotation.setFromAxisAndAngle(yAxis,angle);
+  Vec3 direction = rotation.rotateVector(Vec3(1.0,0.0,0.0));
+  Vec3 axis = direction.cross(Vec3(0.0,1.0,0.0));
+  Vec3 upvector = direction.cross(axis);
+
+  if(abs(cameraDirection.y) < 0.55)
+    rotation.setFromAxisAndAngle(axis,3.14 * 0.0);
+  else if(abs(cameraDirection.y) < 0.9)
+    rotation.setFromAxisAndAngle(axis,3.14 * 0.25);
+  else
+    rotation.setFromAxisAndAngle(axis,3.14 * 0.5);
+
+  direction = rotation.rotateVector(direction);
+  upvector = rotation.rotateVector(upvector);
+  
+  workPlaneXfo.ori.setFromDirectionAndUpvector(direction,upvector);
+
+  workPlaneXfo.ori = workPlaneXfo.ori * Quat(0.7068252,0.0,0.0,0.7073882);
+}

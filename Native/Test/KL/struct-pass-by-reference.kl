@@ -1,0 +1,29 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+function Vec3 doubleVec3( io Vec3 vec3 )
+{
+  var Vec3 result;
+  result.x = 2 * vec3.x;
+  result.y = 2 * vec3.y;
+  result.z = 2 * vec3.z;
+  return result;
+}
+
+operator entry()
+{
+  var Vec3 vec3;
+  vec3.x = 1;
+  vec3.y = 2;
+  vec3.z = 3;
+  vec3 = doubleVec3( vec3 );
+  report(vec3);
+}

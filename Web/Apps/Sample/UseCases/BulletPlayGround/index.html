@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!--
+  Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+  -->
+  <title>FABRIC - Bullet Playground</title> 
+  <link media="all" rel="stylesheet" type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css">
+  <link media="all" rel="stylesheet" type="text/css" href="css/all.css">
+
+  <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+  <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+  <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../ga.js" charset="utf-8"></script>
+
+  <script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Bullet",
+                "SG/Undo",
+                "SG/Selection",
+                "SG/Persistence",
+                "SG/WebSocket",
+                "SG/DeferredRendering",
+                "SG/Parsers/parseOBJ"], function() {
+    
+  // load out custom shaders
+  FABRIC.SceneGraph.defineEffectFromFile('DeferredPreShadowCastingToonMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPreShadowCastingToonShader.xml');
+  FABRIC.SceneGraph.defineEffectFromFile('DeferredPreGroundPlaneMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPreGroundPlaneShader.xml');
+  FABRIC.SceneGraph.defineEffectFromFile('DeferredPostToonMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPostToonShader.xml');
+  
+  function getUrlVars() {
+    var vars = {};
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+      vars[key] = value;
+    });
+    return vars;
+  }
+
+  FABRIC.SceneGraph.registerNodeType('WorkPlane', {
+    factoryFn: function(options, scene) {
+      scene.assignDefaults(options, {
+        color: new FABRIC.RT.rgb(0.1,0.1,0.1,0.4)
+      });
+
+      if(!options.cameraNode)
+        throw("Options.cameraNode is not specified!");
+      if(!options.materialNode)
+        throw("Options.materialNode is not specified!");
+      if(!options.geometryNode)
+        options.geometryNode = scene.constructNode('Plane', {
+          width: 16.0,
+          height: 10.0,
+        }).pub;
+
+      var workPlaneNode = scene.constructNode('Instance', options);
+      var workPlaneTransformNode = scene.getPrivateInterface(workPlaneNode.pub.getTransformNode());
+      var workPlaneTransformDGNode = workPlaneTransformNode.getDGNode();
+
+      // connect the workplane to the camera and its transform
+      var cameraPriv = scene.getPrivateInterface(options.cameraNode);
+      var cameraTransformNode = scene.getPrivateInterface(cameraPriv.pub.getTransformNode());
+      var cameraTransformDGNode = cameraTransformNode.getDGNode();
+
+      workPlaneTransformDGNode.setDependency(cameraTransformDGNode,'camera');
+
+      workPlaneTransformDGNode.bindings.append(scene.constructOperator({
+        operatorName: 'projectWorkPlane',
+        entryPoint: 'projectWorkPlane',
+        srcFile: 'KL/BulletEditor.kl',
+        parameterLayout: [
+          'self.globalXfo',
+          'camera.globalXfo',
+          'camera.target'
+        ]
+      }));
+
+      workPlaneNode.pub.setDrawToggle(false);
+
+      return workPlaneNode;    
+    }});
+
+
+// register our custom renderer
+FABRIC.SceneGraph.registerNodeType('ToonRenderer', {
+  briefDesc: '',
+  detailedDesc: '',
+  parentNodeDesc: '',
+  optionsDesc: {
+  },
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+      lightNode: undefined
+    });
+
+    var renderNode = scene.constructNode('BaseDeferredRenderer', {
+      colorBuffers: [{name: 'positionsZ', nbChannels: 1}, {name: 'normals', nbChannels: 3}, {name: 'diffuse', nbChannels: 4, internalFormat: FABRIC.SceneGraph.OpenGLConstants.GL_RGBA8}],
+      clearColor: FABRIC.RT.rgba(0.5,0.5,0.5,1.0)
+    });
+    var compositingMaterial = scene.constructNode('DeferredPostToonMaterial', {
+      shadeFullScreen: true,
+      rendererNode: renderNode.pub
+     });
+    return renderNode;
+  }});
+
+$(document).ready(function() {
+
+    var scene = FABRIC.SceneGraph.createScene();
+    var viewport = scene.constructNode('Viewport', {
+      windowElement: document.getElementById('FabricContainer'),
+      enableRaycasting: true,
+      backgroundColor: FABRIC.RT.rgb(0.0,0.0,0.0,0.0)
+    });
+
+    // Create a camera to draw the scene from
+    camera = scene.constructNode('TargetCamera', {
+        nearDistance: 1,
+        farDistance: 50,
+        target: new FABRIC.RT.Vec3(0,2,0),
+        position: new FABRIC.RT.Vec3(-1.8, 2.1, 7.93)
+      });
+    var cameraTransform = camera.getTransformNode();
+    scene.constructNode('CameraManipulator', { targetNode: camera });
+    viewport.setCameraNode(camera);
+
+    var toonRenderer = scene.constructNode('ToonRenderer', {lightNode: light});
+
+    var light = scene.constructNode('SpotLight', {
+      position: new FABRIC.RT.Vec3(5,15,5),
+      target: new FABRIC.RT.Vec3(0,0,0),
+      farDistance: 50,
+      resolution: 1024,
+      coneAngle: Math.degToRad(85.0),
+      castShadows: true
+    });
+    var shadowMapMaterial = scene.constructNode('ShadowMaterial');
+
+    // create the world grid
+    var worldGrid = scene.constructNode('Instance', {
+      geometryNode: scene.constructNode('Plane', {
+        width: 100.0,
+        length: 100.0,
+      }),
+      materialNode: scene.constructNode('DeferredPreGroundPlaneMaterial', {
+        lightNode: light,
+        step: 0.02,
+        brightColor: FABRIC.RT.rgba(0.6,0.6,0.6,1),
+        darkColor: FABRIC.RT.rgba(0.4,0.4,0.4,1),
+        rendererNode: toonRenderer
+      })
+    });
+
+    var workPlane = scene.constructNode('WorkPlane', {
+      cameraNode: camera,
+      materialNode: worldGrid.getMaterialNode()
+    });
+    
+    //==========================================================
+    // UNDO
+    var undoManager = scene.constructManager('UndoManager');
+    $("#undo").click(function(){
+      undoManager.undo();
+      viewport.redraw();
+    });
+    $("#redo").click(function(){
+      undoManager.redo();
+      viewport.redraw();
+    });
+
+    //==========================================================
+    // SELECTION
+    var selectionManager = scene.constructManager('ViewportSelectionManager', { undoManager: undoManager} );
+    var selectionManipulationManager = scene.constructManager('SelectionManipulationManager', {
+      manipulators: [],
+      selectionManager: selectionManager,
+      transformGetter: 'getInitialTransform',
+      transformSetter: 'setInitialTransform',
+    });
+    selectionManipulationManager.addManipulator(scene.constructNode('ScreenTranslationManipulator',{
+      parentNode: selectionManipulationManager.getTransformNode(),
+      materialNode: scene.constructNode('FlatMaterial', {color: FABRIC.RT.rgb(0, 0.8, 0, 1), drawOverlaid: true}),
+      radius: 0.35
+    }));
+    selectionManipulationManager.addManipulator(scene.constructNode('RotationManipulator',{
+      parentNode: selectionManipulationManager.getTransformNode(),
+      materialNode: scene.constructNode('FlatMaterial', {color: FABRIC.RT.rgb(0.8, 0, 0, 1), drawOverlaid: true}),
+      localXfo: new FABRIC.RT.Xfo({ ori: new FABRIC.RT.Quat().setFromAxisAndAngle(new FABRIC.RT.Vec3(0, 0, 1), -Math.HALF_PI) }),
+      radius: 2.0
+    }));
+    selectionManipulationManager.addManipulator(scene.constructNode('RotationManipulator',{
+      parentNode: selectionManipulationManager.getTransformNode(),
+      materialNode: scene.constructNode('FlatMaterial', {color: FABRIC.RT.rgb(0, 0.8, 0, 1), drawOverlaid: true}),
+      color: FABRIC.RT.rgb(0, 0.8, 0, 1),
+      radius: 2.0
+    }));
+    selectionManipulationManager.addManipulator(scene.constructNode('RotationManipulator',{
+      parentNode: selectionManipulationManager.getTransformNode(),
+      materialNode: scene.constructNode('FlatMaterial', {color: FABRIC.RT.rgb(0, 0, 0.8, 1), drawOverlaid: true}),
+      localXfo: new FABRIC.RT.Xfo({ ori: new FABRIC.RT.Quat().setFromAxisAndAngle(new FABRIC.RT.Vec3(1, 0, 0), Math.HALF_PI) }),
+      radius: 2.0
+    }));
+
+    //==========================================================
+    // MATERIALS + GEOMETRY
+    var geometryNodes = {};
+    var materialNodes = {};
+    geometryNodes['primitiveCube'] = scene.constructNode('Cuboid', {
+      length: 1.0,
+      width: 1.0,
+      height: 1.0
+    });
+    geometryNodes['primitiveFlat'] = scene.constructNode('Cuboid', {
+      length: 3.0,
+      width: 1.0,
+      height: 0.5
+    });
+    geometryNodes['primitiveHigh'] = scene.constructNode('Cuboid', {
+      length: 0.25,
+      width: 0.25,
+      height: 2.0
+    });
+    geometryNodes['primitiveSphere'] = scene.constructNode('Sphere', {
+      radius:0.5,
+      detail: 8
+    });
+    geometryNodes['primitiveBall'] = scene.constructNode('Sphere', {
+      radius:1.0,
+      detail: 8
+    });
+    geometryNodes['primitiveCoin'] = scene.constructNode('Cylinder', {
+      radius:1.0,
+      height:0.1,
+      detail: 12
+    });
+    var colorSteps = 2.0;
+    materialNodes['primitiveCube'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(165/255,118/255,74/255),
+      brightColor: FABRIC.RT.rgb(201/255,168/255,117/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+    materialNodes['primitiveFlat'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(35/255,52/255,72/255),
+      brightColor: FABRIC.RT.rgb(81/255,96/255,115/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+    materialNodes['primitiveHigh'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(127/255,49/255,45/255),
+      brightColor: FABRIC.RT.rgb(176/255,125/255,122/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+    materialNodes['primitiveSphere'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(128/255,142/255,0/255),
+      brightColor: FABRIC.RT.rgb(230/255,255/255,0/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+    materialNodes['primitiveBall'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(128/255,0/255,0/255),
+      brightColor: FABRIC.RT.rgb(255/255,0/255,0/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+    materialNodes['primitiveCoin'] = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(0/255,0/255,123/255),
+      brightColor: FABRIC.RT.rgb(0/255,0/255,255/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+
+    var highlightMaterial = scene.constructNode('DeferredPreShadowCastingToonMaterial', {
+      lightNode: light,
+      darkColor: FABRIC.RT.rgb(77/255,159/255,70/255),
+      brightColor: FABRIC.RT.rgb(207/255,255/255,203/255),
+      colorSteps: colorSteps,
+      rendererNode: toonRenderer
+    });
+
+    //==========================================================
+    // BULLET LOGIC
+    var worldNode = scene.constructNode('BulletWorldNode', {
+      groundPlaneSize: 100,
+      substeps: 6,
+      createGroundPlaneGrid: false
+    });
+
+    // create a force manipulator
+    var forceManipulatorNode = scene.constructNode('BulletForceManipulator', {
+      bulletWorldNode: worldNode,
+      cameraNode: camera,
+      radius: 1.0,
+      factor: 250,
+      useFalloff: false,
+      enabled: false
+    });
+
+    // create all collision shapes
+    var scalings = {};
+    scalings['primitiveCube'] = new FABRIC.RT.Vec3(0.5,0.5,0.5);
+    scalings['primitiveFlat'] = new FABRIC.RT.Vec3(1.5,0.25,0.5);
+    scalings['primitiveHigh'] = new FABRIC.RT.Vec3(0.125,1.0,0.125);
+    scalings['primitiveSphere'] = new FABRIC.RT.Vec3(0.5,0.5,0.5);
+    scalings['primitiveBall'] = new FABRIC.RT.Vec3(1.0,1.0,1.0);
+    scalings['primitiveCoin'] = new FABRIC.RT.Vec3(1.0,0.1,1.0);
+    var masses = {};
+    masses['primitiveCube'] = 1.0;
+    masses['primitiveFlat'] = 2.0;
+    masses['primitiveHigh'] = 0.25;
+    masses['primitiveSphere'] = 1.0;
+    masses['primitiveBall'] = 3.0;
+    masses['primitiveCoin'] = 0.1;
+
+    // create all shapes
+    worldNode.addShape('primitiveCube',FABRIC.RT.BulletShape.createBox(scalings['primitiveCube']));
+    worldNode.addShape('primitiveFlat',FABRIC.RT.BulletShape.createBox(scalings['primitiveFlat']));
+    worldNode.addShape('primitiveHigh',FABRIC.RT.BulletShape.createBox(scalings['primitiveHigh']));
+    worldNode.addShape('primitiveSphere',FABRIC.RT.BulletShape.createSphere(scalings['primitiveSphere'].y));
+    worldNode.addShape('primitiveBall',FABRIC.RT.BulletShape.createSphere(scalings['primitiveBall'].y));
+    worldNode.addShape('primitiveCoin',FABRIC.RT.BulletShape.createCylinder(scalings['primitiveCoin'].x,scalings['primitiveCoin'].y));
+
+    var ws = false;
+    var isPlaying = false;
+    var rigidBodies = {};
+    var rigidBodyCount = 0;
+    var messagesToProcess = [];
+
+    // serialize the rigid body data
+    var getRigidBodyJsonData = function(bodies, skipName) {
+      var data = {};
+      for(var key in bodies) {
+        data[bodies[key].name] = {};
+        if(!skipName) {
+          data[bodies[key].name].name = bodies[key].name;
+        }
+        data[bodies[key].name].type = bodies[key].type;
+        data[bodies[key].name].transform = bodies[key].transformNode.getGlobalXfo();
+      }
+      return data;
+    };
+
+    // constuct a single body
+    function constructRigidBody(type,xfo,name,notify) {
+      if(!xfo) xfo = new FABRIC.RT.Xfo();
+      if(!name) name = type+'_'+rigidBodyCount;
+      if(rigidBodies[name])
+        return rigidBodies[name];
+
+      var body = new FABRIC.RT.BulletRigidBody({
+        transform: xfo
+      });
+
+      var transform = scene.constructNode('BulletRigidBodyTransform', {
+        bulletWorldNode: worldNode,
+        name: name,
+        shapeName: type,
+        rigidBody: new FABRIC.RT.BulletRigidBody({
+            transform: xfo,
+            friction: 0.99,
+            restitution: 0.05,
+            mass: masses[type]
+        }),
+        createBulletRaycastEventHandler: false
+      });
+      transform.setInitialTransform(xfo);
+
+      var instance = scene.constructNode('SelectableInstance', {
+        name: name+"_Instance",
+        geometryNode: geometryNodes[type],
+        materialNode: materialNodes[type],
+        transformNode: transform,
+        enableRaycasting: true,
+        highlightMaterial: highlightMaterial,
+        selectMaterial: highlightMaterial,
+        removeMainMaterial: true
+      });
+      instance.setSelectable(false);
+      instance.addMaterialNode(shadowMapMaterial);
+      instance.addEventListener("mousedown_geom",forceManipulatorNode.getMouseDownFn());
+
+      // store it to the map    
+      rigidBodies[name] = {};
+      rigidBodies[name].name = name;
+      rigidBodies[name].type = type;
+      rigidBodies[name].transformNode = transform;
+      rigidBodies[name].transform = xfo;
+      rigidBodies[name].instance = instance;
+      rigidBodies[name].world = worldNode;
+
+      if(ws && notify) {
+        ws.sendMessage('rigidBodiesCreated', getRigidBodyJsonData({name: rigidBodies[name]}));
+      }
+      rigidBodyCount++;
+
+      return rigidBodies[name];
+    }
+
+    var processRigidBodyMessages = function(messages){
+      var result = {};
+      for(var i=0;i<messages.length;i++) {
+        var message = messages[i];
+        if(message.action == 'rigidBodiesCreated') {
+          for(var key in message.data) {
+            var newBody = constructRigidBody(
+              message.data[key].type,
+              message.data[key].transform,
+              message.data[key].name,
+              false
+            );
+            newBody.instance.setSelectable(true);
+            result[key] = newBody;
+          }
+        }
+        else if(message.action == 'rigidBodiesMoved') {
+          for(var key in message.data) {
+            var body = rigidBodies[message.data[key].name];
+            if(!body)
+              continue;
+            body.transformNode.setInitialTransform(message.data[key].transform);
+          }
+        }
+      }
+      viewport.redraw();
+      return result;
+    };
+
+    // construct a couple of sample cubes
+    if(true) {
+      constructRigidBody('primitiveCube',new FABRIC.RT.Xfo({
+        tr: new FABRIC.RT.Vec3(-3,0.5,0),
+        ori: new FABRIC.RT.Quat().setFromAxisAndAngle(new FABRIC.RT.Vec3(0,1,0),0.3)
+      })).instance.setSelectable(true);
+      constructRigidBody('primitiveCube',new FABRIC.RT.Xfo({
+        tr: new FABRIC.RT.Vec3(-3,1.5,0),
+        ori: new FABRIC.RT.Quat().setFromAxisAndAngle(new FABRIC.RT.Vec3(0,1,0),1.4)
+      })).instance.setSelectable(true);
+      constructRigidBody('primitiveCube',new FABRIC.RT.Xfo({
+        tr: new FABRIC.RT.Vec3(-3,2.5,0),
+        ori: new FABRIC.RT.Quat().setFromAxisAndAngle(new FABRIC.RT.Vec3(0,1,0),0.7)
+      })).instance.setSelectable(true);
+    }
+
+    //===============================================================
+    // WEBSOCKETS
+    $("#join").button();
+    try{
+      ws = scene.constructManager("WebSocketManager", {
+        serverUrl: 'ws.fabric-engine.com',
+        contextID: getUrlVars()['context'],
+        onOpenCallBack: function() {
+
+          // setup the invite link        
+          $("#joinSession").html(ws.getContextID());
+
+          // setup the join button
+          $("#join").button().click(function(){
+            viewport.hide();
+            $('#joinDialog').dialog({
+              modal: true
+            });
+            $('#joinCancel').button().click(function(){
+              $('#joinDialog').dialog('close');
+              viewport.show();
+            });
+            $('#joinOK').button().click(function(){
+              if($('#joinContext').val())
+                window.location.replace(document.URL.split('?')[0]+"?context="+$('#joinContext').val());
+              $('#joinDialog').dialog('close');
+              viewport.show();
+            });
+          });
+
+          // finally, let's fire the first event to let people know we exist!
+          setTimeout(function(){
+            // also, ask for all other participant
+            ws.sendMessage('queryParticipants',{});
+          }, 1000);
+        }
+      });
+
+      // setup self in the participants map
+      var participants = {};
+      var participantsCount = 0;
+      participants['_self'] = {};
+      participants['_self'].name = 'Yourself';
+      participantsCount++;
+
+      // setup a function to fill the camera list
+      function updateParticipantsList() {
+        var html = "";
+
+        for(var key in participants) {
+          if(key == '_self')
+            html += '<li class="active"><a href="#">'+participants[key].name+'</a></li>';
+          else
+            html += '<li><a href="#">'+participants[key].name+'</a></li>';
+        }
+
+        // attach an on-select event to the camera list 
+        $('#participantList').html(html);
+        $('#participantCount').html('('+participantsCount+')');
+      }
+      updateParticipantsList();
+
+      // setup a function to update the username
+      $('#participantName').change(function(ui){
+        participants['_self'].name = $('#participantName').val();
+        ws.sendMessage('setParticipantName',participants['_self'].name);
+        updateParticipantsList();
+      });
+
+      // setup a function to add a participant
+      function addParticipant(id,name) {
+        if(participants[id] == undefined) {
+
+          // create a new participant
+          var newParticipant = {};
+          newParticipant.name = name;
+
+          participants[id] = newParticipant;
+          updateParticipantsList();
+          participantsCount++;
+          updateParticipantsList();
+        }
+      }
+
+      // setup the function to be called when we receive a participant name change event
+      ws.addMessageCallBack('setParticipantName', function(message) {
+
+        if(message.sourceID == message.targetID)
+          return;
+
+        setTimeout(function(){
+          addParticipant(message.sourceID,message.data);
+          participants[message.sourceID].name = message.data;
+          updateParticipantsList();
+        }, 500);
+      });
+
+      // setup the function to be called when we receive a queryParticipants event
+      ws.addMessageCallBack('queryParticipants', function(message) {
+        if(message.sourceID == message.targetID)
+          return;
+
+        addParticipant(message.sourceID,'unknown');
+
+        // notify the called of our name
+        if(participants['_self'].name != 'Yourself')
+          ws.sendMessage('setParticipantName',participants['_self'].name,message.sourceID);
+        else
+          ws.sendMessage('setParticipantName','unknown',message.sourceID);
+
+        // send all rigid body data
+        ws.sendMessage('rigidBodiesCreated',getRigidBodyJsonData(rigidBodies));
+        ws.sendMessage('rigidBodiesMoved',getRigidBodyJsonData(rigidBodies));
+      });
+
+      // for created rigid bodies
+      ws.addMessageCallBack('rigidBodiesCreated', function(message) {
+        if(message.sourceID == message.targetID)
+          return;
+        if(isPlaying)
+          messagesToProcess.push(message);
+        else
+          processRigidBodyMessages([message]);
+      });
+
+      // for created moved bodies
+      ws.addMessageCallBack('rigidBodiesMoved', function(message) {
+        if(message.sourceID == message.targetID)
+          return;
+        if(isPlaying)
+          messagesToProcess.push(message);
+        else
+          processRigidBodyMessages([message]);
+      });
+
+      // ensure to send message for manipulated rigid bodies
+      var synchronizeRigidBodies = function(selection){
+        var bodiesToSave = {};
+        for(var i=0;i<selection.length;i++) {
+          var key = selection[i].getTransformNode().getName();
+          bodiesToSave[key] = {};
+          bodiesToSave[key].name = rigidBodies[key].name,
+          bodiesToSave[key].type = rigidBodies[key].type,
+          bodiesToSave[key].transform = rigidBodies[key].transformNode.getInitialTransform()
+        }
+        ws.sendMessage("rigidBodiesMoved",bodiesToSave);
+      }
+      selectionManager.addEventListener('selectionManipulated', function(evt){
+        synchronizeRigidBodies(evt.selection);
+      });
+      undoManager.addEventListener('undo', function(evt){
+        synchronizeRigidBodies(selectionManager.getSelection());
+      });
+      undoManager.addEventListener('redo', function(evt){
+        synchronizeRigidBodies(selectionManager.getSelection());
+      });
+
+    }catch(e){
+      // setup the join button
+      $('#participants').html('');
+      $('#joinMessage').html("<b style='color:#FF0000'>Error</b>: "+e+"<br>Currently only Google Chrome supports WebSocket natively.");
+      $("#join").button().click(function(){
+        viewport.hide();
+        $('#joinDialog').dialog({
+          modal: true
+        });
+        $('#joinCancel').button().click(function(){
+          $('#joinDialog').dialog('close');
+          viewport.show();
+        });
+        $('#joinOK').button().click(function(){
+          $('#joinDialog').dialog('close');
+          viewport.show();
+        });
+      });
+    }
+
+    //==========================================================
+    // PLAYBACK CONTROL
+    var manipulatorsDrawn = false;
+    var workPlaneDrawn = false;
+    $('#play').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-play'
+      }
+    }).click(function() {
+      var options;
+      if(!isPlaying) {
+        $(this).button('option', {
+          label: 'Pause',
+          icons: {
+            primary: 'ui-icon-pause'
+          }
+        });
+        workPlaneDrawn = workPlane.getDrawToggle();
+        if(workPlaneDrawn)
+          workPlane.getDrawToggle(false);
+        isPlaying = true;
+        manipulatorsDrawn = selectionManipulationManager.getManipulatorsDrawToggle();
+        selectionManager.setEnabled(false);
+        forceManipulatorNode.enable();
+        if(manipulatorsDrawn)
+          selectionManipulationManager.toggleManipulatorsDisplay(false);
+        scene.animation.play();
+      } else {
+        $(this).button('option', {
+          label: 'Play',
+          icons: {
+            primary: 'ui-icon-play'
+          }
+        });
+        scene.animation.pause();
+        if(workPlaneDrawn)
+          workPlane.getDrawToggle(true);
+        selectionManager.setEnabled(true);
+        forceManipulatorNode.disable();
+        if(manipulatorsDrawn)
+          selectionManipulationManager.toggleManipulatorsDisplay(true);
+
+        setTimeout(function(){
+          scene.animation.setTime(0);
+          viewport.redraw();
+          processRigidBodyMessages(messagesToProcess);
+          messagesToProcess = [];
+          isPlaying = false;
+        },10);
+      }
+    });
+
+    //==========================================================
+    // UI LOGIC
+    function alignCameraWithAxes(alignX,alignY,alignZ) {
+      var targetPos = cameraTransform.getTarget();
+      var xfo = cameraTransform.getGlobalXfo();
+      var distance = targetPos.subtract(xfo.tr).length();
+      if(alignX) xfo.tr.x = targetPos.x + 0.0001;
+      if(alignY) xfo.tr.y = targetPos.y;
+      if(alignZ) xfo.tr.z = targetPos.z;
+      xfo.tr = xfo.tr.subtract(targetPos).unit().multiplyScalar(distance).add(targetPos);
+      xfo.ori.setFromDirectionAndUpvector(xfo.tr.subtract(targetPos),new FABRIC.RT.Vec3(0,1,0));
+      cameraTransform.setGlobalXfo(xfo);
+      viewport.redraw();
+    }
+    /*
+    $('#workplaneblend').slider({
+      min: 0.0,
+      max: 1.0,
+      step: 0.01,
+      value: workPlane.getMaterialNode().getColorBlend()
+    }).bind('slide',
+      function(event, ui) {
+        workPlane.getMaterialNode().setColorBlend(ui.value);
+        viewport.redraw();
+      }
+    );//*/
+
+    // setup the help dialog
+    $("#help").click(function(){
+      viewport.hide();
+      $('#helpDialog').dialog({
+        modal: true,
+        width: 600
+      });
+      $('#helpOK').button().click(function(){
+        $('#helpDialog').dialog('close');
+        viewport.show();
+      });
+    });
+
+    // setup load and save
+    $("#presetSave").click(function(evt){
+      if(isPlaying)
+        return;
+      
+      var bodiesToSave = {};
+      if(selectionManager.getSelection().length == 0) {
+        bodiesToSave = getRigidBodyJsonData(rigidBodies,true);
+      } else {
+        for(var i=0;i<selectionManager.getSelection().length;i++) {
+          var key = selectionManager.getSelection()[i].getTransformNode().getName();
+          bodiesToSave[key] = {};
+          bodiesToSave[key].type = rigidBodies[key].type,
+          bodiesToSave[key].transform = rigidBodies[key].transformNode.getGlobalXfo()
+        }
+      }
+
+      if(evt.altKey) {
+        var path = FABRIC.IO.queryUserFileAndFolderHandle(FABRIC.IO.forOpenWithWriteAccess, "Bullet Editor Data", "json", "bulletScene");
+        FABRIC.IO.putTextFile(JSON.stringify(bodiesToSave), path);
+      } else {
+        $('#localStorageDescr').html('Save Preset');
+        $('#localStorageContent').html('<input id="localStorageName" type=text style="width:250px"/>');
+  
+        viewport.hide();
+        $('#localStorageDialog').dialog({
+          modal: true
+        });
+        $('#localStorageCancel').button().click(function(){
+  
+          $('#localStorageDialog').dialog('close');
+          viewport.show();
+        });
+        $('#localStorageOK').button().click(function(){
+          var presetName = $('#localStorageName').val();
+          if(presetName) {
+            // add this to our preset list
+            var presets = localStorage.getItem('playgroundPresetNames');
+            if(!presets)
+              presets = {};
+            else
+              presets = JSON.parse(presets);
+            presets[presetName] = 'playgroundPresetNames_'+presetName;
+            localStorage.setItem('playgroundPresetNames',JSON.stringify(presets));
+            localStorage.setItem(presets[presetName],JSON.stringify(bodiesToSave));
+          }
+          $('#localStorageDialog').dialog('close');
+          viewport.show();
+        });
+      }
+    });
+    $("#presetLoad").click(function(evt){
+      if(isPlaying)
+        return;
+      if(evt.altKey) {
+        var path = FABRIC.IO.queryUserFileAndFolderHandle(FABRIC.IO.forOpen, "Bullet Editor Data", "json", "bulletScene");
+        var jsonData = JSON.parse(FABRIC.IO.getTextFile(path));
+        var newBodies = processRigidBodyMessages([{action: 'rigidBodiesCreated', data: jsonData}]);
+        selectionManager.clearSelection();
+        var selection = [];
+        for(var key in newBodies) {
+          selection.push(newBodies[key].instance);
+        }
+        selectionManager.select(selection);
+        if(ws) {
+          ws.sendMessage("rigidBodiesCreated",newBodies);
+        }
+        viewport.redraw();
+      } else {
+        $('#localStorageDescr').html('Load Preset');
+        var presets = localStorage.getItem('playgroundPresetNames');
+        if(!presets)
+          return;
+        presets = JSON.parse(presets);
+        var html = "Please choose the preset to load in the list below:<br><br>";
+        html += '<select id="localStorageName" style="width:250px">';
+        for(var name in presets) {
+          html += '<option value="'+presets[name]+'">'+name+'</option>';
+        }
+        html += '</select>';
+        $('#localStorageContent').html(html);
+  
+        viewport.hide();
+        $('#localStorageDialog').dialog({
+          modal: true
+        });
+        $('#localStorageCancel').button().click(function(){
+  
+          $('#localStorageDialog').dialog('close');
+          viewport.show();
+        });
+        $('#localStorageOK').button().click(function(){
+          var presetName = $('#localStorageName').val();
+          if(presetName) {
+            var bodiesToLoad = localStorage.getItem(presetName);
+            if(bodiesToLoad) {
+              bodiesToLoad = JSON.parse(bodiesToLoad);
+  
+              var newBodies = processRigidBodyMessages([{action: 'rigidBodiesCreated', data: bodiesToLoad}]);
+              selectionManager.clearSelection();
+              var selection = [];
+              for(var key in newBodies) {
+                selection.push(newBodies[key].instance);
+              }
+              selectionManager.select(selection);
+              if(ws) {
+                ws.sendMessage("rigidBodiesCreated",newBodies);
+              }
+            }
+          }
+          $('#localStorageDialog').dialog('close');
+          viewport.show();
+        });
+      }
+    });
+    $("#presetDuplicate").click(function(){
+      if(isPlaying)
+        return;
+      if(selectionManager.getSelection().length == 0)
+        return;
+      var bodiesToSave = {};
+      for(var i=0;i<selectionManager.getSelection().length;i++) {
+        var key = selectionManager.getSelection()[i].getTransformNode().getName();
+        bodiesToSave[key] = {};
+        bodiesToSave[key].type = rigidBodies[key].type,
+        bodiesToSave[key].transform = rigidBodies[key].transformNode.getGlobalXfo()
+      }
+      var newBodies = processRigidBodyMessages([{action: 'rigidBodiesCreated', data: bodiesToSave}]);
+      selectionManager.clearSelection();
+      var selection = [];
+      for(var key in newBodies) {
+        selection.push(newBodies[key].instance);
+      }
+      selectionManager.select(selection);
+      if(ws) {
+        ws.sendMessage("rigidBodiesCreated",newBodies);
+      }
+      viewport.redraw();
+    });
+
+    //===========================================================
+    // DRAG AND DROP
+    $("#primitiveCube").draggable();
+    $("#primitiveFlat").draggable();
+    $("#primitiveHigh").draggable();
+    $("#primitiveSphere").draggable();
+    $("#primitiveBall").draggable();
+    $("#primitiveCoin").draggable();
+
+    var dragStatus = {};
+    var originalOffset = {};
+
+    // setup a function for dragging a 3d rigid body
+    var currentRigidBody = undefined;
+    var dragConstructedRigidBody = function(evt) {
+      if(!currentRigidBody)
+        return;
+
+      // construct an artifical rayEvent
+      var rayEvt = {
+        offsetX: evt.pageX - 270,
+        offsetY: evt.pageY,
+        target: {
+          clientWidth: $('#FabricContainer').width()
+        }
+      };
+
+      var planeXfo = workPlane.getTransformNode().getGlobalXfo();
+      var cameraXfo = cameraTransform.getGlobalXfo();
+      var target = cameraTransform.getTarget();
+      var rayData = viewport.rayCast(rayEvt).rayData;
+      var distance = FABRIC.RT.Vec3.rayIntersectPlane(rayData.start,rayData.direction,target,planeXfo.ori.getYaxis());
+      var xfo = new FABRIC.RT.Xfo();
+      xfo.tr = rayData.start.add(rayData.direction.multiplyScalar(distance));
+      if(evt.shiftKey) {
+        xfo.tr = planeXfo.ori.inverse().rotateVector(xfo.tr.subtract(target));
+        xfo.tr.x = Math.floor(xfo.tr.x+0.5)-0.5;
+        xfo.tr.y = Math.floor(xfo.tr.y+0.5)-0.5;
+        xfo.tr = planeXfo.ori.rotateVector(xfo.tr.add(target));
+      }
+      xfo.tr.y = xfo.tr.y < scalings[currentRigidBody.type].y ? scalings[currentRigidBody.type].y : xfo.tr.y;
+
+      xfo.ori.setFromDirectionAndUpvector(new FABRIC.RT.Vec3(0,-1,0),planeXfo.ori.getYaxis());
+      var offset = new FABRIC.RT.Quat();
+      offset.setFromAxisAndAngle(
+        new FABRIC.RT.Vec3(1,0,0),
+        Math.degToRad(90.0)
+      );
+      xfo.ori.setFromDirectionAndUpvector(new FABRIC.RT.Vec3(0,-1,0),planeXfo.ori.getYaxis());
+      xfo.ori = xfo.ori.multiply(offset);
+
+      worldNode.setRigidBodyInitialTransform(currentRigidBody.name,xfo);
+      currentRigidBody.transform = xfo;
+
+      if(ws)
+        ws.sendMessage("rigidBodiesMoved",{name: currentRigidBody});
+
+      viewport.redraw();
+    };
+    var currentDraggedId = undefined;
+
+    // define the viewport as a drop target
+    $("#FabricContainer").droppable({
+      over: function(evt) {
+        if(isPlaying)
+          return;
+        if(!currentDraggedId)
+          return;
+        if(dragStatus[currentDraggedId] != 'outside')
+          return;
+        dragStatus[currentDraggedId] = 'inside';
+
+        // update the evt data
+        currentRigidBody = constructRigidBody(currentDraggedId,undefined,undefined,true);
+
+        dragConstructedRigidBody(evt);
+        document.addEventListener('mousemove',dragConstructedRigidBody);
+      },
+      drop: function(evt) {
+        if(isPlaying)
+          return;
+        if(!currentDraggedId)
+          return;
+        if(dragStatus[currentDraggedId] != 'inside')
+          return;
+
+        // actual drop
+        document.removeEventListener('mousemove',dragConstructedRigidBody);
+        if(currentRigidBody)
+          currentRigidBody.instance.setSelectable(true);
+        currentRigidBody = undefined;
+      },
+      activate: function(evt, ui) {
+        // store the element's offset
+        var draggedElem =  ui.draggable[0];
+        currentDraggedId = draggedElem.getAttribute('id');
+        originalOffset[currentDraggedId] = $("#"+currentDraggedId).offset();
+        dragStatus[currentDraggedId] = 'outside';
+        selectionManager.setEnabled(false);
+      },
+      deactivate: function(evt) {
+        if(!currentDraggedId)
+          return;
+
+        // restore the element's offset
+        $("#"+currentDraggedId).offset(originalOffset[currentDraggedId]);
+        dragStatus[currentDraggedId] = undefined;
+        currentDraggedId = undefined;
+        selectionManager.setEnabled(true);
+      }
+    });
+
+    $('#loadingDialog').dialog({
+      modal: true
+    });
+    FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+      $('#loadingProgressBar').progressbar({
+        value: (1.0-(doneWeight/totalWeight))*100
+      });
+      if (nbRemaining===0) {
+        $('#loadingDialog').dialog('close');
+        var errors = scene.getErrors();
+        if (errors.length > 0) {
+          throw (errors.toString());
+        }
+        viewport.redraw();
+        return true;
+      }
+    });
+  });
+});
+
+  // jQuert UI Styling classes
+  $(document).ready(function() {
+  	$(".box").addClass("ui-widget");
+  	$(".box h2").addClass("ui-widget-header ui-corner-all");
+  	$(".content").addClass("ui-widget-content");
+  });
+
+</script>
+
+
+</head>
+<body>
+  <div id="loadingDialog" title="Loading...">
+    <h4 id="loadingDesc"></h4>
+    <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+  </div>
+  <div style="display: none" id="joinDialog" title="Joining Session...">
+    <h4 id="joinDesc"></h4>
+    <div id='joinMessage'>
+      Your current sessionID is: <b id="joinSession"></b><br>
+      <input id="joinContext" type=text/><br>
+      Enter the new sessionID and click OK to join a new session (restart appplication)<br>
+    </div>
+    <button id="joinCancel">Cancel</button>
+    <button id="joinOK">OK</button>
+  </div>
+  <div style="display: none" id="localStorageDialog" title="Preset Storage">
+    <h4 id="localStorageDescr"></h4>
+    <div id='localStorageContent'></div>
+    <button id="localStorageCancel">Cancel</button>
+    <button id="localStorageOK">OK</button>
+  </div>
+  <div style="display: none" id="helpDialog" title="Help">
+    <h4>Bullet Editor Help</h4>
+    Drag and drop the primitives from the side panel slowly onto the 3D viewport to create new rigid bodies.
+    They will be placed on a working plane. You can move the working plane by scrolling your mousewheel
+    and pressing ALT at the same time.<br><br>
+    You can save the selected rigid bodies to a preset. Simply name the preset as you wish. You can then
+    later load the preset to recover a copy of the previously selected rigid bodies. Use the first and second
+    controls for this. When holding the 'ALT' key while clicking on save or load, you can store/restore the rigid body
+    data to an external json file on your local disk, to share it with other people through a file.<br><br>
+    Furthermore you can duplicate the selected rigid bodies, by clicking on the third control icon.<br><br>
+    You can multi select rigid bodies by holding down the CTRL key while clicking on objects. The manipulators
+    will then be applied to all objects in the selection.<br><br>
+    You have an Undo and Redo feature for your disposal, which works for manipulation as well as selection (not
+    for creation of rigid bodies).<br><br>
+    To invite other people to your session, click the 'join' button, write down the session ID and click cancel.
+    Share the session ID with other people (for example through email). They will then have to click on 'join'
+    as well, enter the shared session ID and click 'OK' to join in.<br><br>
+    <button id="helpOK">OK</button>
+  </div>
+  <div class="page">
+    <aside id="sidebar">
+      <article class="intro">
+        <h1>Bullet <span>The Playground</span></h1>
+        <p>Build a physics scene with your friends</p>
+        <a id="play" class="play" href="#">Play</a>
+      </article>
+      <nav class="controls">
+        <ul>
+          <li><a id="presetLoad" class="load" href="#">Load</a></li>
+          <li><a id="presetSave" class="save" href="#">Save</a></li>
+          <li><a id="presetDuplicate" class="duplicate" href="#">Duplicate</a></li>
+          <li><a id="undo" class="undo" href="#">Undo</a></li>
+          <li><a id="redo" class="redo" href="#">Redo</a></li>
+          <li><a id="help" class="help" href="#">?</a></li>
+        </ul>
+      </nav>
+      <nav class="tools">
+        <ul>
+          <li>
+            <h2>Add Primitives</h2>
+            <ul class="primitives">
+              <li><a id="primitiveCube" class="cube" href="#">Cube</a></li>
+              <li><a id="primitiveSphere" class="circle" href="#">Circle</a></li>
+              <li><a id="primitiveFlat" class="plank" href="#">Flat Plank</a></li>
+              <li><a id="primitiveHigh" class="pole" href="#">Thin Pole</a></li>
+              <li><a id="primitiveBall" class="ball" href="#">Ball</a></li>
+              <li><a id="primitiveCoin" class="coin" href="#">Coin</a></li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="participants">
+        <div class="heading">
+          <h2>Participants</h2>
+          <span class="num" id="participantCount">(1)</span>
+        </div>
+        <form class="search" action="#">
+          <fieldset>
+            <input id="participantName" type="text" value="Yourself" >
+            <input style="width: 30px; margin-left: 5px" id="join" value='Join'/>
+          </fieldset>
+        </form>
+        <div class="list">
+          <ul id="participantList">
+            <li class="active"><a href="#">Yourself</a></li>
+          </ul>
+        </div>
+      </article>
+    </aside>
+    <section id="FabricContainer">
+
+    </section>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+["binding 0: operator 'op': node 'self': parameter 2: member 'bar': parameter type mismatch: member element type is 'Size', operator parameter type is 'String'","binding 0: operator 'op': node 'self': parameter 1: member 'foo': parameter type mismatch: member element type is 'String', operator parameter type is 'Size'"]

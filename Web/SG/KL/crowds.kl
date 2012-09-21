@@ -1,0 +1,204 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricMath;
+use Vec2, Vec3, Quat, Xfo;
+use Color;
+use HashTable;
+use DebugGeometry;
+
+operator calcCellIndex(
+  io Vec3 position,
+  io Vec3 cellcoords,
+  io Integer cellindex,
+  io HashTable hashtable
+) {
+  // determine the cell that this particle belongs to.
+  cellindex = hashtable.calcCellIndex(hashtable.clampPosition(position), cellcoords);
+}
+
+operator populateHashTable(
+  io HashTable hashtable,
+  io Integer cellIndices<>
+) {
+  // Reset the hash table, and re-accumulate the ids.
+  Size numCells = hashtable.x_count * hashtable.y_count * hashtable.z_count;
+  hashtable.cells.resize(numCells);
+  for (Index i = 0; i < numCells; ++ i)
+    hashtable.cells[i].resize(0);
+
+  for (Index i = 0; i < cellIndices.size; i++) {
+    Integer cellIndex = cellIndices[i];
+    hashtable.cells[cellIndex].push(i);
+  }
+}
+
+operator copyCurrentFrameDataToPrevFrameData(
+  io Xfo xfo,
+  io Vec3 velocity,
+  io Vec3 previousframe_position,
+  io Vec3 previousframe_velocity,
+  io HashTable hashtable
+) {
+  // Clamp the particle within the bounds of the hash grid
+  previousframe_position = hashtable.clampPosition(xfo.tr);
+  previousframe_velocity = velocity;
+}
+
+//===================================================================
+
+// cpa_time(): compute the time of CPA for two moving points
+//    Input:  two tracks Tr1 and Tr2
+//    Return: the time at which the two tracks are closest
+function Scalar cpa_time(Vec3 agent1Pos, Vec3 agent1Vel, Vec3 agent2Pos, Vec3 agent2Vel )
+{
+  Vec3   dv = agent1Vel - agent2Vel;
+
+  Scalar    dv2 = dv.dot(dv);
+  if (dv2 < PRECISION)      // the tracks are almost parallel
+      return 0.0;            // any time is ok.  Use time 0.
+
+  Vec3   w0 = agent1Pos - agent2Pos;
+  Scalar cpatime = -w0.dot(dv) / dv2;
+
+  return cpatime;            // time of CPA
+}
+
+
+operator simulateCrowd(
+  in Size index,
+  io Boolean initialized,
+  io Vec3 goal,
+  io Integer cellindex,
+  io Vec3 cellcoords,
+
+  io Xfo xfo, /* In theory we don't modify this. Only calculate new movement contols.*/
+  io Vec3 goalVelocity,
+  io Vec3 previousframe_positions<>,
+  io Vec3 previousframe_velocities<>,
+  io Scalar maxLinearVelocity,
+  io Scalar maxAngularVelocity,
+  io Vec3 linearVelocity,
+  
+
+  io Scalar neighborInfluenceRange,
+  io Scalar agentRadius,
+  io HashTable hashtable,
+
+  io Scalar timestep,
+
+  io Integer neighborIndices[],
+  io Scalar neighborDistances[],
+  io DebugGeometry debugDraw,
+  io Boolean displayDebugging
+) {
+  if(timestep==0.0){
+    return;
+  }
+  Integer i;
+  
+  // We start with our previous frame position, and simulate using the pevious
+  // frame data to calculate the new current frame data. This happens in parallal
+  // across many particles at once.
+  xfo.tr = previousframe_positions[index];
+  
+  ///////////////////////////////////////////////
+  // Broad Phase Interaction Detection
+  // This function gathers all the points fomr the current cell, and neighboring cells.
+  hashtable.getNeighboringIndices(
+    cellindex,
+    cellcoords,
+    neighborIndices
+  );
+  
+  ///////////////////////////////////////////////
+  // Narrow Phase Interaction Detection
+  neighborDistances.resize(neighborIndices.size());
+  for (i = 0; i < neighborIndices.size; i++) {
+    neighborDistances[i] = xfo.tr.distanceTo(previousframe_positions[neighborIndices[i]]);
+  }
+  
+  debugDraw.reset();
+  goalVelocity.setNull();
+  
+  //////////////////////////////////////////////////////
+  // Now we do some simulation
+  // Goal Seek
+  {
+    if(displayDebugging){
+      debugDraw.drawLine(xfo.tr, goal, Color(0.0, 0.25, 0.0, 1.0));
+    }
+    Vec3 goalDir = goal - xfo.tr;
+    Scalar goalDist = goalDir.length();
+    if (goalDist > (agentRadius*2.0)) {
+      goalVelocity = goalDir * Vec3(maxLinearVelocity / goalDist, 0.0, maxLinearVelocity / goalDist);
+    }
+  }
+  
+  if (neighborIndices.size > 0) {
+    
+    //////////////////////////////////////////////////////
+    // Collision avoidance
+    Vec3 collisionAvoidance;
+    for (i = 0; i < neighborIndices.size; i++) {
+      Integer neighborId = neighborIndices[i];
+      if (neighborId == index) {
+        continue;
+      }
+      Integer cpaAgent = neighborIndices[i];
+      Scalar neighborDist = neighborDistances[i];
+      if (neighborDist < neighborInfluenceRange) {
+        Scalar cpaTime;
+        cpaTime = cpa_time(
+          xfo.tr,
+          goalVelocity,
+          previousframe_positions[cpaAgent],
+          previousframe_velocities[cpaAgent]
+        );
+        if(cpaTime < 0.0){
+          continue;
+        }
+        Vec3 p1 = xfo.tr + (cpaTime * goalVelocity);
+        Vec3 p2 = previousframe_positions[cpaAgent] + (cpaTime * previousframe_velocities[cpaAgent]);
+  
+        if(displayDebugging){
+          debugDraw.drawLine(xfo.tr, previousframe_positions[cpaAgent], Color(0.75, 0.0, 1.0, 1.0));
+          debugDraw.drawLine(p1, p2, Color(0.75, 0.0, 0.0, 1.0));
+        }
+        
+        Vec3 cpaVec = p1 - p2;
+        Scalar cpaDist = cpaVec.length();  // distance at CPA
+        if(cpaDist < (agentRadius*2.0)){
+          collisionAvoidance += cpaVec * ((((agentRadius*2.0)-cpaDist)/cpaDist ) / timestep );
+        }
+      }
+    }
+    goalVelocity += collisionAvoidance;
+  }
+  
+  Scalar goalSpeed = goalVelocity.length();
+  if(goalSpeed > maxLinearVelocity){
+    goalVelocity = goalVelocity * (maxLinearVelocity/goalSpeed);
+  }
+  else if(goalSpeed < (maxLinearVelocity * 0.3)){
+    // To reduce small trivial movements when being bumped
+    // by other agents, we prune small forces here.
+    goalVelocity.setNull();
+  }
+  
+  if(displayDebugging){
+  //  for (i = 0; i < neighborIndices.size; i++) {
+  //    Integer neighborId = neighborIndices[i];
+  //    Scalar neighborDist = neighborDistances[i];
+  //    if( neighborDist > 0.0 && neighborDist < neighborInfluenceRange){
+  //      debugDraw.drawLine(xfo.tr, xfo.tr + ((previousframe_positions[neighborId]-xfo.tr) * 0.47), Color(0.0, 0.25, 0.75, 1.0));
+  //    }
+  //  }
+    
+    debugDraw.drawCircle(Xfo(previousframe_positions[index], Quat()), agentRadius, Color(0.5, 0.25, 0.0, 0.5));
+    debugDraw.drawCircle(Xfo(previousframe_positions[index], Quat()), neighborInfluenceRange, Color(1.0, 0.25, 0.0, 0.5));
+  }
+}
+
+

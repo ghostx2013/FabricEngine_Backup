@@ -1,0 +1,519 @@
+<html xmlns="http://www.w3.org/1999/xhtml"> 
+  <head> 
+    <title>FABRIC - V8 Engine Viewer</title> 
+    
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript">
+    
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Parsers/parseOBJ"], function() {
+    
+
+FABRIC.SceneGraph.registerNodeType('CrankshaftTransform', {
+  factoryFn: function(options, scene) {
+    
+    scene.assignDefaults(options, {
+      });
+
+    options.hierarchical = false;
+    var crankshaftTransform = scene.constructNode('Transform', options);
+    var dgnode = crankshaftTransform.getDGNode();
+      
+    dgnode.setDependency(scene.getGlobalsNode(), 'globals');
+    dgnode.addMember('engineSpeed', 'Scalar', 1.0);
+    dgnode.addMember('phase', 'Scalar');
+    
+    crankshaftTransform.addMemberInterface( dgnode, 'engineSpeed', true);
+    
+    dgnode.bindings.append(scene.constructOperator({
+      operatorName: 'crankOp',
+      srcFile: 'KL/v8crankOp.kl',
+      parameterLayout: [
+        'self.globalXfo',
+        'self.phase',
+        'self.engineSpeed',
+        'globals.time'
+      ],
+      entryPoint: 'crankOp'
+    }));
+
+    return crankshaftTransform;
+  }});
+
+
+FABRIC.SceneGraph.registerNodeType('CamshaftTransform', {
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+        crankTransformNode:undefined
+      });
+    
+    options.hierarchical = false;
+    options.globalXfo = new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 114.4, 269.5) });
+    
+    var camshaftTransform = scene.constructNode('Transform', options);
+    var dgnode = camshaftTransform.getDGNode();
+    var crankTransformNode = scene.getPrivateInterface(options.crankTransformNode);
+  
+    dgnode.setDependency(crankTransformNode.getDGNode(), 'crank');
+    dgnode.addMember('phase', 'Scalar');
+    dgnode.bindings.append(scene.constructOperator({
+      operatorName: 'camOp',
+      srcFile: 'KL/v8camshaftOp.kl',
+      parameterLayout: [
+        'self.globalXfo',
+        'self.phase',
+        'crank.phase'
+      ],
+      entryPoint: 'camshaftOp'
+    }));
+
+    return camshaftTransform;
+  }});
+
+
+
+FABRIC.SceneGraph.registerNodeType('Pistons', {
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+        crankTransformNode:undefined,
+        pistonCount:1,
+        cylinderAngle:0.0,
+        phaseOffset:0.0,
+        axialShift:0.0
+      });
+
+    var crankTransformNode = scene.getPrivateInterface(options.crankTransformNode);
+    
+    var crankshaftTransform = scene.constructNode('SceneGraphNode', options),
+      dgnode = crankshaftTransform.constructDGNode('DGNode');
+    
+    dgnode.addMember('conrodXfo', 'Xfo');
+    dgnode.addMember('pistonXfo', 'Xfo');
+    dgnode.addMember('cylinderAngle', 'Scalar');
+    dgnode.addMember('phaseOffset', 'Scalar');
+    dgnode.addMember('axialShift', 'Scalar');
+    
+    dgnode.resize(options.pistonCount);
+    dgnode.setBulkData({
+      cylinderAngle:options.cylinderAngle,
+      phaseOffset:options.phaseOffset,
+      axialShift:options.axialShift
+    });
+    
+    dgnode.setDependency(crankTransformNode.getDGNode(), 'crank');
+    dgnode.bindings.append(scene.constructOperator({
+      operatorName: 'cylinderOp',
+      srcFile: 'KL/v8cylinderOp.kl',
+      parameterLayout: [
+        'self.conrodXfo',
+        'self.pistonXfo',
+        'self.cylinderAngle',
+        'self.phaseOffset',
+        'self.axialShift',
+        'crank.phase'
+      ],
+      entryPoint: 'cylinderOp'
+    }));
+    
+    return crankshaftTransform;
+  }});
+  
+  
+  
+FABRIC.SceneGraph.registerNodeType('PistonTransform', {
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+        pistonsNode:undefined,
+        index:1,
+        member:"",
+      });
+
+    var pistonsNode = scene.getPrivateInterface(options.pistonsNode);
+    
+    var pistonTransformNode = scene.constructNode('Transform', options),
+      dgnode = pistonTransformNode.getDGNode('DGNode');
+    dgnode.addMember('xfoIndex', 'Integer', options.index);
+    
+    dgnode.setDependency(pistonsNode.getDGNode(), 'pistons');
+    dgnode.bindings.append(scene.constructOperator({
+      operatorName: 'bindPistonOp',
+      srcCode: 'operator bindPistonOp(io Xfo globalXfo, io Integer xfoIndex,  io Xfo pistonXfos<>){\n\
+        globalXfo = pistonXfos[xfoIndex];\n\
+      }',
+      parameterLayout: [
+        'self.globalXfo',
+        'self.xfoIndex',
+        'pistons.'+options.member+'<>'
+      ],
+      entryPoint: 'bindPistonOp'
+    }));
+    
+    return pistonTransformNode;
+  }});
+  
+  
+$(document).ready(function() {
+
+  $('#play').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-play'
+      }
+    });
+  
+  var $engineSpeedSlider = $('#engineSpeed').slider({
+      min: 0.0,
+      max: 3.0,
+      step: 0.1
+    });
+  
+  /////////////////////////////////////////////////////////////////
+  // Create the scene.
+  // The scene serves as a factory object for the scene elements.
+  var scene = FABRIC.SceneGraph.createScene({ fixedTimeStep: false });
+  var viewport = scene.constructNode('Viewport', {
+      enableRaycasting: true,
+      mouseMoveEvents: false,
+      mouseUpEvents: false,
+      windowElement: document.getElementById('FabricContainer')
+    });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+
+  
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(400, 300, 400),
+      target: new FABRIC.RT.Vec3(0, 0, 0),
+      roll: 0
+    });
+
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', {
+    position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0)
+  });
+  var crankshaftMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb255(211, 211, 211),
+    lightNode: light
+  });
+  var pistonMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb255(90, 90, 90),
+    lightNode: light
+  });
+  var conrodMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb255(105, 105, 105),
+    lightNode: light
+  });
+  var camshaftMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb255(175, 175, 175),
+    lightNode: light
+  });
+
+  /////////////////////////////////////////////////
+  var loadObjFile = function(file, callback) {
+    var fileName = file.split('/').pop().split('.')[0];
+    scene.importAssetFile(file, {}, function(assetNodes){
+      trianglesNode = assetNodes[fileName];
+      callback(trianglesNode);
+    });
+  };
+  /////////////////////////////////////////////////
+  // Crankshaft
+  
+  var crankTransformNode = scene.constructNode('CrankshaftTransform');
+  
+  loadObjFile('Models/crankshaft.obj', function(geometryNode){
+      scene.constructNode('Instance', {
+        name: 'CrankShaft',
+        geometryNode: geometryNode,
+        transformNode: crankTransformNode,
+        materialNode: crankshaftMaterial,
+        enableRaycasting: true
+      });
+    });
+
+
+  /////////////////////////////////////////////////
+  // Camshaft
+  var camTransformNode = scene.constructNode('CamshaftTransform', {
+      crankTransformNode:crankTransformNode
+    });
+
+  loadObjFile('Models/camshaft.obj', function(geometryNode){
+    scene.constructNode('Instance', {
+        name: 'CamShaft',
+        geometryNode: geometryNode,
+        transformNode: camTransformNode,
+        materialNode: camshaftMaterial,
+        enableRaycasting: true
+      });
+  });
+
+  /////////////////////////////////////////////////
+  // Pistons
+  var pistonsNode = scene.constructNode('Pistons', {
+      crankTransformNode:crankTransformNode,
+      pistonCount:8,
+      cylinderAngle:[0.785398163, -0.785398163, 0.785398163, -0.785398163,
+                   0.785398163, -0.785398163, 0.785398163, -0.785398163],
+      phaseOffset:[0, 1.57079633, 1.57079633, 3.14159265, -1.57079633,
+                   0, 3.14159265, -1.57079633],
+      axialShift:[179.5, 155, 67, 43,
+                  -45, -68.5, -157.5, -180.5]
+    });
+
+  loadObjFile('Models/Piston1.obj', function(mesh){
+    for (var i = 0; i < 8; i++) {
+      scene.constructNode('Instance', {
+        name: 'PistonInstance' + (i + 1),
+        geometryNode: mesh,
+        transformNode: scene.constructNode('PistonTransform', {
+          pistonsNode: pistonsNode,
+          member: 'pistonXfo',
+          index:i
+        }),
+        materialNode: pistonMaterial,
+        enableRaycasting: true
+      });
+    }
+  });
+  var conrodMesh = loadObjFile('Models/Conrod1.obj', function(mesh){
+    for (var i = 0; i < 8; i++) {
+      scene.constructNode('Instance', {
+        name: 'ConrodInstance' + (i + 1),
+        geometryNode: mesh,
+        transformNode: scene.constructNode('PistonTransform', {
+          pistonsNode: pistonsNode,
+          member: 'conrodXfo',
+          index:i
+        }),
+        materialNode: conrodMaterial,
+        enableRaycasting: true
+      });
+    }
+  });
+  
+  /////////////////////////////////////////////////
+/*  // IntakeValve
+  window.intakeValveTransformNode = scene.constructNode("TransformNode();
+  intakeValveTransformNode.setParentNode( scene.getRootTransformNode() );
+  intakeValveTransformNode.localXfo = new new FABRIC.RT.Xfo(FABRIC.RT.Quat(0,0,0,1),
+    new FABRIC.RT.Vec3(0,114.4,269.5),new FABRIC.RT.Vec3(1,1,1));
+
+  intakeValveTransformNode.getDGNode().setDependency( crankTransformNode.getDGNode(), "camshaft" );
+  intakeValveTransformNode.getDGNode().addMember( "phase", "Scalar" );
+  intakeValveTransformNode.appendOperator(
+    {
+      operatorName:"camOp",
+      srcFile:"Resources/v8camshaftOp.k",
+      parameterLayout:[
+        "self.globalXfo",
+        "self.phase",
+        "crank.phase"
+      ],
+      entryPoint:"camshaftOp"
+    });
+
+*/
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+        
+      $('#play').button()
+        .click(function() {
+          var options;
+          if ($(this).text() == 'Play') {
+            $(this).button('option', {
+              label: 'Pause',
+              icons: {
+                primary: 'ui-icon-pause'
+              }
+            });
+            scene.animation.play();
+          } else {
+            $(this).button('option', {
+              label: 'Play',
+              icons: {
+                primary: 'ui-icon-play'
+              }
+            });
+            scene.animation.pause();
+          }
+        });
+  
+      $engineSpeedSlider.slider('value', crankTransformNode.getEngineSpeed());
+      $engineSpeedSlider.bind('slide',
+        function(event, ui) {
+          crankTransformNode.setEngineSpeed(ui.value);
+          scene.redrawAllViewports();
+        });
+  
+      var selectedMaterial;
+      var selectedMaterialColor;
+      scene.addEventListener('mousedown_geom', function(evt) {
+  
+        if (selectedMaterial) {
+          selectedMaterial.setDiffuseColor(selectedMaterialColor);
+        }
+  
+        var name = evt.targetNode.getName();
+        var text;
+        switch (name) {
+        case 'CrankShaft':
+          text = 'The crankshaft, sometimes casually abbreviated to crank, ' +
+                 'is the part of an engine which translates reciprocating linear ' +
+                 'piston motion into rotation. To convert the reciprocating motion ' +
+                 'into rotation, the crankshaft has "crank throws" or "crankpins", ' +
+                 'additional bearing surfaces whose axis is offset from that of the ' +
+                 'crank, to which the "big ends" of the connecting rods from each ' +
+                 'cylinder attach. It typically connects to a flywheel, to reduce the ' +
+                 'pulsation characteristic of the four-stroke cycle, and sometimes a ' +
+                 'torsional or vibrational damper at the opposite end, to reduce the ' +
+                 'torsion vibrations often caused along the length of the crankshaft ' +
+                 'by the cylinders farthest from the output end acting on the torsional ' +
+                 'elasticity of the metal.';
+          selectedMaterial = crankshaftMaterial;
+          break;
+        case 'CamShaft':
+          text = 'The relationship between the rotation of the camshaft and the rotation ' +
+                 'of the crankshaft is of critical importance. Since the valves control the flow ' +
+                 'of air/fuel mixture intake and exhaust gases, they must be opened and closed at' +
+                 'the appropriate time during the stroke of the piston. For this reason, the ' +
+                 'camshaft is connected to the crankshaft either directly, via a gear mechanism, ' +
+                 'or indirectly via a belt or chain called a timing belt or timing chain. Direct ' +
+                 'drive using gears is unusual because the frequently-reversing torque caused by ' +
+                 'the slope of the cams tends to quickly wear out gear teeth. Where gears are used, ' +
+                 'they tend to be made from resilient fibre rather than metal. In some designs the ' +
+                 'camshaft also drives the distributor and the oil and fuel pumps. Some General ' +
+                 'Motors vehicles also have the power steering pump driven by the camshaft. Also on ' +
+                 'early fuel injection systems, cams on the camshaft would operate the fuel injectors.';
+          selectedMaterial = camshaftMaterial;
+          break;
+        case 'PistonInstance1':
+        case 'PistonInstance2':
+        case 'PistonInstance3':
+        case 'PistonInstance4':
+        case 'PistonInstance5':
+        case 'PistonInstance6':
+        case 'PistonInstance7':
+        case 'PistonInstance8':
+          text = 'A piston is a component of reciprocating engines, reciprocating pumps, gas ' +
+                 'compressors and pneumatic cylinders, among other similar mechanisms. It is ' +
+                 'the moving component that is contained by a cylinder and is made gas-tight ' +
+                 'by piston rings. In an engine, its purpose is to transfer force from expanding ' +
+                 'gas in the cylinder to the crankshaft via a piston rod and/or connecting rod. ' +
+                 'In a pump, the function is reversed and force is transferred from the crankshaft ' +
+                 'to the piston for the purpose of compressing or ejecting the fluid in the cylinder. ' +
+                 'In some engines, the piston also acts as a valve by covering and uncovering ports ' +
+                 'in the cylinder wall.';
+          selectedMaterial = pistonMaterial;
+          break;
+        case 'ConrodInstance1':
+        case 'ConrodInstance2':
+        case 'ConrodInstance3':
+        case 'ConrodInstance4':
+        case 'ConrodInstance5':
+        case 'ConrodInstance6':
+        case 'ConrodInstance7':
+        case 'ConrodInstance8':
+          text = 'In a reciprocating piston engine, the connecting rod or conrod connects the piston ' +
+                 'to the crank or crankshaft. Together with the crank, they form a simple mechanism ' +
+                 'that converts linear motion into rotating motion. Connecting rods may also convert ' +
+                 'rotating motion into linear motion. Historically, before the development of engines, ' +
+                 'they were first used in this way. As a connecting rod is rigid, it may transmit either ' +
+                 'a push or a pull and so the rod may rotate the crank through both halves of a ' +
+                 'revolution, i.e. piston pushing and piston pulling. Earlier mechanisms, such as chains, ' +
+                 'could only pull. In a few two-stroke engines, the connecting rod is only required to push.';
+          selectedMaterial = conrodMaterial;
+          break;
+        }
+  
+        selectedMaterialColor = selectedMaterial.getDiffuseColor();
+        selectedMaterial.setDiffuseColor(FABRIC.RT.rgb255(175, 0, 0));
+  
+        evt.stopPropagation();
+        scene.redrawAllViewports();
+        
+        document.getElementById('enginePartHeading').childNodes[0].data = name.toUpperCase();
+        document.getElementById('enginePartDetails').childNodes[0].data = text;
+      });
+
+      viewport.redraw();
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        
+        <div id="sidebar">
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div>Engine Speed:</div>
+              <div id='engineSpeed' style="margin-top:10px;"></div>
+              <button id="play" style="margin-top:10px;">Play</button>
+            </div><!--content-->
+          </div><!--box-->
+      
+          <div class="box" id="enginePart">
+            <h2 id="enginePartHeading">DETAILS</h2>
+            <div class="content" id="enginePartDetails">
+            </div>
+          </div><!--box-->
+          
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    
+    </div><!--wrapper-->
+      
+  </body> 
+</html>

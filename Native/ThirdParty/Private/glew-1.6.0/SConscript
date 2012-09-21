@@ -1,0 +1,27 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'nativeEnv', 'buildOS' )
+
+glewEnv = nativeEnv.Clone()
+glewIncludeDir = glewEnv.Dir('.');
+glewEnv.Append( CPPDEFINES = ['GLEW_STATIC'] )
+glewEnv.Append( CPPPATH = [glewIncludeDir] )
+glewLib = glewEnv.StaticLibrary(
+  target = 'glew-1.6.0',
+  source = Glob( '*.c' )
+  )
+ 
+glewFlags = {}
+glewFlags['CPPDEFINES'] = ['GLEW_STATIC']
+glewFlags['CPPPATH'] = [glewIncludeDir]
+glewFlags['LIBS'] = [glewLib]
+if buildOS == 'Linux':
+  glewFlags['LIBS'].append('GL')
+if buildOS == 'Darwin':
+  glewFlags['FRAMEWORKS'] = ['OpenGL']
+if buildOS == 'Windows':
+  glewFlags['LIBS'].append('opengl32')
+Export( 'glewFlags' )

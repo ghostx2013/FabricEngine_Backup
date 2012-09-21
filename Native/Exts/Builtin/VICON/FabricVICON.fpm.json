@@ -1,0 +1,4 @@
+{
+  "libs": "FabricVICON",
+  "code": "function FabricVICONInit( io String hostname, io Size count, io Scalar time, io Integer tryCount );\nfunction FabricVICONReceive(io Scalar positions[] );\n"
+}

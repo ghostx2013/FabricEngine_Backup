@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Integer result;
+  if ( 1 == 2 )
+    result = 1;
+  else
+    result = 0;
+  report(result);
+}

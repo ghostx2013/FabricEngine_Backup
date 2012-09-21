@@ -1,0 +1,372 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+  <head> 
+    <title>FABRIC - Flocking</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Particles"], function() {
+    
+FABRIC.SceneGraph.registerNodeType('Flock', {
+  briefDesc: 'The Flock node is a Particles node which simulates flocking behaviour.',
+  detailedDesc: 'The Flock node is a Particles node which simulates flocking behaviour through KL operators. ' +
+                'The node is furthermore able to visualize the current flocking targets for each particle.',
+  parentNodeDesc: 'Particles',
+  optionsDesc: {
+    displayDebugging: 'Set to true to draw the current flocking target for each particle.',
+  },
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+      displayDebugging: true
+    });
+
+    options.createSpatialHashTable = true;
+    options.animated = true;
+    options.simulated = true;
+
+    var flockNode = scene.constructNode('Particles', options);
+    flockNode.pub.addVertexAttributeValue('goals', 'Vec3');
+    flockNode.pub.addVertexAttributeValue('neighborIndices', 'Integer[]');
+    flockNode.pub.addVertexAttributeValue('neighborDistances', 'Scalar[]');
+    
+    var neighborInfluenceRange = options.cellsize / 2.0;
+    flockNode.pub.addVertexAttributeValue('neighborinfluencerange', 'Scalar', { defaultValue:neighborInfluenceRange });
+    
+    flockNode.pub.addVertexAttributeValue('initialized', 'Boolean', false );
+    flockNode.pub.addVertexAttributeValue('debugDraw', 'DebugGeometry' );
+    flockNode.pub.addUniformValue('displayDebugging', 'Boolean', options.displayDebugging, true );
+    
+    flockNode.getAttributesDGNode().setDependency(scene.getGlobalsNode(), 'globals');
+    flockNode.getAttributesDGNode().bindings.append(scene.constructOperator({
+      operatorName: 'simulateParticles',
+      srcFile: 'KL/flocking.kl',
+      entryPoint: 'simulateFlock',
+      parameterLayout: [
+        'self.index',
+        'self.initialized',
+
+        'self.positions',
+        'self.velocities',
+        'self.goals',
+        'self.cellindices',
+        'self.cellcoords',
+
+        'self.previousframe_positions<>',
+        'self.previousframe_velocities<>',
+
+        'self.neighborinfluencerange',
+        'uniforms.hashtable',
+
+        'globals.timestep',
+
+        'self.neighborIndices',
+        'self.neighborDistances',
+        'self.debugDraw',
+        'uniforms.displayDebugging'
+      ]
+    }));
+    
+    
+    var debugGeometryDraw = scene.constructNode('DebugGeometryDraw', {
+        dgnode: flockNode.getAttributesDGNode(),
+        debugGemetryMemberName: 'debugDraw'
+    });
+    
+    return flockNode;
+  }});
+
+    
+$(document).ready(function() {
+
+  $('#play').button({
+    text: true,
+    icons: {
+      primary: 'ui-icon-play'
+    }
+  });
+
+  $('#step').button({
+    text: true,
+    icons: {
+      primary: 'ui-icon-step'
+    }
+  });
+  $('#openDebugger').button();
+  
+  try{
+    if(localStorage && localStorage.getItem("flockParams")){
+      flockParams = JSON.parse(localStorage.getItem("flockParams"));
+    }
+    else{
+      throw "no flockparams";
+    }
+  }catch(e){
+    flockParams = { sceneSize:'medium', displayDebugging: true };
+  }
+        
+  $("#numAgents").val(flockParams.sceneSize);
+  $("#displayDebugging").attr('checked', flockParams.displayDebugging);
+  
+
+  var numAgents, gridSize, cameraPos;
+  switch(flockParams.sceneSize){
+    case 'tiny':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(0.1);
+      numAgents = 10;
+      gridSize = 6;
+      break;
+    case 'small':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(0.2);
+      numAgents = 100;
+      gridSize = 10;
+      break;
+    case 'medium':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(0.5);
+      numAgents = 2000;
+      gridSize = 30;
+      break;
+    case 'huge':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(1.0);
+      numAgents = 10000;
+      gridSize = 100;
+      break;
+    case 'massive':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(10);
+      numAgents = 100000;
+      gridSize = 400;
+      break;
+    case 'insane':
+      cameraPos = new FABRIC.RT.Vec3(20, 30, -40).multiplyScalar(10);
+      numAgents = 1000000;
+      gridSize = 800;
+      break;
+  }
+  
+  var storeFlockParams = function(){
+    localStorage.setItem("flockParams", JSON.stringify(flockParams));
+  }
+
+  // Create the scene.
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+      windowElement: document.getElementById('FabricContainer'),
+      backgroundColor: FABRIC.RT.rgb(0.5, 0.7, 0.9),
+      enableRaycasting: true
+    });
+  
+viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      target: new FABRIC.RT.Vec3(0, 0, 0),
+      position: cameraPos,
+      nearDistance: 1,
+      farDistance: 1000
+    });
+  viewport.setCameraNode(camera);
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  /////////////////////////////////////////////////
+  // Create the Flock
+  var flockMaterial = scene.constructNode('FlatMaterial', {
+      prototypeMaterialType: 'PointMaterial',
+      pointSize: 6.0 ,
+      color: FABRIC.RT.rgb(0.75, 0.0, 0.0)
+    });
+
+  var flockNode = scene.constructNode('Flock', {
+      cellsize: 1,
+      x_count: gridSize,
+      y_count: 1,
+      z_count: gridSize,
+      displayGrid: true,
+      displayDebugging: flockParams.displayDebugging
+    });
+
+  scene.constructNode('Instance', {
+      geometryNode: flockNode,
+      materialNode: flockMaterial
+    });
+  flockNode.setVertexCount(numAgents);
+  
+  
+  /////////////////////////////////////////////////
+  // Set up the painting of the ground plane.
+/*  var groundMaterial = scene.constructNode("VertexColorMaterial", {
+    diffuseColor:FABRIC.RT.rgb(0.2,0.7,0.4),
+    lightNode:light
+  });
+  var groundPlane = scene.constructNode("Plane", {
+    length:gridSize,
+    width:gridSize,
+    lengthSections:gridSize/3,
+    widthSections:gridSize/3
+  });
+  groundPlane.addVertexAttributeValue( "vertexColors", "Color", { defaultValue: FABRIC.RT.rgb( 0.0, 0.6, 0.0 ) } );
+  var groundPlaneInstance = scene.constructNode("Instance", {
+      transformNode:scene.constructNode("Transform", {
+        hierarchical:false,
+        globalXfo:new FABRIC.RT.Xfo({ tr:new FABRIC.RT.Vec3(0, -0.3, 0) })
+      }),
+      geometryNode:groundPlane,
+      materialNode:groundMaterial,
+      enableRaycasting:false
+    });
+
+  var paintManipulator = scene.constructNode("PaintManipulator" );
+  paintManipulator.addGeometryInstance( groundPlaneInstance );
+
+  var onPaintFn = function( evt ){
+    groundPlane.reloadVBO( "vertexColors" );
+    viewport.redraw();
+  }
+
+  paintManipulator.addEventListener( "onpaint", onPaintFn );
+*/
+
+  $('#play').button()
+    .click(function() {
+      var options;
+      if ($(this).text() == 'Play') {
+        $(this).button('option', {
+          label: 'Pause',
+          icons: {
+            primary: 'ui-icon-pause'
+          }
+        });
+        scene.animation.play();
+      } else {
+        $(this).button('option', {
+          label: 'Play',
+          icons: {
+            primary: 'ui-icon-play'
+          }
+        });
+        scene.animation.pause();
+      }
+    });
+  $('#step').button()
+    .click(function() {
+      scene.animation.step();
+    });
+      
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      
+      $("#numAgents").change(function() {
+        sceneSize = $("#numAgents :selected").attr("value");
+        flockParams.sceneSize = sceneSize;
+        storeFlockParams();
+        window.location.reload();
+      });
+      
+      $("#displayDebugging").change(function() {
+        var displayDebugging = $("#displayDebugging").is(":checked");
+        flockNode.setDisplayDebugging(displayDebugging);
+        flockParams.displayDebugging = displayDebugging;
+        storeFlockParams();
+      });
+      $('#openDebugger').button()
+        .click(function() {
+          FABRIC.displayDebugger();
+        });
+      
+      setInterval(function() {
+          document.getElementById('frameRate').childNodes[0].data = 'Frame Rate:' + viewport.getFPS().toFixed(2);
+        }, 600);
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+              <div class="content">
+              Particle Flocking.<br>
+              Each particle is processed in a different slice, making use of FABRIC's multithreading architecture. Note: the debugging display will often cost more than the flocking in large crowds.
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <button id="play">Play</button>
+              <button id="step">Step</button>
+              </br>
+              <label for="numAgents" style="margin-top:10px;">Num Agents:</label>
+              <select id='numAgents' style="margin-top:10px;">
+                <option value="small">Small:100
+                <option value="medium">Medium:2000
+                <option value="huge">Huge:10000
+                <option value="massive">Massive:100000
+                <option value="insane">Insane:1000000
+              </select>
+              </br>
+              <input type="checkbox" id="displayDebugging" style="margin-top:10px;"/><label for="displayDebugging">Display Debugging:</label>
+              <button id="openDebugger">Open Debugger</button>
+            </div><!--content-->
+          </div><!--box-->
+        
+          
+          <div class="box">
+            <h2 id="agents">PERFORMANCE</h2>
+            <div class="content" id="frameRate">Frame Rate:</div><p></p>
+          </div><!--box-->
+      
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

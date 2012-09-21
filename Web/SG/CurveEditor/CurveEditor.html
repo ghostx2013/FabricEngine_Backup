@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> 
+<html>
+<head>
+  <meta http-equiv="Content-Language" content="en" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>FABRIC Curve Editor</title>
+
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery.collapsibleCheckboxTree.js"></script>
+
+  <link type="text/css" href="../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+  <link type="text/css" href="../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+  <link type="text/css" href="../../Core/tools.css" rel="stylesheet" />
+
+
+  <script type="text/javascript" src="../../Core/FABRIC.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../Core/Vec2.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../Core/Color.js" charset="utf-8"></script>
+  <script type="text/javascript" src="../../Core/FABRIC.SVG.js"></script>
+  <script type="text/javascript" src="CurveEditor.js" charset="utf-8"></script>
+  <link href="CurveEditor.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript">
+
+$(document).ready(function() {
+
+  if(!characterAnimationContainerNode){
+    alert("this page must be opened from a running demo, passing it the correct characterAnimationContainerNode");
+  }
+
+  curveEditor = constructCurveEditor('curveContainer', scene, characterAnimationContainerNode, {
+    trackSetId: trackSetId,
+    drawKeys: drawKeys,
+    trackFilters: trackFilters
+  });
+
+  window.onresize = function () {
+    curveEditor.resize();
+  };
+  
+  if(window.opener){
+    var closeWindow = function(){
+      window.opener.removeEventListener('unload', closeWindow, true);
+      window.close();
+    }
+    window.opener.addEventListener('unload', closeWindow, true);
+    
+    window.setCurveFilters = curveEditor.setCurveFilters;
+  }
+  
+  $("#displayKeys").attr('checked', true);
+  $("#displayKeys").change(function() {
+    curveEditor.setKeyDisplayToggle($("#displayKeys").is(":checked"));
+  });
+
+  $('ul#keyframeTracks').collapsibleCheckboxTree({
+    checkParents : true, // When checking a box, all parents are checked (Default: true)
+    checkChildren : true, // When checking a box, all children are checked (Default: false)
+    uncheckChildren : true, // When unchecking a box, all children are unchecked (Default: true)
+    initialState : 'collapse', // Options - 'expand' (fully expanded), 'collapse' (fully collapsed) or default
+    addButtons : true
+  });
+  
+  
+
+  // jQuert UI Styling classes
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+
+});
+
+  </script>
+
+</head> 
+<body>
+  <div id="wrapper">
+    <div id="editor">
+
+      <div id="curveViewer">
+        <div id="curveContainer" style="background-color: #696969;">
+        </div>
+      </div><!--curveViewer-->
+
+      <div id="sidebar">
+        <!--
+        <div class="box">
+        <h2>INFO</h2>
+        <div class="content">
+        KeyFrame Animation.<br>
+        Hold 'Alt' to break the key handles.
+        </div><!--content- ->
+        </div>box-->
+        <div class="box">
+          <h2>KEYFRAME TRACKS</h2>
+          <div class="content">
+            <input type="checkbox" id="displayKeys" style="margin-top:10px;"/><label for="displayKeys">Display Keys:</label>
+            <ul id="keyframeTracks">
+            </ul>
+          </div><!--content-->
+        </div><!--box-->
+      </div><!--sidebar-->
+
+    </div> <!--editor-->
+  </div><!--wrapper-->
+</body> 
+</html>

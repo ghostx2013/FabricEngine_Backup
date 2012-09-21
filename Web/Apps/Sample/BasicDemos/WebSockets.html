@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - WebSockets</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+<script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+		"SG/Kinematics",
+                "SG/Materials",
+                "SG/Animation",
+                "SG/Manipulation",
+                "SG/Persistence",
+                "SG/WebSocket",
+                "SG/Images",
+                "SG/Parsers/parseOBJ"], function() {
+    
+
+function getUrlVars() {
+  var vars = {};
+  var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+    vars[key] = value;
+  });
+  return vars;
+}
+  
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer')
+  });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 1,
+      farDistance: 200,
+      target: new FABRIC.RT.Vec3(-10, -1.2, -0.15),
+      position: new FABRIC.RT.Vec3(-1.8, 4.77, 7.93)
+    });
+
+  var manipulator = scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  var phongMaterial = scene.constructNode('PhongMaterial', {
+      diffuseColor: FABRIC.RT.rgb(0.8, 0, 0, 1),
+      lightNode: light
+    });
+  
+  scene.importAssetFile('Models/cow.obj', {}, function(assetNodes){
+    for(var i in assetNodes){
+      var instance = scene.constructNode('Instance', {
+        geometryNode: assetNodes[i],
+        materialNode: phongMaterial,
+        transformNode: scene.constructNode('Transform', {
+            hierarchical: false,
+            globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(-10, 0, 0) })
+          }),
+      });
+    }
+  });
+  
+
+$(document).ready(function() {
+
+  // create the websocket node
+  try{
+    var ws = scene.constructManager("WebSocketManager", {
+      serverUrl: 'ws.fabric-engine.com',
+      sendFunctionNames: ['cameraManip'],
+      contextID: getUrlVars()['context'],
+      onOpenCallBack: function() {
+
+        // setup the invite link        
+        $("#contextID").html(ws.getContextID());
+        
+        // setup the join button
+        $("#join").button().click(function(){
+          viewport.hide();
+          $('#joinDialog').dialog({
+            modal: true
+          });
+          $('#joinCancel').button().click(function(){
+            $('#joinDialog').dialog('close');
+            viewport.show();
+          });
+          $('#joinOK').button().click(function(){
+            // open the page once more
+            document.location.href = document.URL.split('?')[0]+"?context="+$('#joinContext').val();
+          });
+        });
+
+        // create a serializer for the camera transform        
+        var serializer = scene.constructManager("SceneSerializer");
+        serializer.addNode(camera.getTransformNode());
+        var wsStorage = ws.getStorage('cameraTransform');
+
+        // create an event listener for the camera manipulation
+        manipulator.addEventListener('cameraManipulated',function(evt){
+          serializer.serialize();
+          serializer.save(wsStorage);
+        });
+
+        // finally, let's fire the first event to let people know we exist!
+        setTimeout(function(){
+          manipulator.fireEvent('cameraManipulated',{});
+          
+          // also, ask for all other participant
+          ws.sendMessage('queryParticipants',{});
+        }, 50);
+      }
+    });
+    
+    // camera primitive
+    var cameraPrimitive = scene.constructNode('CameraPrimitive', {size: 0.75});
+    
+    // colors
+    var colors = [];
+    colors.push(FABRIC.RT.rgb(0.0,0.75,0.0));
+    colors.push(FABRIC.RT.rgb(0.75,0.0,0.0));
+    colors.push(FABRIC.RT.rgb(0.75,0.0,0.75));
+    colors.push(FABRIC.RT.rgb(0.0,0.75,0.75));
+    colors.push(FABRIC.RT.rgb(0.0,0.0,0.75));
+
+    // setup self in the participants map
+    var participants = {};
+    var participantsCount = 0;
+    participants['_self'] = {};
+    participants['_self'].name = 'Yourself';
+    participants['_self'].node = camera;
+    participants['_self'].material = scene.constructNode('FlatMaterial', {color: colors[participantsCount % 5]})
+    participants['_self'].instance = scene.constructNode('Instance', {
+      geometryNode: cameraPrimitive,
+      materialNode: participants['_self'].material,
+      transformNode: camera.getTransformNode(),
+    });
+    participants['_self'].instance.setDrawToggle(false);
+    participantsCount++;
+    
+    // setup a function to fill the camera list
+    function updateParticipantsList() {
+      var html = "";
+
+      for(var key in participants)
+        html += "<option value='"+key+"' style='color: white; background-color:rgb("+
+          parseInt(participants[key].material.getColor().r * 255)+","+
+          parseInt(participants[key].material.getColor().g * 255)+","+
+          parseInt(participants[key].material.getColor().b * 255)+")'>"+participants[key].name+"</option>";
+      
+      // attach an on-select event to the camera list 
+      $('#cameralist').html(html).change( function(ui) {
+        var selectedKey = $('#cameralist').attr('value');
+        for(var key in participants) {
+          participants[key].instance.setDrawToggle(key != selectedKey);
+        }
+        viewport.setCameraNode(participants[selectedKey].node);
+        viewport.redraw();
+      });
+    }
+    updateParticipantsList();
+    
+    // setup a function to update the username
+    $('#participantName').change(function(ui){
+      participants['_self'].name = $('#participantName').val();
+      ws.sendMessage('setParticipantName',participants['_self'].name);
+      updateParticipantsList();
+    });
+    
+    // setup a function to add a participant
+    function addParticipant(id,name) {
+      if(participants[id] == undefined) {
+        
+        // create a new camera + draw instance
+        var newParticipant = {};
+        newParticipant.name = name;
+        newParticipant.node = scene.constructNode('FreeCamera', {
+          nearDistance: 1,
+          farDistance: 200
+        });
+        newParticipant.material = scene.constructNode('FlatMaterial', {color: colors[participantsCount % 5]})
+        newParticipant.instance = scene.constructNode('Instance', {
+          geometryNode: cameraPrimitive,
+          materialNode: newParticipant.material,
+          transformNode: newParticipant.node.getTransformNode()
+        });
+        
+        // create a serializer and a websocket storage
+        newParticipant.deserializer = scene.constructManager('SceneDeserializer',  {preLoadScene: false});
+        newParticipant.storage = ws.getStorage('cameraTransform');
+        
+        // map the new instance's transform to the one from the camera
+        // this means that the other clients camera's transform will be
+        // driving the new instance's transform
+        newParticipant.deserializer.setPreLoadedNode(newParticipant.instance.getTransformNode(), camera.getTransformNode().getName());
+        participants[id] = newParticipant;
+        
+        updateParticipantsList();
+        participantsCount++;
+      }
+    }
+
+    // setup the function to be called when we receive a participant name change event
+    ws.addMessageCallBack('setParticipantName', function(message) {
+      
+      setTimeout(function(){
+        if(participants[message.sourceID] == undefined)
+          return;
+  
+        participants[message.sourceID].name = message.data;
+        updateParticipantsList();
+      }, 100);
+    });
+
+    // setup the function to be called when we receive a queryParticipants event
+    ws.addMessageCallBack('queryParticipants', function(message) {
+
+      // filter out unknown participants
+      if(!participants[message.sourceID])
+        return;
+
+      // notify the called of our name
+      if(participants['_self'].name != 'Yourself')
+        ws.sendMessage('setParticipantName',participants['_self'].name,message.sourceID);
+      
+      // notify the caller of our transform
+      manipulator.fireEvent('cameraManipulated',{});
+    });
+    
+    // finally setup the function to be called when we receive a mouse mouve event
+    ws.addMessageCallBack('cameraTransform', function(message) {
+      
+      // filter out messages to ourselves
+      if(message.sourceID == message.targetID)
+        return;
+      
+      // if we don't have a camera yet for this connection
+      addParticipant(message.sourceID, 'Unknown');
+      
+      // buffer the data into the storage
+      participants[message.sourceID].storage.buffer(message.data);
+      
+      // deserialize it into the transform
+      participants[message.sourceID].deserializer.load(
+        participants[message.sourceID].storage
+      );
+      viewport.redraw();
+    });
+  }catch(e){
+    $('#message').html("<b style='color:#FF0000'>Error</b>: "+e+"<br>Currently only Google Chrome supports WebSocket natively.");
+  }
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body style="padding: 10px">
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div style="display: none" id="joinDialog" title="Joining Session...">
+      <h4 id="joinDesc"></h4>
+      <input id="joinContext" type=text/><br>
+      <button id="joinCancel">Cancel</button>
+      <button id="joinOK">OK</button>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              WebSockets.<br>
+              <div id="message">
+                In this demo, we synchronize camera motion of all participants through
+                WebSockets, a HTML5 feature for peer to peer communication. To invite other
+                people to this session, share this session context:<br>
+                <b id="contextID"></b><br>
+                To join an existing session, click here:<br>
+                <button id='join'>Join</button>
+              </div>
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>Participants</h2>
+            <div class="content">
+              <input id="participantName" type=text/ value='Yourself' style='width: 194px'><br>
+              <select multi size=10 id='cameralist' style='width: 200px; margin-top: 10px'>
+              </select>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->  </body> 
+  </html>

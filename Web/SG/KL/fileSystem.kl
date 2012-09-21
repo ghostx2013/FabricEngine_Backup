@@ -1,0 +1,37 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricFILESYSTEM;
+use FabricFolderHandle;
+use FabricFileHandleWrapper;
+
+operator getFolderSubFolders(
+  io String parent,
+  io String children[]
+) {
+  FabricFolderHandle parentHandle;
+  parentHandle.setAbsolutePath(parent);
+  
+  FabricFolderHandle childHandles[];
+  parentHandle.getSubFolders(childHandles);
+  children.resize(childHandles.size());
+  for(Size i=0;i<childHandles.size();i++) {
+    childHandles[i].getAbsolutePath(children[i]);
+  }
+}
+
+operator getFolderFiles(
+  io String parent,
+  io String children[]
+) {
+  FabricFolderHandle parentHandle;
+  parentHandle.setAbsolutePath(parent);
+  
+  FabricFileHandleWrapper childHandles[];
+  parentHandle.getFiles(childHandles);
+  children.resize(childHandles.size());
+  for(Size i=0;i<childHandles.size();i++) {
+    childHandles[i].getAbsolutePath(children[i]);
+  }
+}

@@ -1,0 +1,72 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, Vec3, Vec4, Math;
+
+operator computeTriangleTangents(
+  io Integer indices[],
+  io Vec3 positions<>,
+  io Vec3 normals<>,
+  io Vec2 uvCoords<>,
+  io Vec4 tangents<>
+) {
+  if (uvCoords.size() != positions.size()) {
+    report('Error: uvCoords.size() !== positions.size()');
+    return;
+  }
+
+  Size iSize = indices.size();
+  Size vSize = positions.size();
+
+  Vec3 tanS[], tanT[];
+
+  tanS.resize(vSize);
+  tanT.resize(vSize);
+
+  for (Size i = 0; i < vSize; i++) {
+    tanS[i].setNull();
+    tanT[i].setNull();
+  }
+
+  for (Size i = 0; i < iSize; i += 3) {
+    Integer i0 = indices[i + 0], i1 = indices[i + 1], i2 = indices[i + 2];
+    Vec3 p0 = positions[i0];
+    Vec3 p1 = positions[i1];
+    Vec3 p2 = positions[i2];
+
+    Vec2 t0 = uvCoords[i0];
+    Vec2 t1 = uvCoords[i1];
+    Vec2 t2 = uvCoords[i2];
+
+    Vec3 pe10 = p1 - p0, pe20 = p2 - p0;
+    Vec2 te10 = t1 - t0, te20 = t2 - t0;
+
+    Scalar r = 1.0 / te10.cross(te20);
+
+    Vec3 sdir((te20.y * pe10.x - te10.y * pe20.x) * r, (te20.y * pe10.y - te10.y * pe20.y) * r, (te20.y * pe10.z - te10.y * pe20.z) * r);
+    tanS[i0] += sdir;
+    tanS[i1] += sdir;
+    tanS[i2] += sdir;
+
+    Vec3 tdir((te10.x * pe20.x - te20.x * pe10.x) * r, (te10.x * pe20.y - te20.x * pe10.y) * r, (te10.x * pe20.z - te20.x * pe10.z) * r);
+    tanT[i0] += tdir;
+    tanT[i1] += tdir;
+    tanT[i2] += tdir;
+  }
+
+  for (Size i = 0; i < vSize; i++) {
+    Vec3 n = normals[i];
+    Vec3 t = tanS[i];
+    Vec3 tangent;
+    Boolean handedness;
+
+    tangent = (t - n * n.dot(t));
+    Scalar length = tangent.length();
+    if(length > DIVIDEPRECISION)//To check: we are getting many zero-length tangents...
+      tangent /= length;
+    handedness = (tanT[i].dot(n.cross(t)) < 0.0);
+
+    tangents[i].set(tangent.x, tangent.y, tangent.z, (handedness ? - 1.0 : 1.0));
+  }
+}

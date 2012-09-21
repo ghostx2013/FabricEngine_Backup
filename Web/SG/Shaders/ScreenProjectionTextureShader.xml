@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>ScreenProjectionTextureMaterial</name>
+  
+  <uniforms>
+    <uniform name="u_sampler0" constant="texture" type="Integer" owner="texture"/>
+    <uniform name="u_alphaFactor" constant="alphaFactor" type="Scalar" defaultValue="1.0"/>
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+  </attributes>
+  
+  <textures>
+    <texture binding="texture"/>
+  </textures>
+
+  <openglstateparams>
+    <enableOptions>
+      <option>GL_BLEND</option>
+      <option>GL_CULL_FACE</option>
+    </enableOptions>
+    <blendModeSfactor>GL_SRC_ALPHA</blendModeSfactor>
+    <blendModeDfactor>GL_ONE_MINUS_SRC_ALPHA</blendModeDfactor>
+    <cullFace>GL_FRONT</cullFace>
+  </openglstateparams>
+  
+  <vertexshader>
+    <source>
+      uniform mat4 u_modelViewProjectionMatrix;
+      attribute vec4 a_position;
+      
+      varying vec4 pos;
+
+      void main()
+      {
+        pos = u_modelViewProjectionMatrix * a_position;
+        gl_Position =  pos;
+      }
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      uniform sampler2D u_sampler0;
+      uniform float u_alphaFactor;
+      varying vec4 pos;
+
+      void main()
+      {
+        vec4 color = texture2D( u_sampler0, ((pos.xy/pos.w) + vec2(1.0, 1.0))*0.5 );
+        color.a *= u_alphaFactor;
+        gl_FragColor = color;
+      }
+    </source>
+  </fragmentshader>
+</shader>

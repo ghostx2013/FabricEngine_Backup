@@ -1,0 +1,124 @@
+{
+   mesa_pthread_mutex_init
+   Memcheck:Cond
+   fun:pthread_mutex_init
+   obj:/usr/lib/mesa/libGL.so.6.0.11990.621014
+   obj:/usr/lib/mesa/libGL.so.6.0.11990.621014
+   obj:/usr/lib/mesa/libGL.so.6.0.11990.621014
+   fun:call_init
+   fun:_dl_init
+   obj:/lib/ld-2.12.1.so
+}
+{
+   mesa_pthread_mutex_init_2
+   Memcheck:Cond
+   fun:pthread_mutex_init
+   obj:/usr/lib/mesa/libGL.so.6.0.11992.625164
+   obj:/usr/lib/mesa/libGL.so.6.0.11992.625164
+   obj:/usr/lib/mesa/libGL.so.6.0.11992.625164
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+}
+{
+   mesa_pthread_mutex_init_3
+   Memcheck:Cond
+   fun:pthread_mutex_init
+   obj:/usr/lib/mesa/libGL.so.6.0.12094.676494
+   obj:/usr/lib/mesa/libGL.so.6.0.12094.676494
+   obj:/usr/lib/mesa/libGL.so.6.0.12094.676494
+   fun:call_init
+   fun:_dl_init
+   obj:/lib/ld-2.12.1.so
+}
+{
+   llvm_equivalence_classes
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZNSt8_Rb_treeIN4llvm18EquivalenceClassesIPKNS0_19TargetRegisterClassEE7ECValueES6_St9_IdentityIS6_ESt4lessIS6_ESaIS6_EE10_M_insert_EPKSt18_Rb_tree_node_baseSF_RKS6_
+   obj:*
+}
+{
+   llvm_elf_section_ubuntu
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZNSs4_Rep9_S_createEjjRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSsC1EPKcjRKSaIcE
+   fun:_ZN4llvm12MCSectionELF6CreateENS_9StringRefEjjNS_11SectionKindEbRNS_9MCContextE
+}
+{
+   leak_elf_section_debian
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZNSs4_Rep9_S_createEjjRKSaIcE
+   obj:/usr/lib/libstdc++.so.6.0.13
+   fun:_ZNSsC1EPKcjRKSaIcE
+   fun:_ZN4llvm12MCSectionELF6CreateENS_9StringRefEjjNS_11SectionKindEbRNS_9MCContextE
+}
+{
+   llvm_slab_allocator
+   Memcheck:Leak
+   fun:malloc
+   fun:_ZN4llvm19MallocSlabAllocator8AllocateEj
+}
+{
+   llvm_string_map_rehash_table
+   Memcheck:Leak
+   fun:calloc
+   fun:_ZN4llvm13StringMapImpl11RehashTableEv
+}
+{
+   llvm_target_lowering
+   Memcheck:Leak
+   fun:malloc
+   fun:_ZNK4llvm27TargetLoweringObjectFileELF13getELFSectionENS_9StringRefEjjNS_11SectionKindEb
+}
+{
+   llvm_jit_debug_registerer
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZN4llvm18JITDebugRegisterer16RegisterFunctionEPKNS_8FunctionERNS_9DebugInfoE
+}
+{
+   llvm_grow_pod_
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZN4llvm15SmallVectorBase8grow_podEjj
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:index
+   fun:expand_dynamic_string_token
+   fun:_dl_map_object
+   fun:map_doit
+   fun:_dl_catch_error
+   fun:do_preload
+   fun:dl_main
+   fun:_dl_sysdep_start
+   fun:_dl_start
+   obj:/lib/x86_64-linux-gnu/ld-2.15.so
+   obj:*
+   obj:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNK6Fabric4Util6TLSVarIbE17valuePtrForThreadEv
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:inflateReset2
+   fun:inflateInit2_
+   fun:png_create_read_struct_2
+   fun:png_create_read_struct
+   fun:FabricPNGDecode
+}

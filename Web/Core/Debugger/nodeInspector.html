@@ -1,0 +1,136 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+  <title>FABRIC Node Inspector</title>
+    
+  <link type="text/css" href="../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+  <link type="text/css" href="../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+  <link type="text/css" href="../tools.css" rel="stylesheet" />
+
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="../../ThirdParty/jQuery/jquery.jeditable.mini.js"></script>
+
+  <script type="text/javascript" src="../FABRIC.js" charset="utf-8"></script>
+    
+  <script type="text/javascript">
+
+$(document).ready(function() {
+  
+  if(!window.context){
+    var contextID = document.location.search.split('?')[1].split('=')[1];
+    window.nodeName = document.location.search.split('?')[2].split('=')[1];
+    window.context = FABRIC.createContext({ contextID:contextID  });
+  }
+  var dgnode = context.DG.getAllNamedObjects()[nodeName];
+  document.title = 'FABRIC Node Inspector:' + nodeName;
+  
+  var displayNodeData = function(clear, sliceRangeBegin, sliceRangeEnd){
+    var dataTable = '<table class="display" id="nodeDataTable">\n';
+    var nodeDataTable = {};
+    
+    // Define the table header
+    var members = dgnode.getMembers();
+    dataTable += '<thead>\n<tr>\n';
+      dataTable += '<th>slice Id</th>\n';
+    for(var memberName in members){
+      dataTable += '<th>'+memberName+'</th>\n';
+    }
+    dataTable += '</tr>\n</thead>\n<tbody class="tableData">\n';
+    // Define the body
+    var lines = dgnode.getCount();
+    var sliceRangeBegin = typeof(sliceRangeBegin) != 'undefined' ? sliceRangeBegin : 0;
+    var sliceRangeEnd = typeof(sliceRangeEnd) != 'undefined' ? sliceRangeEnd : Math.min( lines-1, 99 );
+
+    for(var i = parseInt( sliceRangeBegin ); i <= parseInt( sliceRangeEnd ); i++){
+      var slicedata = dgnode.getSliceBulkData(i);
+      dataTable += '<tr>\n';
+      dataTable += '<td>'+i+'</td>\n';
+      for(var memberName in members){
+        dataTable += '<td>'+JSON.stringify(slicedata[memberName], null, '\t')+'</td>\n';
+      }
+      dataTable += '</tr>\n';
+
+      $("#sliceRangeBegin, #sliceRangeEnd, #sliceRangeMax").attr({ 
+        max: lines - 1
+        });
+
+      $("#sliceRangeMax").attr({ 
+        value: lines - 1
+      });
+
+      if ($("#sliceRangeEnd").val() === "99"){
+        $("#sliceRangeEnd").attr({ 
+          value: lines - 1
+        });          
+      }
+
+    }
+    
+    dataTable += '</tbody>\n';
+    
+    $('#dataContainer').html( dataTable );
+    nodeDataTable = $('#nodeDataTable').dataTable({
+      "bJQueryUI": true,
+      "bSort": false,
+      "bSearch": false,
+      "sPaginationType": "full_numbers",
+//      "sDom": '<"top"i>rt<"bottom"flp>'
+
+    });
+
+    // $('td', nodeDataTable.fnGetNodes()).editable( '', {
+    //   "callback": function( sValue, y ) {
+    //     var aPos = nodeDataTable.fnGetPosition( this );
+    //     nodeDataTable.fnUpdate( sValue, aPos[0], aPos[1] );
+    //   },
+    //   "submitdata": function ( value, settings ) {
+    //     return {
+    //       "row_id": this.parentNode.getAttribute('id'),
+    //       "column": nodeDataTable.fnGetPosition( this )[2]
+    //     };
+    //   },
+    //   "height": "14px"
+    // } );
+  }
+  
+  
+  displayNodeData();
+  
+  $('#refresh').button().click(function() {
+        displayNodeData(true, $("#sliceRangeBegin").val(), $("#sliceRangeEnd").val());
+  });
+  
+  if ($("#nodeDataTable").width() > 640){
+    $("#dataContainer").width( $("#nodeDataTable").width() );
+  }
+  
+  var closeWindow = function(){
+    window.opener.removeEventListener('unload', closeWindow, true);
+    window.close();
+  }
+  window.opener.addEventListener('unload', closeWindow, true);
+
+});
+
+</script>
+
+</head> 
+<body id='nodeInspector'>
+  <section id='controls'>
+    Slice range 
+    <em>from</em> <input id='sliceRangeBegin' type='number' step='1' min='0' value='0'>
+    <em>to</em> <input id='sliceRangeEnd' type='number' step='1' min='0' max='99' value='99'>
+    <em>max ID</em> <output id='sliceRangeMax' type='result'></output>
+    <button id="refresh">Refresh</button>
+    
+  </section>
+  <section id="dataContainer">
+  </section><!--dataContainer-->
+</body> 
+</html>

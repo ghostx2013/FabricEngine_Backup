@@ -1,0 +1,207 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo, DebugGeometry;
+
+operator solveHubRigs(
+  io Xfo controllerXfoSlices<>,
+  io Xfo pose[],
+  io Bone bones[],
+  io Hub hubs[],
+  io Xfo hubsoffsetXfos[],
+  io PoseVariables poseVariableSlices<>,
+  Size index,
+  io DebugGeometry debugGeometry
+) {
+  Xfo controllerXfo = controllerXfoSlices[index];
+  PoseVariables poseVariables = poseVariableSlices[index];
+  for(Integer i=0; i < hubs.size; i++){
+    Hub hub = hubs[i];
+    Xfo parentXfo;
+    if(hub.spineBoneIds.size > 0){
+      if(hub.hubParentSpaceId == -1){
+        parentXfo = pose[bones[hub.spineBoneIds[0]].parent];
+      }
+      else{
+        parentXfo = pose[hub.hubParentSpaceId];
+      }
+    }
+    else{
+    //  if (bones[hub.boneId].parent == -1) 
+        parentXfo = controllerXfo;
+    //  else 
+    //    parentXfo = pose[hub.hubParentSpaceId];
+    //    pose[hub.boneId] = pose[bones[hub.boneId].parent] * poseVariables.xfoValues[hub.xfoId];
+    }
+    pose[hub.boneId] = parentXfo * poseVariables.xfoValues[hub.xfoId] * hubsoffsetXfos[i];
+    
+    if(hub.spineBoneIds.size > 0){
+      // Solve the spine in FK
+      for(Integer j=0; j < hub.spineBoneIds.size; j++){
+        Integer spineBoneId = hub.spineBoneIds[j];
+        if(bones[spineBoneId].parent >= 0){
+          pose[spineBoneId] = pose[bones[spineBoneId].parent] * poseVariables.xfoValues[hub.spineBoneXfoId[j]];
+        }else{
+          pose[spineBoneId] = poseVariables.xfoValues[hub.spineBoneXfoId[j]];
+        }
+      }
+      
+      // Apply the interpollated rotation offset to blend towards the hub.
+      Quat spineOriError = (pose[hub.boneId] * pose[hub.spineBoneIds[hub.spineBoneIds.size-1]].inverse()).ori;
+      for(Integer j=0; j < hub.spineBoneIds.size; j++){
+        Integer spineBoneId = hub.spineBoneIds[j];
+        
+        Scalar weight = 1.0 - Scalar(j)/Scalar(hub.spineBoneIds.size);
+        Quat adjustment = spineOriError.sphericalLinearInterpolate(Quat(0.0, 0.0, 0.0, 1.0), weight);
+        pose[spineBoneId].ori = adjustment * pose[spineBoneId].ori;
+        if(j > 0){
+          pose[spineBoneId].tr = pose[hub.spineBoneIds[j-1]].transformVector(poseVariables.xfoValues[hub.spineBoneXfoId[j]].tr);
+        }
+      }
+      
+      // calculate the delta translation, and apply that to correct the error.
+      Vec3 hubTr = pose[hub.spineBoneIds[hub.spineBoneIds.size-1]].transformVector(bones[hub.boneId].referenceLocalPose.tr);
+    
+    
+      Xfo spineBaseXfo = pose[bones[hub.spineBoneIds[0]].parent];
+      Quat spineTrErrorCorrection;
+      spineTrErrorCorrection.setFrom2Vectors((hubTr - spineBaseXfo.tr).unit(), (pose[hub.boneId].tr - spineBaseXfo.tr).unit());
+      for(Integer j=0; j < hub.spineBoneIds.size; j++){
+        Integer spineBoneId = hub.spineBoneIds[j];;
+        Scalar spineRatio  = Scalar(j+1)/Scalar(hub.spineBoneIds.size+1);
+        Scalar weight = (cos(spineRatio * TWO_PI) * -1.0) + 1.0;
+        Quat adjustment = Quat(0.0, 0.0, 0.0, 1.0).sphericalLinearInterpolate(spineTrErrorCorrection, weight);
+        pose[spineBoneId].ori = adjustment * pose[spineBoneId].ori;
+        if(j > 0){
+          pose[spineBoneId].tr = pose[hub.spineBoneIds[j-1]].transformVector(poseVariables.xfoValues[hub.spineBoneXfoId[j]].tr);
+        }
+      }
+      pose[hub.boneId].tr = pose[hub.spineBoneIds[hub.spineBoneIds.size-1]].transformVector(bones[hub.boneId].referenceLocalPose.tr);
+    }
+  }
+}
+
+
+operator invertHubRigs(
+  io Xfo pose[],
+  io Bone bones[],
+  io Hub hubs[],
+  io Xfo hubsoffsetXfos[],
+  io PoseVariables poseVariables,
+  io DebugGeometry debugGeometry
+) {
+  for(Integer i=0; i < hubs.size; i++){
+    Hub hub = hubs[i];
+    if(hub.spineBoneIds.size > 0){
+      if(hub.hubParentSpaceId == -1)
+        poseVariables.xfoValues[hub.xfoId] = pose[hub.boneId];
+      else
+        poseVariables.xfoValues[hub.xfoId] = pose[hub.hubParentSpaceId].inverse() * pose[hub.boneId];
+    }
+    else{
+      // TODO: Re-impliment hubs with parents. This made animation pre processing more cmoplex once I added the RigRoot node.
+   //   if (bones[hub.boneId].parent == -1)
+        poseVariables.xfoValues[hub.xfoId] = pose[hub.boneId];
+   //   else
+   //     poseVariables.xfoValues[hub.xfoId] = pose[bones[hub.boneId].parent].inverse() * pose[hub.boneId];
+    }
+    for (var Integer j = 0; j < hub.spineBoneIds.size; j++) {
+      if (bones[hub.spineBoneIds[j]].parent == - 1)
+        poseVariables.xfoValues[hub.spineBoneXfoId[j]] = pose[hub.spineBoneIds[j]];
+      else
+        poseVariables.xfoValues[hub.spineBoneXfoId[j]] = pose[bones[hub.spineBoneIds[j]].parent].inverse() * pose[hub.spineBoneIds[j]];
+    }
+  }
+}
+
+
+operator calcHubManipulatorAttachmentXfo(
+  io Bone bones[],
+  io Hub hubs[],
+  io Xfo hubsoffsetXfos[],
+  io Xfo pose[],
+  io Xfo controllerXfo,
+  io PoseVariables poseVariables,
+  io Size hubIndex,
+  io Xfo localXfo,
+  io Xfo parentXfo,
+  io Xfo targetXfo,
+  io Xfo globalXfo
+) {
+  Hub hub = hubs[hubIndex];
+  
+  if(hub.spineBoneIds.size > 0){
+    if(hub.hubParentSpaceId == -1){
+      if(hub.spineBoneIds.size > 0){
+        parentXfo = pose[bones[hub.spineBoneIds[0]].parent];
+      }
+      else{
+        if (bones[hub.boneId].parent == -1) 
+          parentXfo = controllerXfo;
+        else 
+          parentXfo = pose[bones[hub.boneId].parent];
+      }
+    }
+    else{
+      parentXfo = pose[hub.hubParentSpaceId];
+    }
+  }
+  else{
+    if (bones[hub.boneId].parent == -1) 
+      parentXfo = controllerXfo;
+    else 
+      globalXfo = pose[bones[hub.boneId].parent];
+  }
+  targetXfo = parentXfo * poseVariables.xfoValues[hub.xfoId];
+  globalXfo = targetXfo * localXfo;
+}
+
+
+operator solveHeadLookAt(
+  io Xfo pose[],
+  io Integer headBoneId,
+  io Integer neckBoneIds[],
+  io Vec3 referenceAlignmentVec,
+  io Vec3 alignmentVec,
+  io Xfo controllerXfos<>,
+  io Vec3 goalLinearVelocities<>,
+  Size index,
+  io DebugGeometry debugGeometry
+) {
+  Xfo headXfo = pose[headBoneId];
+  Vec3 controllerAlignmentVec = controllerXfos[index].ori.rotateVector(Vec3(0.0,0.0,1.0));
+  Vec3 headAlignmentVec = headXfo.ori.rotateVector(referenceAlignmentVec);
+  
+  Quat alignmentRotation;
+  Vec3 targetAlightmentVec;
+  if(goalLinearVelocities[index].length() > 0.001){
+    targetAlightmentVec = goalLinearVelocities[index].unit();
+    Scalar angle = headAlignmentVec.angleTo(targetAlightmentVec);
+    Vec3 axis = headAlignmentVec.cross(targetAlightmentVec);
+    if((headAlignmentVec + targetAlightmentVec).dot(controllerAlignmentVec) < 0.0){
+      angle = TWO_PI - angle;
+    }
+    angle = Math_clamp(angle, -HALF_PI, HALF_PI);
+    
+    alignmentRotation.setFromAxisAndAngle(axis, angle);
+    targetAlightmentVec = alignmentRotation.rotateVector(headAlignmentVec);
+  }
+  else{
+    targetAlightmentVec = controllerAlignmentVec;
+  }
+  
+  alignmentVec = alignmentVec.linearInterpolate(targetAlightmentVec, 0.2).unit();
+  alignmentRotation.setFrom2Vectors(headAlignmentVec, alignmentVec);
+  
+  pose[headBoneId].ori = alignmentRotation * pose[headBoneId].ori;
+  if(neckBoneIds.size > 0){
+    Quat identity;
+    identity.setIdentity();
+    for(Integer j=0; j < neckBoneIds.size; j++){
+      Scalar blend = Scalar(j+1) / Scalar(neckBoneIds.size+1);
+      pose[neckBoneIds[j]].ori = identity.sphericalLinearInterpolate(alignmentRotation, blend) * pose[neckBoneIds[j]].ori;
+    }
+  }
+}
+

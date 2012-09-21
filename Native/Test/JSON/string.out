@@ -1,0 +1,6 @@
+STRING 0 ''
+STRING 4 'fred'
+STRING 55 'a much longer st...'
+STRING 8 '"/\\\b\f\n\t\r'
+STRING 6 'piqué'
+STRING 6 'piqué'

@@ -1,0 +1,11 @@
+diff -ru old/exrenvmap/blurImage.cpp new/exrenvmap/blurImage.cpp
+--- old/exrenvmap/blurImage.cpp	2011-04-04 17:04:09.534564413 -0400
++++ new/exrenvmap/blurImage.cpp	2011-04-04 17:04:51.384564417 -0400
+@@ -45,6 +45,7 @@
+ #include "Iex.h"
+ #include <iostream>
+ #include <algorithm>
++#include <string.h>
+ 
+ using namespace std;
+ using namespace Imf;

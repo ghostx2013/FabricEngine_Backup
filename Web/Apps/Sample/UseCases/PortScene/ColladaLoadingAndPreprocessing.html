@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Collada Viewer</title> 
+        
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+     
+$(document).ready(function() {
+    $('#loadingDialog').dialog({
+      modal: true
+    });
+});
+   
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Persistence",
+                "SG/Parsers/parseCollada",
+                "SG/Parsers/parseMTL",
+                "SG/Parsers/parseOBJ"], function() {
+
+  var scene = FABRIC.SceneGraph.createScene();
+   viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    enableRaycasting: true,
+  });
+  
+  // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 10,
+      farDistance: 20000,
+      target: new FABRIC.RT.Vec3(0, 0, 0),
+      position: new FABRIC.RT.Vec3(-2000, 1000, 3000)
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+//  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  light = scene.constructNode('DirectionalLight', {
+    position: new FABRIC.RT.Vec3(1000, 2000, 5),
+    target: new FABRIC.RT.Vec3(0, 2, -6),
+    direction: (new FABRIC.RT.Vec3(-1, -1, -1)).unit(),
+    farDistance: 16000,
+    resolution: 2048,
+    castShadows: false,
+    display: true,
+    size: 1800
+  });
+  var lightManip = scene.constructNode('XfoManipulator', { parentNode: light.getTransformNode(), size: 40, radius: 300 });
+  
+  var presetSaver = scene.constructManager('SceneSerializer',{
+    typeRemappings: { ObjTriangles: 'Triangles' } ,
+    filteredNodeTypes: ['ObjResource']
+  });
+  
+  var nodes = {};
+  var collectInstances = function(nodeMap){
+    for(var nodeName in nodeMap){
+      presetSaver.addNode(nodeMap[nodeName]);
+    }
+  }
+  
+  var imageLibrary = {};
+  var materialCallback = function(materialData, textureLibraryData){
+    var materialOptions, materialType = 'PhongMaterial';
+    
+    var remapPath = function(path){
+      var oldbasePath = 'file://C:\\Projects\\FabricAssets\\Port\\FINAL_2011_MAX7_FILES';
+      var newbasePath = 'Textures';
+      if(path.substring(0, oldbasePath.length) === oldbasePath){
+        return newbasePath + path.substring(oldbasePath.length);
+      }
+      return path;
+    }
+    var loadTexture = function(textureID){
+      var textureData = textureLibraryData[textureID];
+      if(textureData.path == 'file://'){
+        return undefined;
+      }
+      var imageUrl = remapPath(textureData.path);
+      var ext = imageUrl.split('.')[1];
+      if(ext === 'gif' || ext === 'bmp'){
+        return undefined;
+      }
+      if(!imageLibrary[imageUrl]){
+        imageLibrary[imageUrl] = scene.constructNode('Image2D', {
+          url: imageUrl,
+          blockRedrawingTillResourceIsLoaded: false
+        });
+      }
+      return imageLibrary[imageUrl];
+    }
+  
+    var diffuseTexture, specularTexture;
+    if(materialData.diffuse.texture){
+      diffuseTexture = loadTexture(materialData.diffuse.texture.texture);
+    }
+    if(materialData.specular.texture){
+      specularTexture = loadTexture(materialData.specular.texture.texture);
+    }
+    if(diffuseTexture && specularTexture){
+      var specularTexture = loadTexture(materialData.specular.texture.texture);
+      materialType = 'PhongTextureMaterial';
+      materialOptions = {
+        lightNode: light,
+        diffuseTextureNode: diffuseTexture,
+        specularTextureNode: specularTexture
+      }
+    }else if(diffuseTexture){
+      materialType = 'PhongTextureSimpleMaterial';
+      materialOptions = {
+        lightNode: light,
+        diffuseTextureNode: diffuseTexture,
+        specularColor: materialData.specular.color
+      }
+    }
+    else{
+      materialType = 'PhongMaterial';
+      materialOptions = {
+        lightNode: light,
+        diffuseColor: materialData.diffuse.color,
+        specularColor: materialData.specular.color
+      }
+    }
+    
+    return scene.constructNode(materialType, materialOptions);
+  }
+  
+  
+  var parseOptions = {
+    scaleFactor: 1.0,
+    materialConstructorCallback: materialCallback
+  };
+  var fileName = 'portScene';
+
+  
+  scene.importAssetFile('ExportedData/RMG_Crane.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/CRANES.DAE', parseOptions, collectInstances);
+
+  scene.importAssetFile('ExportedData/Trailors.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/Ships.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/Containers.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/TruckTANKER.DAE', parseOptions, collectInstances);
+
+  scene.importAssetFile('ExportedData/W_PLANTS.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/OilTank01.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/OilTank02.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/OilTank03.DAE', parseOptions, collectInstances);
+  
+  scene.importAssetFile('ExportedData/RafinerySmall.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/BotrMachinery.DAE', parseOptions, collectInstances);
+
+  scene.importAssetFile('ExportedData/Industry.DAE', parseOptions, collectInstances);
+
+  scene.importAssetFile('ExportedData/FACTORIES.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/FACTORIES2.DAE', parseOptions, collectInstances);
+
+  scene.importAssetFile('ExportedData/Buildings.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/Buildings2.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/GARAGE.DAE', parseOptions, collectInstances);
+//  scene.importAssetFile('ExportedData/Buros.OBJ', parseOptions, collectInstances);
+  
+  
+  var fileName = 'Rafinery_K1';
+  scene.importAssetFile('ExportedData/Rafinery_K1.mtl', { materialOptions: { lightNode: light } },
+    function(materials){
+      var loadRafinery_K1Node = scene.constructNode('ObjResource', {
+        url: 'ExportedData/Rafinery_K1.obj',
+        splitMaterials: true,
+        splitGroups: true,
+        printDetailedInfo: true
+      } );
+      loadRafinery_K1Node.addEventListener('objparsesuccess', function(evt){
+        var loadedGeometries = evt.loadedGeometries;
+        for(var i in evt.objectNames){
+          var objectName = evt.objectNames[i];
+          var materialName = evt.materialNames[i];
+          var material = materials[materialName];
+          if(!material){
+            material = scene.constructNode('PhongMaterial', {
+              diffuseColor: FABRIC.RT.rgb(Math.random(), Math.random(), Math.random(), 1),
+              lightNode: light
+            });
+          }
+          var instance = scene.constructNode('Instance', {
+            geometryNode: loadedGeometries[objectName],
+            materialNode: material,
+            transformNode: scene.constructNode('Transform', {
+                hierarchical: false,
+                globalXfo: new FABRIC.RT.Xfo()
+              }),
+          });
+          presetSaver.addNode(instance);
+        }
+      });
+    });
+
+  scene.importAssetFile('ExportedData/TerrainAndOtherBits.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/TERRAIN_MAIN.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/MastC01.DAE', parseOptions, collectInstances);
+  scene.importAssetFile('ExportedData/Domesky.DAE', {
+    scaleFactor: 1.0,
+    materialType: 'FlatTextureMaterial',
+    materialOptions: {
+    },
+    materialMaps: {
+      diffuse: 'textureNode'
+    },
+    pathRemapping: {
+     'file://C:\\Projects\\FabricAssets\\Port\\FINAL_2011_MAX7_FILES': 'Textures'
+    },
+    blockRedrawingTillResourceIsLoaded: false
+  }, collectInstances);
+  
+  scene.importAssetFile('ExportedData/Sea.DAE', {
+    scaleFactor: 1.0,
+    materialType: 'PhongMaterial',
+    materialOptions: {
+      lightNode: light,
+      diffuseColor: new FABRIC.RT.rgb(0.3, 0.5, 0.8),
+      shininess: 5.0,
+      bumpiness: 0.5
+    },
+    blockRedrawingTillResourceIsLoaded: false
+  }, collectInstances);
+  
+  
+  
+  scene.addEventListener('mousedown_geom', function(evt) {
+      console.log('Mouse Down:' + evt.targetNode.getName());
+    });
+  
+  $('#saveResource').button({
+      text: true,
+      icons: {
+        primary: 'ui-icon-disk'
+      }
+    })
+    .click(function() {
+     
+      var storage = new FABRIC.SceneGraph.FileWriterWithBinary(scene, 'PersistenceDemo', fileName);
+      
+      presetSaver.save(storage);
+      
+    });
+    
+  $(document).ready(function() {
+    FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+      $('#loadingProgressBar').progressbar({
+        value: (1.0-(doneWeight/totalWeight))*100
+      });
+      if (nbRemaining===0) {
+        $('#loadingDialog').dialog('close');
+        var errors = scene.getErrors();
+        if (errors.length > 0) {
+          throw (errors.toString());
+        }
+        viewport.redraw();
+        setInterval(function() {
+            document.getElementById('numDrawnGeometries').childNodes[0].data = 'Num Drawn Geometries:' + viewport.getNumDrawnGeometries();
+            document.getElementById('numDrawnTriangles').childNodes[0].data = 'Num Drawn Triangles:' + viewport.getNumDrawnTriangles();
+          }, 1600);
+        return true;
+      }
+    });
+  });
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div id="numDrawnGeometries">Num Drawn Geometries:</div><p></p>
+              <div id="numDrawnTriangles">Num Drawn Triangles:</div><p></p>
+              <button id="saveResource" style="margin-top:10px;">Save</button>
+            </div><!--content-->
+          </div><!--box-->
+          
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

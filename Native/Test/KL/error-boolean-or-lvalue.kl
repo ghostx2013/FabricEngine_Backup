@@ -1,0 +1,16 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function foo( io Integer n )
+{
+  n = 42;
+}
+
+operator entry()
+{
+  var Integer a, b;
+  a = 1;
+  foo( a || b );
+  report(b);
+}

@@ -1,0 +1,18 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct S {
+  String a[];
+};
+
+function foo( in S s ) {
+  s.a.push( "hello" );
+}
+
+operator entry() {
+  S s;
+  report("before: " + s);
+  foo(s);
+  report("after: " + s);
+}

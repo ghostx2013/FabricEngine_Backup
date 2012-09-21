@@ -1,0 +1,215 @@
+<html xmlns="http://www.w3.org/1999/xhtml"> 
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+  <head> 
+    <title>FABRIC - Selection</title> 
+    
+    <meta charset="iso-8859-1"/>
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+<style>
+  #selectable .ui-selecting { background: #757a9f; }
+  #selectable .ui-selected { background: #4e516a; color: white; }
+  #selectable { list-style-type: none; margin: 0; padding: 0; }
+  #selectable li { margin: 3px; padding: 0.4em; font-size: 1.0em; height: 10px; }
+</style>
+
+
+    <script type="text/javascript">
+    
+  
+ FABRIC.require(["SG/SceneGraph",
+                 "SG/Geometry",
+                 "SG/Materials",
+                 "SG/Manipulation",
+                 "SG/Selection"], function() {
+  
+  scene = FABRIC.SceneGraph.createScene();
+
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(20, 30, 30).multiplyScalar(1.5),
+      target: new FABRIC.RT.Vec3(0, 2, 0)
+    });
+  var viewport = scene.constructNode('Viewport', {
+      enableRaycasting: true,
+      windowElement: document.getElementById('FabricContainer'),
+      cameraNode: camera
+    });
+  /*
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+  */
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  
+  var selectionManager = scene.constructManager('ViewportSelectionManager');
+  var selectionManipulationManager = scene.constructManager('SelectionManipulationManager', {
+    selectionManager: selectionManager,
+    screenTranslationRadius: 1
+  });
+  
+  // create the scene grid
+  scene.constructNode('Instance', {
+    geometryNode: scene.constructNode('Grid', {
+      size_x: 40.0,
+      size_z: 40.0,
+      sections_x: 20,
+      sections_z: 20 }),
+    materialNode: scene.constructNode('FlatMaterial')
+  });
+  
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  
+  var highlightMaterial = scene.constructNode('OutlineShader', {
+    color: FABRIC.RT.rgb(0.7, 0.7, 0.7, 1),
+    thickness: 0.25
+  });
+  var selectedMaterial = scene.constructNode('OutlineShader', {
+    color: FABRIC.RT.rgb(0.95, 0.95, 0.95, 1),
+    thickness: 0.25
+  });
+
+  var materials = [
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0.8, 0, 0, 1), lightNode: light }),
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0.6, 0.6, 0, 1), lightNode: light }),
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0, 0, 0.8, 1), lightNode: light })
+    ];
+  
+  
+  var nodes = {};
+  var objId = 0;
+  var scale = 2.0;
+  var gridSize = 25.0;
+  for (var k = 1; k < 16; k++) {
+    var radius = (Math.random() + 0.5) * scale;
+    var tr = new FABRIC.RT.Vec3(
+      (Math.random() - 0.5) * gridSize,
+      radius,
+      (Math.random() - 0.5) * gridSize
+    );
+
+    var xfo = FABRIC.RT.xfo({ tr:tr });
+    var transformNode = scene.constructNode('Transform', { hierarchical: false, globalXfo: xfo });
+
+    var sphere = scene.constructNode('Sphere', {
+      name: 'SphereMesh',
+      radius: radius,
+      detail: 10
+    });
+    var inst = scene.constructNode('SelectableInstance', {
+        name: 'SphereInstance',
+        transformNode: transformNode,
+        geometryNode: sphere,
+        materialNode: materials[objId % materials.length],
+        enableRaycasting: true,
+        
+        highlightMaterial: highlightMaterial,
+        selectMaterial: selectedMaterial
+      });
+    nodes[inst.getName()] = inst;
+    objId++;
+  }
+  
+$(document).ready(function() {
+  var selecting = false;
+  for(var i in nodes){
+    $("#selectable").append('<li class="ui-widget-content" id="'+i+'">'+i+'</li>');
+  }
+  $( "#selectable" ).selectable({
+    stop: function(event, ui) {
+      var selection = [];
+      var selectedChildren = $("#selectable").children('.ui-selected');
+      for(var i=0; i<selectedChildren.length; i++){
+        selection.push(nodes[$(selectedChildren[i]).attr('id')]);
+      }
+      selecting = true;
+      selectionManager.select(selection);
+      scene.redrawAllViewports();
+      selecting = false;
+    }
+  });
+  
+  selectionManager.addEventListener('selectionChanged', function(evt){
+    if(selecting) return;
+    $("#selectable").children().each(function(){
+      $(this).removeClass('ui-selected');
+    });
+    for(var i=0; i<evt.selection.length; i++){
+      $("#"+evt.selection[i].getName()).addClass('ui-selected');
+    }
+  });
+  
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  var count = FABRIC.getActiveAsyncTaskCount();
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight){
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if(nbRemaining===0){
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+  
+});
+});
+
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc" style="margin-bottom: 10px"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              This sample shows a selecton manager, and the management of selection changes propagated from the interactive raycasting, or the selection list. 
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box">
+            <h2>SELECTION</h2>
+            <div class="content">
+              <ol id="selectable">
+              </ol>
+            </div>
+          </div><!--box-->
+            
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

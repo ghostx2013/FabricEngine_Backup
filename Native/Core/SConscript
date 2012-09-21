@@ -1,0 +1,33 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'baseEnv', 'llvmFlags', 'md5Flags', 'buildOS' )
+
+coreEnv = baseEnv.Clone()
+coreEnv.MergeFlags( llvmFlags )
+coreEnv.MergeFlags( md5Flags )
+Export( 'coreEnv' )
+
+buildSource = baseEnv.Template( "Build.cpp", "Build.cpp.template" )
+buildObject = baseEnv.SharedObject( buildSource )
+Export( 'buildObject' )
+
+SConscript(
+  dirs=[
+    'Util',
+    'MT',
+    'RT',
+    'CG',
+    'MR',
+    'AST',
+    #'OCL',
+    'KL',
+    'IO',
+    'Plug',
+    'GC',
+    'KLC',
+    'DG',
+  ]
+  )

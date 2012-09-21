@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Multi-Pass Rendering</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Parsers/parseOBJ",
+                "RT/OGLRenderTarget"], function() {
+    
+// These Node definitions are inlined for now, but will
+// be moved to a separate file once they are stabilized. 
+FABRIC.SceneGraph.registerNodeType('ThickGlassMaterial', {
+  factoryFn: function(options, scene) {
+    options = scene.assignDefaults(options, {
+        color: FABRIC.RT.rgba(0.6,0.3,0,1),
+        sigma: 0.5
+      });
+    
+    var thickGlassMaterialPP = scene.constructNode('PostProcessEffect', {
+      name: 'ThickGlassMaterialPP',
+      parentEventHandler: scene.getSceneRedrawTransparentObjectsEventHandler(),
+      renderTarget: FABRIC.RT.oglRenderTarget(0,  0, [
+        new FABRIC.RT.OGLRenderTargetTextureDesc(
+            2, /*COLOR*/
+            new FABRIC.RT.OGLTexture2D(
+              FABRIC.SceneGraph.OpenGLConstants.GL_RG16F,
+              FABRIC.SceneGraph.OpenGLConstants.GL_RG,
+              FABRIC.SceneGraph.OpenGLConstants.GL_FLOAT)
+          )
+        ],
+        {
+          clearColor: FABRIC.RT.rgba(0,0,0,1)
+        }
+      ),
+      fragmentShader: '\n\
+uniform float u_sigma;\n\
+uniform sampler2D u_fboTexture;\n\
+uniform vec4 u_color;\n\
+\n\
+void main(){\n\
+  vec2 texCoord = vec2(gl_TexCoord[0]);\n\
+  float thickness = abs(texture2D(u_fboTexture, texCoord).r);\n\
+  if (thickness <= 0.0){\n\
+      discard;\n\
+  }\n\
+  float fresnel = 1.0 - texture2D(u_fboTexture, texCoord).g; \n\
+  float intensity = fresnel * exp(-u_sigma * thickness);\n\
+  gl_FragColor = intensity * u_color;\n\
+  gl_FragColor.a = 1.0;\n\
+}\
+      ',
+      shaderUniforms: {
+        fboTexture: { name: 'u_fboTexture', type:'Integer', owner: 'fbo' },
+        color: { name: 'u_color', type:'Color', defaultValue:options.color },
+        sigma: { name: 'u_sigma', type:'Scalar', defaultValue:options.sigma }
+      },
+      shaderAttributes: {
+        positions: { name: 'a_position' }
+      },
+      disableOptions: [],
+      enableOptions: []
+    });
+    
+    
+    
+    var thickGlassMaterial = scene.constructNode('Material', {
+      name:'ThickGlassMaterialShader',
+      parentEventHandler: thickGlassMaterialPP.getRedrawEventHandler(),
+      vertexShader: '\
+attribute vec4 a_position;\n\
+attribute vec3 a_normal;\n\
+uniform mat4 u_modelViewProjectionMatrix;\n\
+uniform mat4 u_modelViewMatrix;\n\
+uniform mat3 u_normalMatrix;\n\
+varying vec4 position;\n\
+varying vec3 normal;\n\
+void main(){\n\
+  position = u_modelViewMatrix * a_position;\n\
+  normal = u_normalMatrix * a_normal;\n\
+  gl_Position = u_modelViewProjectionMatrix * a_position;\n\
+}\n\
+',
+      fragmentShader: '\n\
+varying vec4 position;\n\
+varying vec3 normal;\n\
+\n\
+void main(){\n\
+  vec3 N = normalize(normal);\n\
+  vec3 P = vec3(position.x,position.y,position.z);\n\
+  vec3 I = normalize(P);\n\
+  float cosTheta = abs(dot(I, N));\n\
+  float fresnel = pow(1.0 - cosTheta, 4.0);\n\
+\n\
+  float depth;\n\
+  if(gl_FrontFacing) \n\
+    depth =  position.z;//gl_FragCoord.z; \n\
+  else \n\
+    depth = -position.z;//gl_FragCoord.z; \n\
+  gl_FragColor = vec4(depth, fresnel, 0, 0);\n\
+}\
+',
+      shaderUniforms: {
+        modelViewProjectionMatrix: { name: 'u_modelViewProjectionMatrix', owner:'instance' },
+        modelViewMatrix: { name: 'u_modelViewMatrix', owner:'instance' },
+        normalMatrix: { name: 'u_normalMatrix', owner:'instance' }
+      },
+      shaderAttributes: {
+        positions: { name: 'a_position' },
+        normals: { name: 'a_normal' }
+      },
+      separateShaderNode: false,
+      disableOptions: [FABRIC.SceneGraph.OpenGLConstants.GL_CULL_FACE],
+      enableOptions: [FABRIC.SceneGraph.OpenGLConstants.GL_DEPTH_TEST,
+                      FABRIC.SceneGraph.OpenGLConstants.GL_BLEND],
+      blendModeSfactor: FABRIC.SceneGraph.OpenGLConstants.GL_ONE,
+      blendModeDfactor: FABRIC.SceneGraph.OpenGLConstants.GL_ONE
+    });
+
+    thickGlassMaterialPP.getRedrawEventHandler = thickGlassMaterial.getRedrawEventHandler;
+    
+    return thickGlassMaterialPP;
+  }});
+    
+    
+$(document).ready(function() {
+  
+  $('#sigma').slider();
+  $('#openDebugger').button();
+  
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    backgroundColor: FABRIC.RT.rgb(0.75, 0.75, 0.75)
+  });
+  
+  
+viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+
+  // Create a camera to draw the scene from
+  camera = scene.constructNode('TargetCamera', {
+      nearDistance: 5,
+      farDistance: 100,
+      position: new FABRIC.RT.Vec3(4, 1, 42).multiplyScalar(0.3),
+      target: new FABRIC.RT.Vec3(0, 0, 0)
+    });
+
+  scene.constructNode("CameraManipulator", { targetNode:camera } );
+
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(1420.0, 1000.0, 600.0) });
+
+  // Flat Shader
+  var thickGlassMaterial = scene.constructNode('ThickGlassMaterial', {
+      color: FABRIC.RT.rgb(0.0, 0.75, 0, 1),
+      sigma: 0.6
+    });
+  
+  scene.importAssetFile('../BasicDemos/Models/beethovan.obj', {}, function(assetNodes){
+    scene.constructNode('Instance', {
+        transformNode: scene.constructNode('Transform', {
+            hierarchical: false,
+            globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 0, 0) })
+          }),
+        geometryNode: assetNodes['beethovan'],
+        materialNode: thickGlassMaterial
+      });
+   });
+  
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      
+      $('#sigma').slider({
+          min: 0.0,
+          max: 1.0,
+          step: 0.1,
+          value: thickGlassMaterial.getSigma()
+        })
+      .bind('slide',
+        function(event, ui) {
+          thickGlassMaterial.setSigma( ui.value );
+          scene.redrawAllViewports();
+        });
+      
+      $('#openDebugger').button()
+        .click(function() {
+          FABRIC.displayDebugger();
+        });
+    
+      viewport.redraw();
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Materials.<br>
+              This sample shows a material where the object is rendered twice. Fist to gather depth information, and a second time to apply the fresnel effect. 
+            </div><!--content-->
+          </div><!--box-->
+          
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div>Glass Density:</div>
+              <div id='sigma' style="margin-top:10px;"></div>
+              <button id="openDebugger" style="margin-top:10px;">Open Debugger</button>
+            </div><!--content-->
+          </div><!--box-->
+            
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

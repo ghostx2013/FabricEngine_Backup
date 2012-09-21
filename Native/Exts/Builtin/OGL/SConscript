@@ -1,0 +1,37 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'fabricExtsDistDir', 'buildOS', 'buildArch', 'buildType', 'ExtSLName', 'glewFlags' )
+
+oglPluginEnv = extsEnv.Clone()
+oglPluginEnv.MergeFlags( glewFlags )
+
+generator = oglPluginEnv.File("generate.py")
+template = oglPluginEnv.File("ogl.cpp_template")
+oglSource = oglPluginEnv.File("ogl.cpp")
+oglManifest = oglPluginEnv.File('FabricOGL.fpm.json')
+oglKL = oglPluginEnv.File('FabricOGL.kl')
+
+oglPluginEnv.Command(
+  [oglSource, oglManifest, oglKL],
+  [generator, template],
+  [
+    [
+      'python',
+      generator.abspath,
+      "--header="+File('#Native/ThirdParty/Private/glew-1.6.0/GL/glew.h').abspath,
+      "--template="+template.abspath,
+      "--klresult="+oglKL.abspath,
+      "--cppresult="+oglSource.abspath,
+      "--jsonresult="+oglManifest.abspath,
+    ]
+  ]
+)
+
+oglPlugin = oglPluginEnv.SharedLibrary( ExtSLName('FabricOGL'), oglSource )
+if buildOS == 'Windows':
+  oglPlugin = oglPlugin[0]
+oglFiles = [oglManifest, oglPlugin, oglKL]
+
+Return( 'oglFiles' )

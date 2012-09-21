@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Lidar Viewer</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+    
+$(document).ready(function() {
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Lidar"], function() {
+ 
+  FABRIC.SceneGraph.defineEffectFromFile('FlatGradientMaterial', 'Shaders/FlatGradientShader.xml');
+  
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', { windowElement: document.getElementById('FabricContainer') });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      nearDistance: 0.1,
+      farDistance: 2000000,
+      position: new FABRIC.RT.Vec3(10,10,10).multiplyScalar(100),
+      target: new FABRIC.RT.Vec3(1224257,314934,4275),
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(10, 30, 100).multiplyScalar(3) });
+
+
+  var pointMaterial = scene.constructNode('FlatGradientMaterial', {
+    prototypeMaterialType: 'PointMaterial',
+    pointSize: 1,
+    axis: 1,
+    center: 0.25,
+    bottomColor: FABRIC.RT.rgba(0.0,0.0,1.0,1.0),
+    middleColor: FABRIC.RT.rgba(0.0,1.0,0.0,1.0),
+    topColor: FABRIC.RT.rgba(1.0,0.0,0.0,1.0)
+  });
+
+  // create the alembic content, and fire the load once it is loaded
+  var resourceName = 'MtStHelens';
+  //var resourceName = 'palmbeach';
+  //var resourceName = 'autzen';
+  var assets = scene.importAssetFile('Models/'+resourceName+'.laz', {
+    dependentNode: viewport
+  });
+  
+  assets[resourceName].addEventListener('loadSuccess', function(){
+    // loop over all assets and create an instance
+    for(var name in assets[resourceName].getParsedNodes()) {
+      if(assets[resourceName].getParsedNodes()[name].isTypeOf('Points'))
+      {
+        scene.constructNode('Instance', {
+          geometryNode: assets[resourceName].getParsedNodes()[name],
+          materialNode: pointMaterial
+        });
+      }
+      
+      setTimeout(function(){
+        // place the camera based on the center
+        var min = new FABRIC.RT.Vec3(10000000,10000000,10000000);
+        var max = new FABRIC.RT.Vec3(-10000000,-10000000,-10000000);
+        for(var name in assets[resourceName].getParsedNodes()) {
+          if(assets[resourceName].getParsedNodes()[name].isTypeOf('Points'))
+          {
+            // compute the bbox
+            var bbox = assets[resourceName].getParsedNodes()[name].getBoundingBox();
+            if(min.x > bbox.min.x)min.x = bbox.min.x;
+            if(min.y > bbox.min.y)min.y = bbox.min.y;
+            if(min.z > bbox.min.z)min.z = bbox.min.z;
+            if(max.x < bbox.max.x)max.x = bbox.max.x;
+            if(max.y < bbox.max.y)max.y = bbox.max.y;
+            if(max.z < bbox.max.z)max.z = bbox.max.z;
+          }
+        }
+        
+        var center = min.add(max).multiplyScalar(0.5);
+        var pos = center.add(new FABRIC.RT.Vec3(0,0,0.5 * Math.abs(min.z - max.z)));
+        camera.getTransformNode().setGlobalXfo(FABRIC.RT.xfo({tr:pos}));
+        camera.getTransformNode().setTarget(center);
+        camera.setNearDistance(Math.abs(min.z - max.z) * 0.001);
+        camera.setFarDistance(Math.abs(min.z - max.z) * 100);
+        
+        pointMaterial.setMinimum(min.y + (max.y - min.y) * 0.5);
+        pointMaterial.setMaximum(max.y);
+        
+        $('#loadingDialog').dialog('close');
+        viewport.redraw();
+        
+        $('#minimum').slider({
+          min: min.y,
+          max: max.y,
+          value: pointMaterial.getMinimum(),
+          step: (max.y - min.y) * 0.01
+        }).bind('slide',function(event, ui) {
+          pointMaterial.setMinimum(ui.value)
+          viewport.redraw();
+        });
+        $('#maximum').slider({
+          min: min.y,
+          max: max.y,
+          value: pointMaterial.getMaximum(),
+          step: (max.y - min.y) * 0.01
+        }).bind('slide',function(event, ui) {
+          pointMaterial.setMaximum(ui.value)
+          viewport.redraw();
+        });
+        $('#center').slider({
+          min: 0,
+          max: 1,
+          value: pointMaterial.getCenter(),
+          step: 0.01
+        }).bind('slide',function(event, ui) {
+          pointMaterial.setCenter(ui.value)
+          viewport.redraw();
+        });
+      },150);
+    }
+    return 'remove';
+  });
+
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      return true;
+    }
+  });
+  
+});
+
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc">Downloading LIDAR File (9MB).<br>This may take some time.</h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              LIDAR Viewer.<br>
+              This scene shows the LIDAR parser in action. The scene contains 5.6 million points.
+              The data is parsed using a custom extension based on the libLAS library.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div id="minimum"></div>
+              <div id="maximum"></div>
+              <div id="center"></div>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

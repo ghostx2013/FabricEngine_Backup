@@ -1,0 +1,183 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricFILESTREAM;
+use FabricFileStream;
+
+function Integer lookupDataIndex(
+  io String dataNames[],
+  io String dataName
+){
+  // look up the data member in the TOC.
+  Integer dataIndexId;
+  Integer i;
+  for(i=0;i<dataNames.size();i++) {
+    if(dataNames[i] == dataName) {
+      return i;
+    }
+  }
+  report("ERROR: data index not found :" + dataName);
+  return -1;
+}
+
+
+operator writeSliceCountToStream(
+  io FabricFileStream stream,
+  io String dataNames[],
+  io Size seekOffsets[],
+  io String dataName,
+  io Container container
+){
+  if(stream.isWritable()) {
+    Integer dataIndexId = lookupDataIndex(dataNames, dataName);
+    if(dataIndexId >= 0){
+      seekOffsets[dataIndexId] = stream.getSeek();
+      Size sliceCount = container.size();
+      stream.writeSize(sliceCount);
+    }
+  }
+}
+
+operator writeMemberToStream(
+  io FabricFileStream stream,
+  io String dataNames[],
+  io Size seekOffsets[],
+  io String dataName,
+  io DATA_TYPE member<>
+){
+  if(stream.isWritable()) {
+    Integer dataIndexId = lookupDataIndex(dataNames, dataName);
+    if(dataIndexId >= 0){
+      seekOffsets[dataIndexId] = stream.getSeek();
+      String dataType = "DATA_TYPE";
+      stream.writeString(dataType);
+      stream.writeDataCompressed(member.data(),member.dataSize());
+    }
+  }
+}
+
+operator writeArrayToStream(  
+  io FabricFileStream stream,
+  io String dataNames[],
+  io Size seekOffsets[],
+  io String dataName,
+  io DATA_TYPE data<>[]
+){
+  if(stream.isWritable()) {
+    Integer dataIndexId = lookupDataIndex(dataNames, dataName);
+    if(dataIndexId >= 0){
+      seekOffsets[dataIndexId] = stream.getSeek();
+      String dataType = "DATA_TYPE";
+      stream.writeString(dataType);
+      for(Integer i=0; i<data.size(); i++){
+        stream.writeSize(data[i].size());
+        stream.writeDataCompressed(data[i].data(),data[i].dataSize());
+      }
+    }
+  }
+}
+
+function Boolean seekData(
+  io FabricFileStream stream,
+  io Size prevDataIndex,
+  in String dataNames[],
+  in Size dataSeekOffsets[],
+  in String dataName
+){
+  if(dataNames[prevDataIndex+1] == dataName){
+    // Most of the time the file is read incrementaly from beginning
+    // to end, so looking up the TOC should be rare. Here we check 
+    // if the seek is already at the correct location.
+    prevDataIndex++;
+    stream.setSeek(dataSeekOffsets[prevDataIndex]);
+    return true;
+  }
+  else{
+    for(Size i=0;i<dataNames.size();i++) {
+      if(dataNames[i] == dataName) {
+        stream.setSeek(dataSeekOffsets[i]);
+        prevDataIndex = i;
+        return true;
+      }
+    }
+    report("ERROR: Data not found in file:"+dataName);
+    return false;
+  }
+}
+
+
+operator readSliceCountFromStream(
+  io FabricResource resource,
+  io String dataNames[],
+  io Size dataSeekOffsets[],
+  io String dataName,
+  io Container container
+){
+  FabricFileStream stream;
+  stream.open(resource.dataExternalLocation,"r");
+  if(stream.isValid()){
+    Size prevDataIndex = -1;
+    if(seekData(stream, prevDataIndex, dataNames, dataSeekOffsets, dataName)) {
+      Size newCount;
+      stream.readSize(newCount);
+      container.resize(newCount);
+    }
+    stream.close();
+  }
+}
+
+
+operator readMemberFromStream(
+  io FabricResource resource,
+  io String dataNames[],
+  io Size dataSeekOffsets[],
+  io String dataName,
+  io DATA_TYPE data<>
+){
+  FabricFileStream stream;
+  stream.open(resource.dataExternalLocation,"r");
+  Size prevDataIndex = -1;
+  if(stream.isValid()){
+    if(seekData(stream, prevDataIndex, dataNames, dataSeekOffsets, dataName)) {
+      String storedMemberType;
+      stream.readString(storedMemberType);
+      if(storedMemberType != "DATA_TYPE"){
+        report("ERROR: Stored type : '"+storedMemberType+"' does not match current type:'DATA_TYPE'");
+        stream.close();
+        return;
+      }
+      stream.readDataCompressed(data.data(),data.dataSize());
+    }
+    stream.close();
+  }
+}
+
+
+operator readArrayFromStream(
+  io FabricResource resource,
+  io String dataNames[],
+  io Size dataSeekOffsets[],
+  io String dataName,
+  io DATA_TYPE data<>[]
+){
+  FabricFileStream stream;
+  stream.open(resource.dataExternalLocation,"r");
+  Size prevDataIndex = -1;
+  if(stream.isValid() && seekData(stream, prevDataIndex, dataNames, dataSeekOffsets, dataName)) {
+    String storedMemberType;
+    stream.readString(storedMemberType);
+    if(storedMemberType != "DATA_TYPE"){
+      report("ERROR: Stored type : '"+storedMemberType+"' does not match current type:'DATA_TYPE'");
+      stream.close();
+      return;
+    }
+    Size size;
+    for(Integer i=0; i<data.size(); i++){
+      stream.readSize(size);
+      data[i].resize(size);
+      stream.readDataCompressed(data[i].data(),data[i].dataSize());
+    }
+    stream.close();
+  }
+}

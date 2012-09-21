@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>DeferredSpotLightInstancingExtMaterial</name>
+  <prototypeMaterialType>DeferredPostPassMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_samplerPositionsMap" constant="positionsTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerNormalsMap" constant="normalsTexture" type="Integer" owner="texture"/>
+    <uniform name="u_samplerDiffuseAndSpecularFactorMap" constant="diffuseAndSpecularFactorTexture" type="Integer" owner="texture"/>
+    <uniform name="u_lightColor" constant="lightColor" type="Color" defaultValue="FABRIC.RT.rgba(1.0,1.0,1.0,1.0)"/>
+    <uniform name="u_lightCosCutoffStart" constant="lightCosCutoffStart" type="Scalar"/>
+    <uniform name="u_lightCosCutoff" constant="lightCosCutoff" type="Scalar"/>
+    <uniform name="u_lightIntensity" constant="lightIntensity" type="Scalar" defaultValue="1.0"/>
+    <uniform name="u_lightDistCutoffStart" constant="lightDistCutoffStart" type="Scalar"/>
+    <uniform name="u_lightDistCutoff" constant="lightDistCutoff" type="Scalar"/>
+    <uniform name="u_materialShininess" constant="shininess" type="Scalar" defaultValue="20.0"/>
+    <uniform name="u_specularFactor" constant="specularFactor" type="Scalar" defaultValue="0.5"/>
+
+    <uniform name="u_viewMatrix" constant="viewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_projectionMatrix" constant="projectionMatrix" type="Mat44" owner="instance"/>
+
+		<uniform name="u_samplerTransformMap" constant="transformTexture" type="Integer" owner="texture"/>
+    <uniform name="u_transformTextureHeight" constant="transformTextureHeight" type="Scalar"/>
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+  </attributes>
+  
+  <lights>
+    <light type="Light" binding="light"/>
+  </lights>
+
+	<textures>
+    <texture binding="positionsTexture"/>
+    <texture binding="normalsTexture"/>
+    <texture binding="diffuseAndSpecularFactorTexture"/>
+    <texture binding="transformTexture"/>
+	</textures>
+  
+  <vertexshader>
+    <source>
+      <![CDATA[
+      #version 140
+
+      uniform float u_lightDistCutoff;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      uniform sampler2D u_samplerTransformMap;
+      uniform float u_transformTextureHeight;
+      
+      in vec4 a_position;
+      in int a_instanceID;
+
+      out vec3 lightDir;
+      out vec3 lightPos;
+      out vec4 position;
+
+      ]]>
+      </source>
+      <include file="matrices.txt"/>
+      <source>
+      <![CDATA[
+
+      void main(){
+				mat4 modelViewMatrix = u_viewMatrix * loadMatrixFromTexture(u_samplerTransformMap, u_transformTextureHeight, gl_InstanceID);
+        //We assume the cone has a height of u_lightDistCutoff in Y,
+        //and its Y center is at mid-height (based on generateCone.kl local coords)
+        lightPos = (modelViewMatrix * vec4(0.0, u_lightDistCutoff*0.5, 0.0, 1.0)).xyz;
+        vec3 lightCutoffPos = (modelViewMatrix * vec4(0.0, -u_lightDistCutoff*0.5, 0.0, 1.0)).xyz;
+        lightDir = normalize(vec3(lightCutoffPos - lightPos));
+
+        mat4 modelViewProjectionMatrix = u_projectionMatrix * modelViewMatrix;
+        position = modelViewProjectionMatrix * a_position;
+        gl_Position = position;
+      }
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform vec4 u_lightColor;
+      uniform float u_lightCosCutoff;
+      uniform float u_lightCosCutoffStart;
+      uniform float u_lightIntensity;
+      uniform float u_lightDistCutoffStart;
+      uniform float u_lightDistCutoff;
+
+      uniform float u_materialShininess;
+      uniform float u_specularFactor;
+
+      varying vec3 lightDir;
+      varying vec3 lightPos;
+      varying vec4 position;
+
+			uniform sampler2D u_samplerPositionsMap;
+			uniform sampler2D u_samplerNormalsMap;
+			uniform sampler2D u_samplerDiffuseAndSpecularFactorMap;
+
+      void main(){
+      
+        vec2 windowCoord = ((position.xy/position.w) + vec2(1.0, 1.0))*0.5;
+        vec3 pos = texture2D( u_samplerPositionsMap, windowCoord ).xyz;
+        vec3 norm = texture2D( u_samplerNormalsMap, windowCoord ).xyz;
+        vec4 diffuseAndSpecularFactor = texture2D( u_samplerDiffuseAndSpecularFactorMap, windowCoord );
+
+        vec3 lightVec = lightPos-pos;
+        float lightDist = length(lightVec);
+        vec3 Ln = lightVec/lightDist;
+        vec3 Vn = normalize(-pos);
+        vec3 Nn = normalize(norm);
+
+        vec4 finalColor = vec4( 0, 0, 0, 1 );
+
+        if(lightDist < u_lightDistCutoff) {
+          float cos = -dot( Ln, lightDir );
+          if( cos > u_lightCosCutoff ){
+            float lambertTerm = dot(Nn,Ln);
+            if ( lambertTerm > 0.0 ){
+            
+              float factor = u_lightIntensity;
+              if(cos < u_lightCosCutoffStart)
+                factor *= (cos-u_lightCosCutoff)/(u_lightCosCutoffStart-u_lightCosCutoff);
+                
+              if(lightDist > u_lightDistCutoffStart)
+                factor *= (lightDist-u_lightDistCutoff)/(u_lightDistCutoffStart-u_lightDistCutoff);
+
+              finalColor += factor * vec4(diffuseAndSpecularFactor.rgb, 1.0) * u_lightColor * lambertTerm;
+
+              vec3 Rn = reflect(-Ln, Nn);
+              float specular = pow( max(dot(Rn, Vn), 0.0), u_materialShininess ) * diffuseAndSpecularFactor.a;
+            
+              finalColor += factor * specular * u_specularFactor * u_lightColor;
+            }
+          }
+        }
+        gl_FragColor = finalColor;
+      }
+
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

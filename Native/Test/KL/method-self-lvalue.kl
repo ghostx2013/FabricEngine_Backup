@@ -1,0 +1,30 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+function Vec3.setX( in Scalar x ) 
+{
+  this.x = x; 
+} 
+
+function Vec3 foo( in Vec3 a ) 
+{ 
+  // Should fail.
+  a.setX( 1.0 ); 
+  return a;
+} 
+
+operator entry( ) 
+{ 
+  var Vec3	a; 
+  a.x = a.y = a.z = 0.0; 
+  report( foo( a ) ); 
+} 
+

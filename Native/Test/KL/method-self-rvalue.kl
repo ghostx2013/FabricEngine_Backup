@@ -1,0 +1,33 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+function Vec3 Vec3.cross( in Vec3 other ) 
+{ 
+  var Vec3	v; 
+
+  v.x = this.x * other.x; 
+  v.y = this.y * other.y; 
+  v.z = this.z * other.z; 
+  return v; 
+} 
+
+function Vec3 foo( in Vec3 a, in Vec3 b ) 
+{ 
+  return a.cross( b ); 
+} 
+
+operator entry( ) 
+{ 
+  var Vec3	a, b; 
+  a.x = a.y = a.z = b.x = b.y = b.z = 0.0; 
+  report( foo( a, b ) ); 
+} 
+

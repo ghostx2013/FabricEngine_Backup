@@ -1,0 +1,19 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Foo
+{
+  UnregisteredType a;
+};
+
+struct Bar
+{
+  Integer a;
+  Scalar b;
+};
+
+struct Bar
+{
+  Scalar a;
+};

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Toon Rendering</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+
+<script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Primitives",
+                "SG/DeferredRendering"], function() {
+ 
+// load our custom shaders
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPreToonMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPreToonShader.xml');
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPostToonMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPostToonShader.xml');
+
+// register our custom renderer
+FABRIC.SceneGraph.registerNodeType('ToonRenderer', {
+  briefDesc: '',
+  detailedDesc: '',
+  parentNodeDesc: '',
+  optionsDesc: {
+  },
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+    });
+
+    var renderNode = scene.constructNode('BaseDeferredRenderer', {
+      colorBuffers: [{name: 'positionsZ', nbChannels: 1}, {name: 'normals', nbChannels: 3}, {name: 'diffuse', nbChannels: 4, internalFormat: FABRIC.SceneGraph.OpenGLConstants.GL_RGBA8}],
+      clearColor: FABRIC.RT.rgba(0.5,0.5,0.5,1.0)
+    });
+    // Note: the renderer owns the post render shader.
+    var compositingMaterial = scene.constructNode('DeferredPostToonMaterial', {
+      shadeFullScreen: true,
+      rendererNode: renderNode.pub
+     });
+    renderNode.pub.getOutlineWidth = compositingMaterial.pub.getOutlineWidth;
+    renderNode.pub.setOutlineWidth = compositingMaterial.pub.setOutlineWidth;
+    renderNode.pub.getOutlineColor = compositingMaterial.pub.getOutlineColor;
+    renderNode.pub.setOutlineColor = compositingMaterial.pub.setOutlineColor;
+    
+    
+    return renderNode;
+  }});
+
+$(document).ready(function() {
+  ///////////////////////////////////////////////////////////////
+  // Create the scene.
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    rayIntersectionThreshold: 0.8,
+    backgroundColor: FABRIC.RT.rgb(0, 0, 0)//Important: deferred shading is additive!
+  });
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      nearDistance: 5,
+      farDistance: 30,
+      position: new FABRIC.RT.Vec3(2, 6, 12).multiplyScalar(1.5),
+      target: new FABRIC.RT.Vec3(0, 0, 0)
+    });
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+  
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(2.0, 10.0, 5.0) });
+  var teapot = scene.constructNode('Teapot', { detail: 8 });
+  
+  var toonRenderer = scene.constructNode('ToonRenderer');
+  var toonMaterial = scene.constructNode('DeferredPreToonMaterial', {
+    lightNode: light,
+    rendererNode: toonRenderer
+  });
+
+  var instance = scene.constructNode('Instance', {
+    transformNode: scene.constructNode('Transform', {
+      hierarchical: false,
+      globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 0, 0) })
+    }),
+    geometryNode: teapot,
+    materialNode: toonMaterial
+  });
+  
+  // ========================================
+  // UI LOGIC
+  $('#colorSteps').slider({
+    min: 2.0,
+    max: 10.0,
+    step: 1.0,
+    value: toonMaterial.getColorSteps()
+  }).bind('slide',
+    function(event, ui) {
+      toonMaterial.setColorSteps(ui.value);
+      viewport.redraw();
+    }
+  );
+
+  $('#outlineWidth').slider({
+    min: 1.0,
+    max: 4.0,
+    step: 1.0,
+    value: toonRenderer.getOutlineWidth()
+  }).bind('slide',
+    function(event, ui) {
+      toonRenderer.setOutlineWidth(ui.value);
+      viewport.redraw();
+    }
+  );
+
+  $('#toggleDebug').button().click(function(){
+    toonRenderer.setDebugDrawToggle(!toonRenderer.getDebugDrawToggle());
+    viewport.redraw();
+  });
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Toon Rendering.<br>
+              The Toon Renderer uses a complex rendering pipeline, which renders to render targets.
+              It renders color, normal and depth information. Then it uses a post effect shader to
+              compute outlines from the normal and depth render target, and composites the output.<br>
+              Since the outlines are computed as a post process, they also work with clipped geometry.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+              <div>Color Steps:</div>
+              <div id="colorSteps" style="margin-bottom: 10px; margin-top: 10px"></div>
+              <div>Outline Width:</div>
+              <div id="outlineWidth" style="margin-bottom: 10px; margin-top: 10px"></div>
+              <button id="toggleDebug">Toggle Debug</div>
+            </div><!--content-->
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+</html>

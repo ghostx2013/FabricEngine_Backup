@@ -1,0 +1,2 @@
+Fabric core exception: DG.one.setDependency('{"node": "one", "name": "reflex"...'): cannot set dependency because it would create a dependency loop
+Fabric core exception: DG.two.setDependency('{"node": "one", "name": "two"}'): cannot set dependency because it would create a dependency loop

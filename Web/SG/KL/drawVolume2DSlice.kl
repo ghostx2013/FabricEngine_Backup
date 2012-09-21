@@ -1,0 +1,112 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo, OGLShaderProgram;
+
+operator preSliceRender(io OGLShaderProgram shaderProgram) {
+  Mat44 mat44;
+  mat44.setIdentity();
+  Mat33 mat33;
+  mat33.setIdentity();
+  Integer location = shaderProgram.getUniformLocation( NORMALMATRIX_ATTRIBUTE_ID );
+  if(location!=-1)
+    shaderProgram.loadMat33Uniform(location, mat33);
+  location = shaderProgram.getUniformLocation( MODELVIEWPROJECTION_MATRIX_ATTRIBUTE_ID );
+  if(location!=-1)
+    shaderProgram.loadMat44Uniform(location, mat44);
+  location = shaderProgram.getUniformLocation( MODELVIEW_MATRIX_ATTRIBUTE_ID );
+  if(location!=-1)
+    shaderProgram.loadMat44Uniform(location, mat44);
+  glPushAttrib(GL_ENABLE_BIT | GL_DEPTH_BUFFER_BIT);
+  glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
+}
+
+operator postSliceRender() {
+  glPopClientAttrib();
+  glPopAttrib();
+}
+
+operator draw2DVolumeSlice(
+  io Xfo volumeXfo,
+  io Size axis,
+  io Scalar ratio,
+  io Vec2 tl,
+  io Vec2 br,
+  io OGLShaderProgram shaderProgram
+){
+  String name = 'a_position';
+  Integer posLocation = glGetAttribLocation(shaderProgram.programId, name);
+  name = 'a_normal';
+  Integer tex3DLocation = glGetAttribLocation(shaderProgram.programId, name);
+
+  Vec3 p[4];
+  p[0] = Vec3(tl.x, tl.y, 0.0);
+  p[1] = Vec3(br.x, tl.y, 0.0);
+  p[2] = Vec3(br.x, br.y, 0.0);
+  p[3] = Vec3(tl.x, br.y, 0.0);
+
+  Vec3 t[4];
+  if(axis == 0) {
+    t[0] = Vec3(ratio, 1.0, 0.0);
+    t[1] = Vec3(ratio, 1.0, 1.0);
+    t[2] = Vec3(ratio, 0.0, 1.0);
+    t[3] = Vec3(ratio, 0.0, 0.0);
+  } else if(axis == 1) {
+    t[0] = Vec3(0.0, ratio, 0.0);
+    t[1] = Vec3(1.0, ratio, 0.0);
+    t[2] = Vec3(1.0, ratio, 1.0);
+    t[3] = Vec3(0.0, ratio, 1.0);
+  } else { //Z is flipped
+    t[0] = Vec3(0.0, 1.0, 1.0-ratio);
+    t[1] = Vec3(1.0, 1.0, 1.0-ratio);
+    t[2] = Vec3(1.0, 0.0, 1.0-ratio);
+    t[3] = Vec3(0.0, 0.0, 1.0-ratio);
+  }
+
+  Quat invOri = volumeXfo.ori.inverse();
+  Size i;
+
+  for(i = 0; i < 4; ++i) {
+    t[i] = invOri.rotateVector(t[i]-Vec3(0.5, 0.5, 0.5)) + Vec3(0.5, 0.5, 0.5);
+  }
+
+  Integer idx[4];
+  idx[0] = 0; idx[1] = 1; idx[2] = 2; idx[3] = 3;
+
+  Data NULL;
+
+  Integer bufferIDArray[];
+  bufferIDArray.resize(1);
+
+  glGenBuffers(1, bufferIDArray);
+  Integer bufferID0 = bufferIDArray[0];
+  glGenBuffers(1, bufferIDArray);
+  Integer bufferID1 = bufferIDArray[0];
+  glGenBuffers(1, bufferIDArray);
+  Integer bufferID2 = bufferIDArray[0];
+  
+  glBindBuffer(GL_ARRAY_BUFFER, bufferID0);
+  glBufferData(GL_ARRAY_BUFFER, Integer(p.dataSize()), p.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(posLocation);
+  glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+  glBindBuffer(GL_ARRAY_BUFFER, bufferID1);
+  glBufferData(GL_ARRAY_BUFFER, Integer(t.dataSize()), t.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(tex3DLocation);
+  glVertexAttribPointer(tex3DLocation, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+  glBindBuffer(GL_ARRAY_BUFFER, bufferID2);
+  glBufferData(GL_ARRAY_BUFFER, Integer(idx.dataSize()), idx.data(), GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufferID2);
+  glDrawElements(GL_QUADS, idx.size(), GL_UNSIGNED_INT, NULL);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+  bufferIDArray[0] = bufferID0; glDeleteBuffers(1, bufferIDArray);
+  bufferIDArray[0] = bufferID1; glDeleteBuffers(1, bufferIDArray);
+  bufferIDArray[0] = bufferID2; glDeleteBuffers(1, bufferIDArray);
+}

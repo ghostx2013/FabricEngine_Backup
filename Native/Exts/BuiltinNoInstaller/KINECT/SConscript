@@ -1,0 +1,76 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'fabricExtsDistDir', 'ExtSLName', 'buildOS', 'buildArch', 'FABRIC_VERSION', 'archDistDir', 'generateDistZip', 'agplLicenseFile' )
+
+import os
+import os.path
+
+kinectBuilt = False
+
+# only do this for windows x86
+if buildOS != 'Windows' or buildArch != 'x86':
+    Export( 'kinectBuilt' )
+    Return()
+
+kinectPackageName = "FabricEngine-KinectExt-"+buildOS+"-"+buildArch+"-"+FABRIC_VERSION
+kinectPackageDir = archDistDir.Dir(kinectPackageName)
+    
+kinectPluginEnv = extsEnv.Clone()
+
+# find the kinect sdk
+kinectInclude = 'C:\\Program Files\\Microsoft SDKs\Kinect\\v1.0 Beta2\\inc'
+if not os.path.exists(kinectInclude):
+    print('WARNING: Skipping build of KINECT extension, no KINECT Include Folder found!')
+    Export( 'kinectBuilt' )
+    Return()
+
+kinectLib = 'C:\\Program Files\\Microsoft SDKs\\Kinect\\v1.0 Beta2\\lib\\x86\\MSRKinectNUI.lib'
+if not os.path.exists(kinectLib):
+    print('WARNING: Skipping build of KINECT extension, no KINECT Object Library found!')
+    Export( 'kinectBuilt' )
+    Return()
+
+kinectDllPath = 'C:\\Windows\\system32\\MSRKINECTNUI.DLL'
+if not os.path.exists(kinectDllPath):
+    print('WARNING: Skipping build of KINECT extension, no KINECT DLL found!')
+    Export( 'kinectBuilt' )
+    Return()
+    
+kinectPluginEnv.Append(CPPPATH = [kinectInclude])
+kinectPluginEnv.Append(LIBS = [kinectLib])
+kinectSources = Glob('*.cpp')
+kinectPlugin = kinectPluginEnv.SharedLibrary( ExtSLName('FabricKINECT'), kinectSources )
+if buildOS == 'Windows':
+  kinectPlugin = kinectPlugin[0]
+kinectManifest = kinectPluginEnv.File('FabricKINECT.fpm.json'),
+kinectKL = kinectPluginEnv.File('FabricKINECT.kl'),
+kinectExtFiles = [kinectManifest, kinectPlugin, kinectKL]
+Export( 'kinectExtFiles' )
+
+kinectInstallerFiles = [
+  Install(
+    kinectPackageDir,
+    [kinectPluginEnv.File("README.txt"), agplLicenseFile]
+  ),
+  Install(
+    kinectPackageDir.Dir('Exts'),
+    kinectExtFiles
+  )
+  ]
+
+installerEnv = kinectPluginEnv.Clone()
+generateDistZip( installerEnv )
+installerEnv.Append( DISTZIP_ROOTDIR = kinectPackageDir )
+kinectInstaller = installerEnv.DistZip(
+  archDistDir.File(kinectPackageName+".zip"),
+  kinectInstallerFiles
+)
+Alias( 'kinectInstaller', kinectInstaller )
+Export( 'kinectInstaller' )
+
+kinectBuilt = True
+Export( 'kinectBuilt' )
+
+Return( 'kinectExtFiles' )

@@ -1,0 +1,11 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Integer a = 0, b = 0;
+  (false? a: b) = 1;
+  report(a);
+  report(b);
+}

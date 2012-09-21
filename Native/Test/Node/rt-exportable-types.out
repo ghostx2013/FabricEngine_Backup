@@ -1,0 +1,1 @@
+node.getData('bar'): Fabric core exception: DG.foo.getData('{"memberName":"bar","sliceIndex"...'): unable to convert ValueProducer to JSON

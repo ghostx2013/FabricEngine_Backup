@@ -1,0 +1,19 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Integer doIndex( in Integer a[2], in Size i )
+{
+  return a[i];
+}
+
+operator entry()
+{
+  var Integer[2] a;
+  a[0] = 17;
+  a[1] = 42;
+
+  report(doIndex( a, 0 ));
+  report(doIndex( a, 1 ));
+  report(doIndex( a, 2 ));
+}

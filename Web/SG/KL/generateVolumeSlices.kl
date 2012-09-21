@@ -1,0 +1,665 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo, RGBA, Color;
+
+operator generateVolumeSlices(
+  io Container container,
+  io Vec3 cropMin,
+  io Vec3 cropMax,
+  io Vec3 halfPixelCrop,
+  io Boolean cropInTransformedSpace,
+  io Size nbSlices,
+  io Mat44 textureXfoMat,
+  io Xfo volumeXfo,
+  io Mat44 camera,
+  io Mat44 projection,
+  io Integer indices[],
+  io Vec3 positions<>,
+  io Vec3 normals<>
+){
+  container.resize( Size(nbSlices*6) );//First approximation (upper bound)
+  Size i, j, k;
+  indices.resize(0);
+
+  if(projection.row3.z == 0.0) {
+    report("Todo: support orthogaphic projections");
+    return;
+  }
+
+  if(nbSlices == 0)
+    return;
+
+  Vec3 fixedCrop[2];
+  fixedCrop[0] = cropMin*0.5 + Vec3(0.5, 0.5, 0.5);
+  fixedCrop[1] = cropMax*0.5 + Vec3(0.5, 0.5, 0.5);
+
+  Xfo textureXfo;
+  textureXfo.setFromMat44( textureXfoMat );
+
+  if(cropInTransformedSpace) {
+    //Flip the Z axis (camera points to -Z)
+    Scalar tmp = fixedCrop[0].z;
+    fixedCrop[0].z = 1.0-fixedCrop[1].z;
+    fixedCrop[1].z = 1.0-tmp;
+
+    for(i = 0; i <2; ++i)
+      fixedCrop[i] = textureXfo.ori.inverse().rotateVector(fixedCrop[i]);
+
+    for(i = 0; i < 3; ++i) {
+      if( ( fixedCrop[0].component(i) + fixedCrop[1].component(i) ) < 0.0 ) {
+        fixedCrop[0].setComponent(i, 1.0+fixedCrop[0].component(i));
+        fixedCrop[1].setComponent(i, 1.0+fixedCrop[1].component(i));
+      }
+    }
+  }
+
+  fixedCrop[0] += halfPixelCrop;
+  fixedCrop[1] -= halfPixelCrop;
+
+  for(i = 0; i <3; ++i) {
+    if(fixedCrop[0].component(i) > fixedCrop[1].component(i)) {
+      Scalar tmp = fixedCrop[0].component(i);
+      fixedCrop[0].setComponent(i, fixedCrop[1].component(i));
+      fixedCrop[1].setComponent(i, tmp);
+    }
+  }
+
+  Vec3 volumeMin = fixedCrop[0] * 2.0 + Vec3(-1.0, -1.0, -1.0);
+  Vec3 volumeMax = fixedCrop[1] * 2.0 + Vec3(-1.0, -1.0, -1.0);
+  Vec3 volSize = volumeMax - volumeMin;
+
+  if(volSize.x < PRECISION || volSize.y < PRECISION || volSize.z < PRECISION)
+    return;
+
+  Vec3 invVolSize = volSize.inverse();
+
+  Mat44 volInv = volumeXfo.toMat44().inverse();
+  Mat44 camInv = camera.inverse();
+  Vec3 camPos = camInv.translation();
+
+  Mat44 camProjInv = volInv * camInv * projection.inverse();
+  Vec3 camRange[2];
+  camRange[0] = camProjInv * Vec3(0.0, 0.0, -1.0);
+  camRange[1] = camProjInv * Vec3(0.0, 0.0, 1.0);
+
+  Vec3 camDir = (camRange[1] - camRange[0]);
+  Scalar camDepth = camDir.length();
+  camDir /= camDepth;
+  Vec3 camYPos = camProjInv * Vec3(0.5, 0.5, -1.0);
+  Vec3 biasedCamDir = ((camYPos - camRange[0]).unit() * 0.25 + camDir).unit();
+
+  //Find the camera-aligned slice depth
+  Vec3 volumeBBox[2];
+  volumeBBox[0] = volumeMin;
+  volumeBBox[1] = volumeMax;
+
+  Vec3 camVolBBox[2];
+  for(i = 0; i <3; ++i) {
+    if(camDir.component(i) < 0) {
+      camVolBBox[1].setComponent(i, volumeBBox[0].component(i));
+      camVolBBox[0].setComponent(i, volumeBBox[1].component(i));
+    }
+    else {
+      camVolBBox[0].setComponent(i, volumeBBox[0].component(i));
+      camVolBBox[1].setComponent(i, volumeBBox[1].component(i));
+    }
+  }
+  Scalar depthRange[2];
+  for(i = 0; i <2; ++i) {
+    depthRange[i] = (camVolBBox[i] - camRange[0]).dot(camDir);
+    depthRange[i] = Math_clamp(depthRange[i], 0, camDepth);
+  }
+  Scalar depth = depthRange[1] - depthRange[0];
+  Scalar relativePrecision = PRECISION * depthRange[1];
+
+  if(abs(depth) < relativePrecision)
+    return;
+
+  //Use volSize.length() so it's orientation agnostic
+  //This means that it won't exactly be "nbSlices"
+  Scalar step = volSize.length() / Scalar(nbSlices);
+  Size actualNbSlices = Size( depth / step );
+  Scalar invStep = 1.0 / step;
+
+  Vec3 points[8], texCoords[8];
+  Scalar pointsDepth[8];
+  Size pointDepthOrder[8];
+  Size index = 0;
+  for(i = 0; i < 2; ++i) {
+    for(j = 0; j < 2; ++j) {
+      for(k = 0; k < 2; ++k) {
+        points[index].set(volumeBBox[k].x, volumeBBox[j].y, volumeBBox[i].z);
+        texCoords[index].set(fixedCrop[k].x, fixedCrop[j].y, fixedCrop[i].z);
+        pointsDepth[index] = (points[index]-camRange[0]).dot(camDir);
+        pointDepthOrder[index] = index;
+        ++index;
+      }
+    }
+  }
+
+  //Sort points along cam inverse direction - back to front (simple bubble sort)
+  for(i = 0; i < 8; ++i) {
+    for(j = i+1; j < 8; ++j) {
+      Size first = pointDepthOrder[i];
+      Size second = pointDepthOrder[j];
+      Scalar firstDepth = pointsDepth[first];
+      Scalar secondDepth = pointsDepth[second];
+      if(abs(firstDepth - secondDepth) < relativePrecision) {
+        //Cam dir is axis-aligned; this is an exceptional case where we must ensure that coplanar 
+        //points are sorted in coherent order (adjacency wise). A simple way to achieve this is to
+        //sort according to a biased camDir:
+        firstDepth = (points[first]-camRange[0]).dot(biasedCamDir);
+        secondDepth = (points[second]-camRange[0]).dot(biasedCamDir);
+      }
+      if(secondDepth > firstDepth){
+        pointDepthOrder[i] = second;
+        pointDepthOrder[j] = first;
+      }
+    }
+  }
+  //constant cube topology
+  Size edgePoints[12][2];
+  edgePoints[0][0] = 0;edgePoints[0][1] = 1;
+  edgePoints[1][0] = 1;edgePoints[1][1] = 5;
+  edgePoints[2][0] = 5;edgePoints[2][1] = 4;
+  edgePoints[3][0] = 4;edgePoints[3][1] = 0;
+  edgePoints[4][0] = 0;edgePoints[4][1] = 2;
+  edgePoints[5][0] = 1;edgePoints[5][1] = 3;
+  edgePoints[6][0] = 5;edgePoints[6][1] = 7;
+  edgePoints[7][0] = 4;edgePoints[7][1] = 6;
+  edgePoints[8][0] = 2;edgePoints[8][1] = 3;
+  edgePoints[9][0] = 3;edgePoints[9][1] = 7;
+  edgePoints[10][0] = 7;edgePoints[10][1] = 6;
+  edgePoints[11][0] = 6;edgePoints[11][1] = 2;
+
+  Size pointCCWEdges[8][3];
+  pointCCWEdges[0][0] = 0;pointCCWEdges[0][1] = 4;pointCCWEdges[0][2] = 3;
+  pointCCWEdges[1][0] = 0;pointCCWEdges[1][1] = 1;pointCCWEdges[1][2] = 5;
+  pointCCWEdges[2][0] = 4;pointCCWEdges[2][1] = 8;pointCCWEdges[2][2] = 11;
+  pointCCWEdges[3][0] = 5;pointCCWEdges[3][1] = 9;pointCCWEdges[3][2] = 8;
+  pointCCWEdges[4][0] = 3;pointCCWEdges[4][1] = 7;pointCCWEdges[4][2] = 2;
+  pointCCWEdges[5][0] = 6;pointCCWEdges[5][1] = 1;pointCCWEdges[5][2] = 2;
+  pointCCWEdges[6][0] = 7;pointCCWEdges[6][1] = 11;pointCCWEdges[6][2] = 10;
+  pointCCWEdges[7][0] = 6;pointCCWEdges[7][1] = 10;pointCCWEdges[7][2] = 9;
+
+  Size edgeAxis[12];
+  edgeAxis[0] = edgeAxis[8] = edgeAxis[2] = edgeAxis[10] = 0;
+  edgeAxis[4] = edgeAxis[5] = edgeAxis[6] = edgeAxis[7] = 1;
+  edgeAxis[1] = edgeAxis[9] = edgeAxis[3] = edgeAxis[11] = 2;
+
+  Scalar axisSteps[3];
+  Scalar axisTexCoordSteps[3];
+  Scalar axisInvLen[3];
+
+  for(i = 0; i < 3; ++i){
+    Scalar dot = camDir.component(i);
+    if(abs(dot) > DIVIDEPRECISION)
+      axisSteps[i] = step / dot;
+    else
+      axisSteps[i] = 1;//in fact we won't use it...
+    axisInvLen[i] = (fixedCrop[1].component(i) - fixedCrop[0].component(i)) / volSize.component(i);
+    axisTexCoordSteps[i] = axisSteps[i] * axisInvLen[i];
+  }
+
+  Size nbEdges = 0;
+  Size currEdges[8];//Use stack alloc to optimize memory cache; will never be more than 8 (and in theory 6, but we'll leave place for intermediary growth)
+  Scalar currEdgePos[8][3];//Note: we use 3 scalars instead of Vec3 to avoid the many 'ifs' of the component methods
+  Scalar currEdgeTexCoord[8][3];
+
+  Boolean edgeMarks[12];
+  for(i = 0; i < 12; ++i){
+    edgeMarks[i] = false;
+  }
+
+  Size nextPointIndex = 0;
+  Size currSlice = 0;
+  Scalar currDepth = depthRange[1] - step*0.5;//back to front
+  Integer currPosIndex = 0;
+
+  while(currSlice < actualNbSlices) {//Rely on slice instead of currDepth in case of important numerical imprecision
+    while(true) {
+      //Adjust currEdges if applicable:
+      //  For each point that gets passed, add its next adjacent edges.
+
+      Size nextPoint = pointDepthOrder[nextPointIndex];
+      Scalar nextPointDepth = pointsDepth[nextPoint];
+      if(nextPointDepth < currDepth)
+        break;//No currEdges change
+
+      ++nextPointIndex;
+
+      Size insertPos = 0;
+      for(i = 0; i < nbEdges; ++i) {
+        Size edge = currEdges[i];
+        if(edgePoints[edge][0] == nextPoint || edgePoints[edge][1] == nextPoint) {
+          insertPos = i;
+          if(insertPos != 0)
+            break;//Else: the first edge of the set of 2 edges might be at the end!!!
+        }
+      }
+
+      Size nbEdgesToInsert = 0;
+      Size lastMarkedEdgePointOrder;
+      Size edgesToInsert[3];
+      for( i = 3; i--; ) { //CW order (backfacing)
+        Size edge = pointCCWEdges[nextPoint][i];
+        if(edgeMarks[edge]) {
+          lastMarkedEdgePointOrder = i;
+        }
+        else {
+          edgeMarks[edge] = true;
+          edgesToInsert[nbEdgesToInsert++] = edge;
+        }
+      }
+      if(nbEdgesToInsert == 3) {
+        nbEdges = 3;
+      }
+      else if(nbEdgesToInsert == 2) {//replace 1 by 2
+        if(lastMarkedEdgePointOrder == 1) {//flipped around: inverse order
+          Size tmp = edgesToInsert[0];
+          edgesToInsert[0] = edgesToInsert[1];
+          edgesToInsert[1] = tmp;
+        }
+        ++nbEdges;
+        for( i = nbEdges; i-- > insertPos+2; ) {
+          currEdges[i] = currEdges[i-1];
+          currEdgePos[i] = currEdgePos[i-1];
+          currEdgeTexCoord[i] = currEdgeTexCoord[i-1];
+        }
+      }
+      else if(nbEdgesToInsert == 1) {//replace 2 by 1
+        if(insertPos == nbEdges-1) {
+          //Special case: the could be a wrap around (edges to remove are 0 and N-1; not index-wise consecutive)
+          insertPos = 0;
+        }
+        else {
+          for( i = insertPos+2; i < nbEdges; ++i ) {
+            currEdges[i-1] = currEdges[i];
+            currEdgePos[i-1] = currEdgePos[i];
+            currEdgeTexCoord[i-1] = currEdgeTexCoord[i];
+          }
+        }
+        --nbEdges;
+      }
+      else if(nbEdgesToInsert == 0)
+        return;//should not happen unless big numerical imprecision issues
+
+      for( i = 0; i<nbEdgesToInsert; ++i) {
+        Size edge = edgesToInsert[i];
+        j = i+insertPos;
+        currEdges[j] = edge;
+
+        currEdgePos[j][0] = points[nextPoint].x;
+        currEdgePos[j][1] = points[nextPoint].y;
+        currEdgePos[j][2] = points[nextPoint].z;
+        currEdgeTexCoord[j][0] = texCoords[nextPoint].x;
+        currEdgeTexCoord[j][1] = texCoords[nextPoint].y;
+        currEdgeTexCoord[j][2] = texCoords[nextPoint].z;
+        Size axisIndex = edgeAxis[edge];
+        Scalar edgeStartDeltaStep = (currDepth - nextPointDepth) * invStep * axisSteps[axisIndex];
+        currEdgePos[j][axisIndex] += edgeStartDeltaStep;
+        currEdgeTexCoord[j][axisIndex] += edgeStartDeltaStep * axisInvLen[axisIndex];
+      }
+    }
+
+    //Add triangle indices
+    for(i = 2; i < nbEdges; ++i) {
+      indices.push(currPosIndex);
+      indices.push(Integer(currPosIndex+i));
+      indices.push(Integer(currPosIndex+i-1));
+    }
+
+    //Add & increment positions & textures coordinates
+    for(i = 0; i < nbEdges; ++i) {
+      positions[currPosIndex] = Vec3(currEdgePos[i][0], currEdgePos[i][1], currEdgePos[i][2]);
+      normals[currPosIndex] = Vec3(currEdgeTexCoord[i][0], currEdgeTexCoord[i][1], currEdgeTexCoord[i][2]);
+      ++currPosIndex;
+      Size axisIndex = edgeAxis[currEdges[i]];
+      currEdgePos[i][axisIndex] -= axisSteps[axisIndex];
+      currEdgeTexCoord[i][axisIndex] -= axisTexCoordSteps[axisIndex];
+    }
+
+    currDepth -= step;
+    ++currSlice;
+  }
+  container.resize( Size(currPosIndex) );//Clamp to final count
+}
+
+operator setNbSlicesFrom3DImage(
+  io Scalar resolutionFactor,
+  io Size imageWidth,
+  io Size imageHeight,
+  io Size imageDepth,
+  io Size nbSlices,
+  io Vec3 halfPixelCrop
+){
+  //This could be enhanced to ajust nb slices based on camera direction (nb pixels might vary per dim)
+  Size maxNbVoxels = imageWidth;
+  if(imageHeight > maxNbVoxels)
+    maxNbVoxels = imageHeight;
+  if(imageDepth > maxNbVoxels)
+    maxNbVoxels = imageDepth;
+
+  nbSlices = Size(Scalar(maxNbVoxels) * resolutionFactor * 2.0);
+  if(nbSlices < 8)
+    nbSlices = 8;
+
+  //Ajust cropMin & cropMax: remove 1/2 pixel
+  halfPixelCrop.x = 0.5 / Scalar(imageWidth);
+  halfPixelCrop.y = 0.5 / Scalar(imageHeight);
+  halfPixelCrop.z = 0.5 / Scalar(imageDepth);
+}
+
+
+operator computeGradients_depthSliced( 
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte opacityUShortVoxels[],
+  io RGBA sliceGradients[],
+  in Size index)
+{
+  //This implementation is a compromise between memory consumption,
+  //multithreading (slicing) and performance. In order to factorize
+  //as much computations while still multithreading, slices correspond
+  //to a 3D image plane, with slice count == depth.
+  //
+  //In order to avoid too many redundant computations pre pixel, we keep
+  //a full row of intermediary results.
+  Integer i, j, k, l, dst = 0;
+  Integer iwidth = width;
+  Integer iheight = height;
+  Integer idepth = depth;
+  Integer iindex = index;
+
+  Scalar scalingFactor[3];
+  Size maxSize = width;
+  if(height > maxSize)
+    maxSize = height;
+  if(depth > maxSize)
+    maxSize = depth;
+  scalingFactor[0] = Scalar(width)/Scalar(maxSize);
+  scalingFactor[1] = Scalar(height)/Scalar(maxSize);
+  scalingFactor[2] = Scalar(depth)/Scalar(maxSize);
+
+  sliceGradients.resize(width * height);
+
+  Integer nei3D2H_0[][3][2];
+  nei3D2H_0.resize(width + 2);
+
+  Integer nei2D1H_1[][2];
+  nei2D1H_1.resize(width + 2);
+
+  Integer nei2D2H_2[][2][2];
+  nei2D2H_2.resize(width + 1);
+
+  Integer DOffsets[3];
+  DOffsets[0] = (iindex == 0 ? iindex : iindex-1) * width * iheight;
+  DOffsets[1] = iindex * iwidth * iheight;
+  DOffsets[2] = (iindex == idepth-1 ? iindex : iindex+1) * iwidth * iheight;
+
+  for(i = -1; i < iheight; ++i) {
+    Integer nextHOffset = (i == -1 ? 0 : i) * iwidth;
+
+    //Update nei3D2H_0: contains neighbor pixels, including padding at borders
+    Integer HOffsets[3];
+    for(j = 0; j < 3; ++j) {
+      HOffsets[j] = DOffsets[j] + nextHOffset;
+    }
+    for(j = -1; j < iwidth+1; ++j) {
+      Integer WOffset = j < 0 ? 0 : (j == iwidth ? iwidth-1 : j);
+      for(k = 0; k < 3; ++k) {
+        nei3D2H_0[j+1][k][0] = nei3D2H_0[j+1][k][1];
+        Integer src = HOffsets[k] + WOffset;
+        nei3D2H_0[j+1][k][1] = Integer(opacityUShortVoxels[src*2]) + Integer(opacityUShortVoxels[src*2+1])*256;
+      }
+    }
+    //Update nei2D1H_1: contains D+H average of nei3D2H_0
+    for(j = 0; j < iwidth+2; ++j) {
+      Integer hSum[3];
+      for(k = 0; k < 3; ++k) {
+        hSum[k] = nei3D2H_0[j][k][0] + nei3D2H_0[j][k][1];
+      }
+      nei2D1H_1[j][0] = hSum[0]+hSum[1];
+      nei2D1H_1[j][1] = hSum[1]+hSum[2];
+    }
+    //Update nei2D2H_2: contains 2X2 cube of current pixel's surrounding dual average
+    if(i >= 0) {
+      for(j = 0; j < iwidth+1; ++j) {
+        for(k = 0; k < 2; ++k) {
+          nei2D2H_2[j][k][0] = nei2D2H_2[j][k][1];
+          nei2D2H_2[j][k][1] = nei2D1H_1[j][k] + nei2D1H_1[j+1][k];
+        }
+      }
+
+      //Compute gradients
+      for(j = 0; j < iwidth; ++j) {
+        Integer delta[3];
+        Integer v0, v1;
+        //W
+        v0 = nei2D2H_2[j][0][0] + nei2D2H_2[j][0][1] + nei2D2H_2[j][1][0] + nei2D2H_2[j][0][1];
+        v1 = nei2D2H_2[j+1][0][0] + nei2D2H_2[j+1][0][1] + nei2D2H_2[j+1][1][0] + nei2D2H_2[j+1][0][1];
+        delta[0] = v0 - v1;
+        //H
+        v0 = nei2D2H_2[j][0][0] + nei2D2H_2[j][1][0] + nei2D2H_2[j+1][0][0] + nei2D2H_2[j+1][1][0];
+        v1 = nei2D2H_2[j][0][1] + nei2D2H_2[j][1][1] + nei2D2H_2[j+1][0][1] + nei2D2H_2[j+1][1][1];
+        delta[1] = v0 - v1;
+        //D
+        v0 = nei2D2H_2[j][0][0] + nei2D2H_2[j][0][1] + nei2D2H_2[j+1][0][0] + nei2D2H_2[j+1][0][1];
+        v1 = nei2D2H_2[j][1][0] + nei2D2H_2[j][1][1] + nei2D2H_2[j+1][1][0] + nei2D2H_2[j+1][1][1];
+        delta[2] = v0 - v1;
+        //Note: at this point, delta has 32X magnitude (because we added all values without dividing at each step)
+
+        //Convert to normalized vector
+        Vec3 grad = Vec3(Scalar(delta[0])*scalingFactor[0], Scalar(delta[1])*scalingFactor[1], Scalar(delta[2])*scalingFactor[2]);
+        Scalar magnitude = grad.length();
+        if(magnitude > DIVIDEPRECISION)
+          grad /= magnitude;
+        magnitude *= (1.0/(32.0*256.0));//UShort -> Byte, and divide the pixel sums done previously
+        if(magnitude >= 256.0)
+          magnitude = 255.0;
+
+        //Rescale gradient from [-1..1] to [0..255.99]
+        grad += Vec3(1.0, 1.0, 1.0);
+        grad *= 127.99;
+        sliceGradients[dst++] = RGBA(Byte(grad.x), Byte(grad.y), Byte(grad.z), Byte(magnitude));
+      }
+    }
+  }
+}
+
+operator smoothGradients_depthSliced( 
+  io Size width,
+  io Size height,
+  io Size depth,
+  io RGBA sliceGradients<>[],
+  io RGBA smoothedSliceGradients[],
+  in Size index)
+{
+  //This implementation is a compromise between memory consumption,
+  //multithreading (slicing) and performance. In order to factorize
+  //as much computations while still multithreading, slices correspond
+  //to a 3D image plane, with slice count == depth.
+  //
+  //In order to avoid too many redundant computations pre pixel, we keep
+  //a full row of intermediary results.
+
+  smoothedSliceGradients.resize(width * height);
+  Integer i, j, k, l, m, n, dst = 0;
+
+  Integer iwidth = Integer(width);
+  Integer iheight = Integer(height);
+  Integer idepth = Integer(depth);
+  Integer iindex = Integer(index);
+
+  Integer nei3D2H_0[][3][2][3];
+  nei3D2H_0.resize(width + 2);
+
+  Integer nei2D1H_1[][2][3];
+  nei2D1H_1.resize(width + 2);
+
+  Integer nei2D2H_2[][2][2][3];
+  nei2D2H_2.resize(width + 1);
+
+  Integer DIndices[3];
+  DIndices[0] = iindex == 0 ? iindex : iindex-1;
+  DIndices[1] = iindex;
+  DIndices[2] = iindex == idepth-1 ? iindex : iindex+1;
+
+  for(i = -1; i < iheight; ++i) {
+    Integer nextHOffset = (i == -1 ? 0 : i) * iwidth;
+
+    //Update nei3D2H_0: contains neighbor pixels, including padding at borders
+    for(j = -1; j < iwidth+1; ++j) {
+      Integer WOffset = j < 0 ? 0 : (j == iwidth ? iwidth-1 : j);
+      for(k = 0; k < 3; ++k) {
+        nei3D2H_0[j+1][k][0] = nei3D2H_0[j+1][k][1];
+        Integer offset = nextHOffset + WOffset;
+        RGBA srcData = sliceGradients[DIndices[k]][offset];
+        Integer intData[3];
+        Integer magnitude = Integer(srcData.a);
+        intData[0] = (Integer(srcData.r) - 127) * magnitude;
+        intData[1] = (Integer(srcData.g) - 127) * magnitude;
+        intData[2] = (Integer(srcData.b) - 127) * magnitude;
+        nei3D2H_0[j+1][k][1] = intData;
+      }
+    }
+    //Update nei2D1H_1: contains D+H average of nei3D2H_0
+    for(j = 0; j < iwidth+2; ++j) {
+      Integer hSum[3][3];
+      for(k = 0; k < 3; ++k) {
+        for(l = 0; l < 3; ++l) {
+          hSum[k][l] = nei3D2H_0[j][k][0][l] + nei3D2H_0[j][k][1][l];
+        }
+      }
+      for(k = 0; k < 3; ++k) {
+        nei2D1H_1[j][0][k] = hSum[0][k]+hSum[1][k];
+        nei2D1H_1[j][1][k] = hSum[1][k]+hSum[2][k];
+      }
+    }
+    //Update nei2D2H_2: contains 2X2 cube of current pixel's surrounding dual average
+    if(i >= 0) {
+      for(j = 0; j < iwidth+1; ++j) {
+        for(k = 0; k < 2; ++k) {
+          nei2D2H_2[j][k][0] = nei2D2H_2[j][k][1];
+          for(l = 0; l < 3; ++l) {
+            nei2D2H_2[j][k][1][l] = nei2D1H_1[j][k][l] + nei2D1H_1[j+1][k][l];
+          }
+        }
+      }
+
+      //Compute average
+      for(j = 0; j < iwidth; ++j) {
+        Integer sum[3];
+        sum[0] = 0;
+        sum[1] = 0;
+        sum[2] = 0;
+
+        for(k = 0; k < 2; ++k) {
+          for(l = 0; l < 2; ++l) {
+            for(m = 0; m < 2; ++m) {
+              for(n = 0; n < 3; ++n) {
+                sum[n] += nei2D2H_2[j+k][l][m][n];
+              }
+            }
+          }
+        }
+        Vec3 grad = Vec3(Scalar(sum[0]), Scalar(sum[1]), Scalar(sum[2]));
+        if(sum[0] != 0 || sum[1] != 0 || sum[2] != 0 )
+          grad.setUnit();
+        //Rescale gradient from [-1..1] to [0..255.99]
+        grad += Vec3(1.0, 1.0, 1.0);
+        grad *= 127.99;
+        smoothedSliceGradients[dst] = RGBA(Byte(grad.x), Byte(grad.y), Byte(grad.z), sliceGradients[index][dst].a);
+        ++dst;
+      }
+    }
+  }
+}
+
+operator reduceOpacityTexture(
+  io Size srcWidth,
+  io Size srcHeight,
+  io Size srcDepth,
+  io Byte srcUShortPixels[],
+  io Size width,
+  io Size height,
+  io Size depth,
+  io Byte UShortPixels[]
+){
+  width = srcWidth/2;
+  height = srcHeight/2;
+  depth = srcDepth/2;
+  UShortPixels.resize(width*height*depth*2);
+
+  Size src = 0, dst = 0;
+  Size i, j, k, ii, jj, kk;
+  Size srcDepthDelta = srcWidth * srcHeight;
+
+  for(i = 0; i < depth; ++i) {
+    for(j = 0; j < height; ++j) {
+      for(k = 0; k < width; ++k) {
+
+        //Sum 8 source pixels
+        Integer sum = 0;
+
+        Size subSrc = src;
+        for(ii = 0; ii < 2; ++ii) {
+          Size subSrc2 = subSrc;
+          for(jj = 0; jj < 2; ++jj) {
+            for(kk = 0; kk < 2; ++kk) {
+              sum += Integer(srcUShortPixels[subSrc2*2]) + Integer(srcUShortPixels[subSrc2*2+1])*256;
+              ++subSrc2;
+            }
+            subSrc2 = subSrc + srcWidth;
+          }
+          subSrc = src + srcDepthDelta;
+        }
+        sum /= 8;
+        
+        UShortPixels[dst*2] = Byte(sum);
+        UShortPixels[dst*2+1] = Byte(sum/256);
+        
+        ++dst;
+        src += 2;
+      }
+      src += srcHeight;
+    }
+    src += srcDepthDelta;
+  }
+}
+
+
+operator updateTransferFunctionImage(
+  io Container container,
+  io Scalar minOpacity,
+  io Scalar maxOpacity,
+  io Scalar opacityFactors[],
+  io Color opacityColors[],
+  io Color pixels<>
+){
+  container.resize(opacityColors.size());
+  for(Size i = 0; i < pixels.size(); ++i) {
+    pixels[i].r = opacityColors[i].r;
+    pixels[i].g = opacityColors[i].g;
+    pixels[i].b = opacityColors[i].b;
+
+    //In the 2nd pixel row, bake the opacity clamping function.
+    //We keep it in a separate texture so that we can reduce artifacts even if "transparency" is not 0
+    //We bake it with an ease-in and ease-out curve to reduce visual artifacts (aliasing)
+    Scalar rampFactor = 0.05;//Arbitrary: should be an option.
+
+    Scalar X = Scalar(i)/Scalar(pixels.size()-1);
+    Scalar clampFactor = 1.0;
+    if(X < minOpacity-rampFactor || X > maxOpacity+rampFactor)
+      clampFactor = 0.0;
+    else if(X < minOpacity)
+      clampFactor = 1.0-(minOpacity-X)/rampFactor;
+    else if(X > maxOpacity)
+      clampFactor = 1.0-(X-maxOpacity)/rampFactor;
+
+    pixels[i].a = opacityFactors[i] * clampFactor;
+  }
+}

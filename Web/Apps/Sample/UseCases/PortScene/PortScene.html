@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Port Scene</title> 
+        
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../ga.js" charset="utf-8"></script>
+    <style>
+	#layers .ui-selecting { background: #5B9400; }
+	#layers .ui-selected { background: #559C2B; color: white; }
+	#layers { list-style-type: none; margin: 0; padding: 0; }
+	#layers li { margin: 3px; padding: 0.4em; height: 18px; }
+    </style>
+    
+    
+    <script type="text/javascript">
+     
+$(document).ready(function() {
+    $('#loadingDialog').dialog({
+      modal: true
+    });
+});
+   
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Persistence",
+                "SG/Parsers/parseCollada"], function() {
+
+  var loadStartTime = (new Date()).getTime();
+
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+    windowElement: document.getElementById('FabricContainer'),
+    enableRaycasting: true,
+  });
+  
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      nearDistance: 10,
+      farDistance: 50000,
+      target: new FABRIC.RT.Vec3(0, 0, 0),
+      position: new FABRIC.RT.Vec3(-2000, 1000, 3000)
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+  
+  
+  var light = scene.constructNode('DirectionalLight', {
+    position: new FABRIC.RT.Vec3(1000, 2000, 5),
+    target: new FABRIC.RT.Vec3(0, 2, -6),
+    direction: (new FABRIC.RT.Vec3(-1, -1, -1)).unit(),
+    farDistance: 16000,
+    resolution: 2048,
+    castShadows: false,
+    display: false,
+    size: 1800
+  });
+  
+    
+  var loadSubScene = function(fileName, callback){
+    $('#loadingDialog').dialog({
+      modal: true
+    });
+    var presetLoader = scene.constructManager('SceneDeserializer', {
+      preLoadScene: false
+    } );
+    presetLoader.setPreLoadedNode(light);
+    presetLoader.load(new FABRIC.SceneGraph.XHRReader(fileName), callback);
+  }
+
+  loadSubScene('Models/Terrain.json', function(){
+    loadSubScene('Models/Cranes.json', function(){
+      loadSubScene('Models/Trailors_Ships_Containers.json', function(){
+        loadSubScene('Models/Tanks.json', function(){
+          loadSubScene('Models/Rafinery_K1.json', function(){
+            loadSubScene('Models/RafineryAndMachinery.json', function(){
+              loadSubScene('Models/Industry.json', function(){
+                loadSubScene('Models/FACTORIES.json', function(){
+                  loadSubScene('Models/Buildings.json');
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+  
+  
+  $(document).ready(function() {
+    FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+      $('#loadingProgressBar').progressbar({
+        value: (1.0-(doneWeight/totalWeight))*100
+      });
+      if (nbRemaining===0) {
+        $('#loadingDialog').dialog('close');
+        var errors = scene.getErrors();
+        if (errors.length > 0) {
+          throw (errors.toString());
+        }
+        viewport.redraw();
+        
+        console.log( "Load time:"+ ((new Date()).getTime() - loadStartTime));
+        
+        setInterval(function() {
+            document.getElementById('frameRate').childNodes[0].data = 'Frame Rate:' + viewport.getFPS().toFixed(2);
+          }, 600);
+        
+        setTimeout(function() {
+            document.getElementById('numDrawnGeometries').childNodes[0].data = 'Num Drawn Geometries:' + viewport.getNumDrawnGeometries();
+            document.getElementById('numDrawnTriangles').childNodes[0].data = 'Num Drawn Triangles:' + viewport.getNumDrawnTriangles();
+          }, 1000);
+        return false;
+      }
+    });
+  });
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading Data...">
+      <h4 id="loadingDesc"></h4>
+      Warning: Large scene
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              <div id="frameRate">Frame Rate:</div><p></p>
+              <div id="numDrawnGeometries">Num Drawn Geometries:</div><p></p>
+              <div id="numDrawnTriangles">Num Drawn Triangles:</div><p></p>
+              <br>
+	       This demo is a stress test of the rendering pipeline. Many unique geometries are drawn using many loaded textures. The original collada data for this scene is over 500Mb. The collada files are loaded in a separate tool and the scene is exported as a combination of JSON and binary data. The binary data is compressed using Z-Lib, and the resulting data uses only 57Mb. This demo loads these JSON and binary files, along with the textures.
+	       <br>
+		Note that the data is cached by the browser, meaning that if you re-visit the demo,
+		the data does not need to be re-downloaded.
+            </div><!--content-->
+          </div><!--box-->
+
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

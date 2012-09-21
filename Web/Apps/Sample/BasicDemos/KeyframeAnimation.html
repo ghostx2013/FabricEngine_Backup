@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Keyframe Animation</title> 
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+	
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+    
+    <script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+            		"SG/Kinematics",
+                "SG/Materials",
+                "SG/Manipulation",
+            		"SG/Animation"], function() {
+ 
+  scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', {
+      windowElement: document.getElementById('FabricContainer')
+    });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+    position: new FABRIC.RT.Vec3(60, 80, 100),
+    target: new FABRIC.RT.Vec3(0, 0, 0)
+  });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  viewport.setCameraNode(camera);
+
+  // Scene
+  var light = scene.constructNode('PointLight', {
+    position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0)
+  });
+  var redMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb(0.8, 0, 0, 1),
+    lightNode: light
+  });
+  var blueMaterial = scene.constructNode('PhongMaterial', {
+    diffuseColor: FABRIC.RT.rgb(0, 0.8, 0, 1),
+    lightNode: light
+  });
+  
+  // create the scene grid
+  scene.constructNode('Instance', {
+    geometryNode: scene.constructNode('Grid', {
+      size_x: 140.0,
+      size_z: 140.0,
+      sections_x: 20,
+      sections_z: 20
+    }),
+    materialNode: scene.constructNode('FlatMaterial', {
+      color: new FABRIC.RT.rgb(0.3,0.3,0.3,1.0)
+    } )
+  });
+  
+  var cube = scene.constructNode('Cuboid', {
+    length: 15,
+    width: 15,
+    height: 25
+  });
+
+  var animationControllerNode = scene.constructNode('AnimationController', {
+      timeRange: new FABRIC.RT.Vec2(0, 100)
+    });
+  var linearKeyCharacterAnimationContainer = scene.constructNode('LinearTrackAnimationContainer');
+  var bezierKeyCharacterAnimationContainer = scene.constructNode('BezierTrackAnimationContainer');
+
+  var linearkey = function(time, value){ return new FABRIC.RT.LinearKeyframe(time, value); };
+  var bezierkey = function(time, value, intan, outtan){ return new FABRIC.RT.BezierKeyframe(time, value, intan, outtan); };
+
+  // Note on bounding values
+  // "globalXfo.tr":[-1,0,1]
+  // This means that the tr component of the Xfo will be bound to
+  // animation tracks 0 and 1 to the y and z components respectively
+  // Specifying a -1 mapping values means that that sub elemnt is not mapped.
+
+  ///////////////////////////////////////////////
+  // LinearKeyTrackAnimationContainer
+  
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.x', FABRIC.RT.rgb(0, 1, 0), [
+      linearkey(0, 0), linearkey(50, 0), linearkey(75, 50), linearkey(100, 0)
+    ]));
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.y', FABRIC.RT.rgb(1, 0, 0), [
+      linearkey(0, 0), linearkey(10, 20), linearkey(20, -5), linearkey(50, -5), linearkey(75, 50), linearkey(100, 0)
+    ]));
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.z', FABRIC.RT.rgb(0, 1, 0), [
+      linearkey(0, 0), linearkey(50, 0), linearkey(75, 20), linearkey(100, 0)
+    ]));
+  
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.x', FABRIC.RT.rgb(0, 1, 0), [
+    ]));
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.x', FABRIC.RT.rgb(0, 1, 0), [
+    ]));
+  linearKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.x', FABRIC.RT.rgb(0, 1, 0), [
+    ]));
+  
+
+  var linearAnimatedTransformNode = scene.constructNode('Transform', {
+    hierarchical: false,
+    globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(-50, 0, 0) })
+  });
+  
+  linearKeyCharacterAnimationContainer.bindNodeMembersToTracks(
+    linearAnimatedTransformNode, {
+      'globalXfo.tr': [0, 1, 2]
+    });
+  
+  scene.constructNode('Instance', {
+    transformNode: linearAnimatedTransformNode,
+    geometryNode: cube,
+    materialNode: redMaterial
+  });
+  
+
+  ///////////////////////////////////////////////
+  // BezierKeyTrackAnimationContainer
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.x', FABRIC.RT.rgb(1, 0, 0), [
+      bezierkey(0, -20, null, new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(10, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(20, 20, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      bezierkey(50, 0, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      bezierkey(75, -20, new FABRIC.RT.Vec2(-7, 0), null)
+    ]));
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.y', FABRIC.RT.rgb(0, 1, 0), [
+    ]));
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('tr.z', FABRIC.RT.rgb(0, 1, 0), [
+      bezierkey(0, 0, null, new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(10, 20, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(20, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      bezierkey(50, -20, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      bezierkey(75, 0, new FABRIC.RT.Vec2(-7, 0), null)
+    ]));
+                       
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.x', FABRIC.RT.rgb(1, 0, 0), [
+      bezierkey(0, 0, null, new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(10, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(20, 2, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      bezierkey(50, 2, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      bezierkey(75, 0, new FABRIC.RT.Vec2(-7, 0), null)
+    ]));
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.y', FABRIC.RT.rgb(0, 1, 0), [
+      bezierkey(0, 0, null, new FABRIC.RT.Vec2(3, 0)),
+      bezierkey(20, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      bezierkey(50, -2, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      bezierkey(75, 0, new FABRIC.RT.Vec2(-7, 0), null)
+    ]));
+  bezierKeyCharacterAnimationContainer.addTrack(new FABRIC.RT.KeyframeTrack('ori.z', FABRIC.RT.rgb(0, 0, 1), [
+    ]));
+
+  var bezierAnimatedTransformNode = scene.constructNode('Transform', {
+    hierarchical: false,
+    globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, 0, 0) })
+  });
+  
+  bezierKeyCharacterAnimationContainer.bindNodeMembersToTracks(
+    bezierAnimatedTransformNode, {
+      'globalXfo.tr': [0, 1, 2],
+      'globalXfo.ori': [3, 4, 5]
+    });
+  scene.constructNode('Instance', {
+    transformNode: bezierAnimatedTransformNode,
+    geometryNode: cube,
+    materialNode: blueMaterial
+  });
+  
+/*
+  ///////////////////////////////////////////////
+  // EulerRotation
+  var bezierEulerKeyframeTrackNode = scene.constructNode('BezierTrackAnimationContainer', {
+    name:'EulerBezierKeyTrackAnimationContainer'
+  } );
+  bezierEulerKeyframeTrackNode.setTrackCount(2);
+  var key = FABRIC.Animation.bezierKeyframe;
+  bezierEulerKeyframeTrackNode.setTrackData(0, {
+    name: 'EulerX',
+    color: FABRIC.RT.rgb(1, 0, 0),
+    keys: [
+      key(0, 0, null, new FABRIC.RT.Vec2(3, 0)),
+      key(10, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(3, 0)),
+      key(20, 2, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      key(50, 2, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      key(75, 0, new FABRIC.RT.Vec2(-7, 0), null)
+    ]
+  });
+  bezierEulerKeyframeTrackNode.setTrackData(1, {
+    name: 'EulerY',
+    color: FABRIC.RT.rgb(0, 1, 0),
+    keys: [
+       key(0, 0, null, new FABRIC.RT.Vec2(3, 0)),
+      key(20, 0, new FABRIC.RT.Vec2(-3, 0), new FABRIC.RT.Vec2(10, 0)),
+      key(50, -2, new FABRIC.RT.Vec2(-10, 0), new FABRIC.RT.Vec2(7, 0)),
+      key(75, 0, new FABRIC.RT.Vec2(-7, 0), null)
+    ]
+  });
+
+  var bezierAnimationEvaluatorNode = scene.constructNode('AnimationEvaluator', {
+    name:'EulerBezierKeyTrackAnimationContainer' ,
+    animationControllerNode: animationControllerNode,
+    trackAnimationContainerNode: bezierEulerKeyframeTrackNode
+  });
+
+  var xfo = new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(50, 0, 0) });
+  var bezierAnimatedTransformNode = scene.constructNode('Transform', {
+    hierarchical: false,
+    globalXfo: xfo
+  });
+  bezierAnimationEvaluatorNode.bindNodeMembersToEvaluatorTracks(
+    bezierAnimatedTransformNode, {
+      'globalXfo.ori': [-1, 0, 1]
+    });
+  scene.constructNode('Instance', {
+    transformNode: bezierAnimatedTransformNode,
+    geometryNode: cube,
+    materialNode: blueMaterial
+  });
+  
+*/
+
+$(document).ready(function() {
+  
+  var $globalTimeSlider = $('#globalTime').slider({
+      min: 0.0,
+      max: 100.0,
+      step: 0.01
+    });
+  
+  $globalTimeSlider.slider('value', 1.0);
+  $globalTimeSlider.bind('slide',
+    function(event, ui) {
+      scene.animation.setTime(ui.value);
+      scene.redrawAllViewports();
+    });
+
+  $('#curveEditor').button()
+    .click(function() {
+      bezierKeyCharacterAnimationContainer.openCurveEditor();
+    });
+
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+              <div class="content">
+                KeyFrame Animation.<br>
+                The three objects are driven by FABRIC's Animation Pipeline, using BezierKeyFrames.
+                Play with the slider to change the evaluated time. Note that FCurve evaluation can be
+                bound to any value in FABRIC, not only the time, like in this case, a slider value.
+              </div><!--content-->
+          </div><!--box-->
+          
+	  <div class="box">
+	    <h2>CONTROLS</h2>
+	    <div class="content">
+	      <div>Global Time:</div>
+	      <div id="globalTime"></div>
+	      <button id="curveEditor" style="margin-top:10px;">Open Curve Editor</button>
+	    </div><!--content-->
+	  </div><!--box-->
+    
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+</html>
+

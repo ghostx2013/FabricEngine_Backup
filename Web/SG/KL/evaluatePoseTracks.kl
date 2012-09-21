@@ -1,0 +1,25 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use KEYFRAMETRACKSETTYPE;
+use KEYFRAMETRACKSETTYPEBindings;
+
+operator evaluatePoseTracks(
+  io KEYFRAMETRACKSETTYPE trackSets<>,
+  io KEYFRAMETRACKSETTYPEBindings bindings<>,
+  io Scalar time,
+  io Integer trackIndex,
+  io Integer keyIndices[],
+  io PoseVariables poseVariables,
+  io Boolean enableTrackEvaluation
+) {
+  if(enableTrackEvaluation){
+    bindings[trackIndex].evaluateTracks(
+      time,
+      poseVariables,
+      trackSets[trackIndex],
+      keyIndices
+    );
+  }
+}

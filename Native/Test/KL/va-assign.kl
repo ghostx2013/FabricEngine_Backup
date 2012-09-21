@@ -1,0 +1,20 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry() {
+  String a[];
+  a.push("hello");
+  a.push("world");
+  report(a);
+
+  String b[];
+  b = a;
+  report(b);
+
+  String c[];
+  report(c);
+
+  b = c;
+  report(b);
+}

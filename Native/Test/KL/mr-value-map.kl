@@ -1,0 +1,39 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator multByPi(
+  Integer input,
+  io Scalar output
+  )
+{
+  output = 3.14 * input;
+}
+
+operator multByShared(
+  Integer input,
+  io Scalar output,
+  Scalar shared
+  )
+{
+  output = input * shared;
+}
+
+operator entry() {
+  ValueProducer<Scalar> vp;
+  
+  vp = createValueMap(
+    createConstValue( 42 ),
+    multByPi
+    );
+  report(vp);
+  report(vp.produce());
+
+  vp = createValueMap(
+    createConstValue( 2 ),
+    multByShared,
+    createConstValue( Scalar(2.71) )
+    );
+  report(vp);
+  report(vp.produce());
+}

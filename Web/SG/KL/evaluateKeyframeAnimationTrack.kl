@@ -1,0 +1,25 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec2, KEYFRAMETYPE, KEYFRAMETYPETrack;
+
+operator evaluateTrackCurve(
+  io KEYFRAMETYPETrack tracks<>,
+  io Vec2 timeRange,
+  io Size segmentCount,
+  io KEYFRAME_EVALUATEDTYPE values[],
+  Size index,
+) {
+  KEYFRAMETYPETrack track = tracks[index];
+  Integer keyIndex;
+  values.resize(segmentCount);
+  Scalar time;
+  for(Integer i=0; i<segmentCount; i++){
+    time = ((Scalar(i) / Scalar(segmentCount)) * (timeRange.y - timeRange.x)) + timeRange.x;
+    values[i] = track.evaluate(time, keyIndex);
+  }
+}
+
+
+

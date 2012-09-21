@@ -1,0 +1,343 @@
+''.compare('') = 0
+'' == '') = true
+'' != '') = false
+'' < '') = false
+'' <= '') = true
+'' > '') = false
+'' >= '') = true
+''.compare('one') = -1
+'' == 'one') = false
+'' != 'one') = true
+'' < 'one') = true
+'' <= 'one') = true
+'' > 'one') = false
+'' >= 'one') = false
+''.compare('onePlusOne') = -1
+'' == 'onePlusOne') = false
+'' != 'onePlusOne') = true
+'' < 'onePlusOne') = true
+'' <= 'onePlusOne') = true
+'' > 'onePlusOne') = false
+'' >= 'onePlusOne') = false
+''.compare('onePlusTwo') = -1
+'' == 'onePlusTwo') = false
+'' != 'onePlusTwo') = true
+'' < 'onePlusTwo') = true
+'' <= 'onePlusTwo') = true
+'' > 'onePlusTwo') = false
+'' >= 'onePlusTwo') = false
+''.compare('two') = -1
+'' == 'two') = false
+'' != 'two') = true
+'' < 'two') = true
+'' <= 'two') = true
+'' > 'two') = false
+'' >= 'two') = false
+''.compare('twoPlusOne') = -1
+'' == 'twoPlusOne') = false
+'' != 'twoPlusOne') = true
+'' < 'twoPlusOne') = true
+'' <= 'twoPlusOne') = true
+'' > 'twoPlusOne') = false
+'' >= 'twoPlusOne') = false
+''.compare('twoPlusTwo') = -1
+'' == 'twoPlusTwo') = false
+'' != 'twoPlusTwo') = true
+'' < 'twoPlusTwo') = true
+'' <= 'twoPlusTwo') = true
+'' > 'twoPlusTwo') = false
+'' >= 'twoPlusTwo') = false
+'one'.compare('') = 1
+'one' == '') = false
+'one' != '') = true
+'one' < '') = false
+'one' <= '') = false
+'one' > '') = true
+'one' >= '') = true
+'one'.compare('one') = 0
+'one' == 'one') = true
+'one' != 'one') = false
+'one' < 'one') = false
+'one' <= 'one') = true
+'one' > 'one') = false
+'one' >= 'one') = true
+'one'.compare('onePlusOne') = -1
+'one' == 'onePlusOne') = false
+'one' != 'onePlusOne') = true
+'one' < 'onePlusOne') = true
+'one' <= 'onePlusOne') = true
+'one' > 'onePlusOne') = false
+'one' >= 'onePlusOne') = false
+'one'.compare('onePlusTwo') = -1
+'one' == 'onePlusTwo') = false
+'one' != 'onePlusTwo') = true
+'one' < 'onePlusTwo') = true
+'one' <= 'onePlusTwo') = true
+'one' > 'onePlusTwo') = false
+'one' >= 'onePlusTwo') = false
+'one'.compare('two') = -1
+'one' == 'two') = false
+'one' != 'two') = true
+'one' < 'two') = true
+'one' <= 'two') = true
+'one' > 'two') = false
+'one' >= 'two') = false
+'one'.compare('twoPlusOne') = -1
+'one' == 'twoPlusOne') = false
+'one' != 'twoPlusOne') = true
+'one' < 'twoPlusOne') = true
+'one' <= 'twoPlusOne') = true
+'one' > 'twoPlusOne') = false
+'one' >= 'twoPlusOne') = false
+'one'.compare('twoPlusTwo') = -1
+'one' == 'twoPlusTwo') = false
+'one' != 'twoPlusTwo') = true
+'one' < 'twoPlusTwo') = true
+'one' <= 'twoPlusTwo') = true
+'one' > 'twoPlusTwo') = false
+'one' >= 'twoPlusTwo') = false
+'onePlusOne'.compare('') = 1
+'onePlusOne' == '') = false
+'onePlusOne' != '') = true
+'onePlusOne' < '') = false
+'onePlusOne' <= '') = false
+'onePlusOne' > '') = true
+'onePlusOne' >= '') = true
+'onePlusOne'.compare('one') = 1
+'onePlusOne' == 'one') = false
+'onePlusOne' != 'one') = true
+'onePlusOne' < 'one') = false
+'onePlusOne' <= 'one') = false
+'onePlusOne' > 'one') = true
+'onePlusOne' >= 'one') = true
+'onePlusOne'.compare('onePlusOne') = 0
+'onePlusOne' == 'onePlusOne') = true
+'onePlusOne' != 'onePlusOne') = false
+'onePlusOne' < 'onePlusOne') = false
+'onePlusOne' <= 'onePlusOne') = true
+'onePlusOne' > 'onePlusOne') = false
+'onePlusOne' >= 'onePlusOne') = true
+'onePlusOne'.compare('onePlusTwo') = -1
+'onePlusOne' == 'onePlusTwo') = false
+'onePlusOne' != 'onePlusTwo') = true
+'onePlusOne' < 'onePlusTwo') = true
+'onePlusOne' <= 'onePlusTwo') = true
+'onePlusOne' > 'onePlusTwo') = false
+'onePlusOne' >= 'onePlusTwo') = false
+'onePlusOne'.compare('two') = -1
+'onePlusOne' == 'two') = false
+'onePlusOne' != 'two') = true
+'onePlusOne' < 'two') = true
+'onePlusOne' <= 'two') = true
+'onePlusOne' > 'two') = false
+'onePlusOne' >= 'two') = false
+'onePlusOne'.compare('twoPlusOne') = -1
+'onePlusOne' == 'twoPlusOne') = false
+'onePlusOne' != 'twoPlusOne') = true
+'onePlusOne' < 'twoPlusOne') = true
+'onePlusOne' <= 'twoPlusOne') = true
+'onePlusOne' > 'twoPlusOne') = false
+'onePlusOne' >= 'twoPlusOne') = false
+'onePlusOne'.compare('twoPlusTwo') = -1
+'onePlusOne' == 'twoPlusTwo') = false
+'onePlusOne' != 'twoPlusTwo') = true
+'onePlusOne' < 'twoPlusTwo') = true
+'onePlusOne' <= 'twoPlusTwo') = true
+'onePlusOne' > 'twoPlusTwo') = false
+'onePlusOne' >= 'twoPlusTwo') = false
+'onePlusTwo'.compare('') = 1
+'onePlusTwo' == '') = false
+'onePlusTwo' != '') = true
+'onePlusTwo' < '') = false
+'onePlusTwo' <= '') = false
+'onePlusTwo' > '') = true
+'onePlusTwo' >= '') = true
+'onePlusTwo'.compare('one') = 1
+'onePlusTwo' == 'one') = false
+'onePlusTwo' != 'one') = true
+'onePlusTwo' < 'one') = false
+'onePlusTwo' <= 'one') = false
+'onePlusTwo' > 'one') = true
+'onePlusTwo' >= 'one') = true
+'onePlusTwo'.compare('onePlusOne') = 1
+'onePlusTwo' == 'onePlusOne') = false
+'onePlusTwo' != 'onePlusOne') = true
+'onePlusTwo' < 'onePlusOne') = false
+'onePlusTwo' <= 'onePlusOne') = false
+'onePlusTwo' > 'onePlusOne') = true
+'onePlusTwo' >= 'onePlusOne') = true
+'onePlusTwo'.compare('onePlusTwo') = 0
+'onePlusTwo' == 'onePlusTwo') = true
+'onePlusTwo' != 'onePlusTwo') = false
+'onePlusTwo' < 'onePlusTwo') = false
+'onePlusTwo' <= 'onePlusTwo') = true
+'onePlusTwo' > 'onePlusTwo') = false
+'onePlusTwo' >= 'onePlusTwo') = true
+'onePlusTwo'.compare('two') = -1
+'onePlusTwo' == 'two') = false
+'onePlusTwo' != 'two') = true
+'onePlusTwo' < 'two') = true
+'onePlusTwo' <= 'two') = true
+'onePlusTwo' > 'two') = false
+'onePlusTwo' >= 'two') = false
+'onePlusTwo'.compare('twoPlusOne') = -1
+'onePlusTwo' == 'twoPlusOne') = false
+'onePlusTwo' != 'twoPlusOne') = true
+'onePlusTwo' < 'twoPlusOne') = true
+'onePlusTwo' <= 'twoPlusOne') = true
+'onePlusTwo' > 'twoPlusOne') = false
+'onePlusTwo' >= 'twoPlusOne') = false
+'onePlusTwo'.compare('twoPlusTwo') = -1
+'onePlusTwo' == 'twoPlusTwo') = false
+'onePlusTwo' != 'twoPlusTwo') = true
+'onePlusTwo' < 'twoPlusTwo') = true
+'onePlusTwo' <= 'twoPlusTwo') = true
+'onePlusTwo' > 'twoPlusTwo') = false
+'onePlusTwo' >= 'twoPlusTwo') = false
+'two'.compare('') = 1
+'two' == '') = false
+'two' != '') = true
+'two' < '') = false
+'two' <= '') = false
+'two' > '') = true
+'two' >= '') = true
+'two'.compare('one') = 1
+'two' == 'one') = false
+'two' != 'one') = true
+'two' < 'one') = false
+'two' <= 'one') = false
+'two' > 'one') = true
+'two' >= 'one') = true
+'two'.compare('onePlusOne') = 1
+'two' == 'onePlusOne') = false
+'two' != 'onePlusOne') = true
+'two' < 'onePlusOne') = false
+'two' <= 'onePlusOne') = false
+'two' > 'onePlusOne') = true
+'two' >= 'onePlusOne') = true
+'two'.compare('onePlusTwo') = 1
+'two' == 'onePlusTwo') = false
+'two' != 'onePlusTwo') = true
+'two' < 'onePlusTwo') = false
+'two' <= 'onePlusTwo') = false
+'two' > 'onePlusTwo') = true
+'two' >= 'onePlusTwo') = true
+'two'.compare('two') = 0
+'two' == 'two') = true
+'two' != 'two') = false
+'two' < 'two') = false
+'two' <= 'two') = true
+'two' > 'two') = false
+'two' >= 'two') = true
+'two'.compare('twoPlusOne') = -1
+'two' == 'twoPlusOne') = false
+'two' != 'twoPlusOne') = true
+'two' < 'twoPlusOne') = true
+'two' <= 'twoPlusOne') = true
+'two' > 'twoPlusOne') = false
+'two' >= 'twoPlusOne') = false
+'two'.compare('twoPlusTwo') = -1
+'two' == 'twoPlusTwo') = false
+'two' != 'twoPlusTwo') = true
+'two' < 'twoPlusTwo') = true
+'two' <= 'twoPlusTwo') = true
+'two' > 'twoPlusTwo') = false
+'two' >= 'twoPlusTwo') = false
+'twoPlusOne'.compare('') = 1
+'twoPlusOne' == '') = false
+'twoPlusOne' != '') = true
+'twoPlusOne' < '') = false
+'twoPlusOne' <= '') = false
+'twoPlusOne' > '') = true
+'twoPlusOne' >= '') = true
+'twoPlusOne'.compare('one') = 1
+'twoPlusOne' == 'one') = false
+'twoPlusOne' != 'one') = true
+'twoPlusOne' < 'one') = false
+'twoPlusOne' <= 'one') = false
+'twoPlusOne' > 'one') = true
+'twoPlusOne' >= 'one') = true
+'twoPlusOne'.compare('onePlusOne') = 1
+'twoPlusOne' == 'onePlusOne') = false
+'twoPlusOne' != 'onePlusOne') = true
+'twoPlusOne' < 'onePlusOne') = false
+'twoPlusOne' <= 'onePlusOne') = false
+'twoPlusOne' > 'onePlusOne') = true
+'twoPlusOne' >= 'onePlusOne') = true
+'twoPlusOne'.compare('onePlusTwo') = 1
+'twoPlusOne' == 'onePlusTwo') = false
+'twoPlusOne' != 'onePlusTwo') = true
+'twoPlusOne' < 'onePlusTwo') = false
+'twoPlusOne' <= 'onePlusTwo') = false
+'twoPlusOne' > 'onePlusTwo') = true
+'twoPlusOne' >= 'onePlusTwo') = true
+'twoPlusOne'.compare('two') = 1
+'twoPlusOne' == 'two') = false
+'twoPlusOne' != 'two') = true
+'twoPlusOne' < 'two') = false
+'twoPlusOne' <= 'two') = false
+'twoPlusOne' > 'two') = true
+'twoPlusOne' >= 'two') = true
+'twoPlusOne'.compare('twoPlusOne') = 0
+'twoPlusOne' == 'twoPlusOne') = true
+'twoPlusOne' != 'twoPlusOne') = false
+'twoPlusOne' < 'twoPlusOne') = false
+'twoPlusOne' <= 'twoPlusOne') = true
+'twoPlusOne' > 'twoPlusOne') = false
+'twoPlusOne' >= 'twoPlusOne') = true
+'twoPlusOne'.compare('twoPlusTwo') = -1
+'twoPlusOne' == 'twoPlusTwo') = false
+'twoPlusOne' != 'twoPlusTwo') = true
+'twoPlusOne' < 'twoPlusTwo') = true
+'twoPlusOne' <= 'twoPlusTwo') = true
+'twoPlusOne' > 'twoPlusTwo') = false
+'twoPlusOne' >= 'twoPlusTwo') = false
+'twoPlusTwo'.compare('') = 1
+'twoPlusTwo' == '') = false
+'twoPlusTwo' != '') = true
+'twoPlusTwo' < '') = false
+'twoPlusTwo' <= '') = false
+'twoPlusTwo' > '') = true
+'twoPlusTwo' >= '') = true
+'twoPlusTwo'.compare('one') = 1
+'twoPlusTwo' == 'one') = false
+'twoPlusTwo' != 'one') = true
+'twoPlusTwo' < 'one') = false
+'twoPlusTwo' <= 'one') = false
+'twoPlusTwo' > 'one') = true
+'twoPlusTwo' >= 'one') = true
+'twoPlusTwo'.compare('onePlusOne') = 1
+'twoPlusTwo' == 'onePlusOne') = false
+'twoPlusTwo' != 'onePlusOne') = true
+'twoPlusTwo' < 'onePlusOne') = false
+'twoPlusTwo' <= 'onePlusOne') = false
+'twoPlusTwo' > 'onePlusOne') = true
+'twoPlusTwo' >= 'onePlusOne') = true
+'twoPlusTwo'.compare('onePlusTwo') = 1
+'twoPlusTwo' == 'onePlusTwo') = false
+'twoPlusTwo' != 'onePlusTwo') = true
+'twoPlusTwo' < 'onePlusTwo') = false
+'twoPlusTwo' <= 'onePlusTwo') = false
+'twoPlusTwo' > 'onePlusTwo') = true
+'twoPlusTwo' >= 'onePlusTwo') = true
+'twoPlusTwo'.compare('two') = 1
+'twoPlusTwo' == 'two') = false
+'twoPlusTwo' != 'two') = true
+'twoPlusTwo' < 'two') = false
+'twoPlusTwo' <= 'two') = false
+'twoPlusTwo' > 'two') = true
+'twoPlusTwo' >= 'two') = true
+'twoPlusTwo'.compare('twoPlusOne') = 1
+'twoPlusTwo' == 'twoPlusOne') = false
+'twoPlusTwo' != 'twoPlusOne') = true
+'twoPlusTwo' < 'twoPlusOne') = false
+'twoPlusTwo' <= 'twoPlusOne') = false
+'twoPlusTwo' > 'twoPlusOne') = true
+'twoPlusTwo' >= 'twoPlusOne') = true
+'twoPlusTwo'.compare('twoPlusTwo') = 0
+'twoPlusTwo' == 'twoPlusTwo') = true
+'twoPlusTwo' != 'twoPlusTwo') = false
+'twoPlusTwo' < 'twoPlusTwo') = false
+'twoPlusTwo' <= 'twoPlusTwo') = true
+'twoPlusTwo' > 'twoPlusTwo') = false
+'twoPlusTwo' >= 'twoPlusTwo') = true

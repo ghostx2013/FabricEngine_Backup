@@ -1,0 +1,21 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  Float64 float64s[];
+  float64s.push( Float64(0.0) );
+  float64s.push( Float64(-0.0) );
+  float64s.push( Float64(1.0) );
+  float64s.push( Float64(-1.0) );
+
+  for ( Size i=0; i<float64s.size; ++i )
+  {
+    for ( Size j=0; j<float64s.size; ++j )
+    {
+      report(float64s[i]+" * "+float64s[j]+" = "+(float64s[i]*float64s[j]));
+      report(float64s[i]+" / "+float64s[j]+" = "+(float64s[i]/float64s[j]));
+    }
+  }
+}

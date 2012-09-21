@@ -1,0 +1,12 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function testRValue( Boolean boolean ) {
+  report("testRValue: " + boolean);
+}
+
+operator entry() {
+  Boolean boolean = false;
+  testRValue( boolean );
+}

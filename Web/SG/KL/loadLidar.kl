@@ -1,0 +1,31 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricLIDAR;
+
+operator lidarLoad(
+  io String url,
+  io FabricResource resource,
+  io LidarReader lidar
+) {
+  if(!lidar.pointer) {
+    if(resource.data.dataSize() > 0) {
+      lidar.loadResource(resource,url);
+    } else if(resource.dataExternalLocation) {
+      lidar.loadFileHandle(resource.dataExternalLocation);
+    }
+  }
+}
+
+operator lidarGetPoints(
+  io Container container,
+  io LidarReader lidar,
+  io Vec3 positions<>,
+  io Color colors<>
+) {
+  Size count;
+  lidar.getCount(count);
+  container.resize(count);
+  lidar.getPoints(positions,colors);
+}

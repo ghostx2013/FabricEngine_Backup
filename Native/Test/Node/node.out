@@ -1,0 +1,6 @@
+Node
+{ foo: { name: 'foo', type: 'String' } }
+2
+fred
+joe
+{ parent: 'node2' }

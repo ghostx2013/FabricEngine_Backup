@@ -1,0 +1,71 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Quat, Xfo;
+use Bone, DebugGeometry;
+
+operator solveDigits(
+  io Xfo pose[],
+  io Bone bones[],
+  io FKHierarchy digitBindings[],
+  io Vec3 digitTipOffsets[],
+  Size index,
+  io PoseVariables poseVariableSlices<>,
+  
+  io DebugGeometry debugGeometry
+) {
+  PoseVariables poseVariables = poseVariableSlices[index];
+  for (Integer i = 0; i < digitBindings.size(); i++) {
+    FKHierarchy digitBinding = digitBindings[i];
+    for (Integer j = 0; j < digitBinding.boneIds.size; j++) {
+      pose[digitBinding.boneIds[j]] = pose[bones[digitBinding.boneIds[j]].parent] * poseVariables.xfoValues[digitBinding.xfoIds[j]];
+    }
+    Integer lastDigitId = digitBinding.boneIds[digitBinding.boneIds.size-1];
+  //  Vec3 digitTip = pose[lastDigitId].tr + (pose[lastDigitId].ori.getXaxis() * bones[lastDigitId].length);
+  
+      
+    Vec3 digitTip = pose[lastDigitId].transformVector(digitTipOffsets[i]);
+    
+    //////////////////////////////////////////////
+    // Debugging
+    if(debugGeometry.enabled){
+      debugGeometry.drawPoint(digitTip, Color(1.0, 0.0, 0.0, 1.0));
+    }
+    if(digitTip.y < 0.0){
+      Vec3 ground = digitTip;
+      ground.y = 0.0;
+    //  Vec3 yaxis = pose[lastDigitId].ori.getYaxis();
+    //  yaxis.y = 0.0;
+    //  ground += yaxis * (digitTipOffsets[i].length() * 0.5);
+      
+      Xfo digitBaseReference = pose[digitBinding.boneIds[0]];
+      Xfo digitBase = pose[digitBinding.boneIds[0]];
+      
+      Quat offsetRotation;
+      Vec3 digiBase = pose[digitBinding.boneIds[0]].tr;
+      Vec3 digiBaseVec = digitBaseReference.ori.getXaxis();
+      
+      offsetRotation.setFrom2Vectors(digiBaseVec, (digitTip - digiBase).unit());
+      digitBaseReference.ori = offsetRotation * digitBaseReference.ori;
+      
+      offsetRotation.setFrom2Vectors(digiBaseVec, (ground - digiBase).unit());
+      digitBase.ori = offsetRotation * digitBase.ori;
+      
+      Xfo xfo = digitBase * digitBaseReference.inverse();
+      
+      for (Integer j = 0; j < digitBinding.boneIds.size; j++) {
+        pose[digitBinding.boneIds[j]] = xfo * pose[digitBinding.boneIds[j]];
+      }
+      
+      //////////////////////////////////////////////
+      // Debugging
+      if(debugGeometry.enabled){
+        Vec3 newdigitTip = pose[lastDigitId].transformVector(digitTipOffsets[i]);
+        debugGeometry.drawLine(digitTip, newdigitTip, Color(1.0, 1.0, 0.0, 1.0));
+        debugGeometry.drawLine(digitBase.tr, digitTip, Color(1.0, 0.0, 0.0, 1.0));
+        debugGeometry.drawLine(digitBase.tr, ground, Color(1.0, 0.0, 0.0, 1.0));
+      }
+    }
+  }
+}

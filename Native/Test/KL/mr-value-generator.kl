@@ -1,0 +1,21 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator gen1(io String output) {
+  output = "Hello!";
+}
+
+operator gen2(io String output, String shared) {
+  output = "Hello, " + shared;
+}
+
+operator entry() {
+  ValueProducer<String> vp1 = createValueGenerator(gen1);
+  report("vp1 = " + vp1);
+  report("vp1.produce() = " + vp1.produce());
+
+  ValueProducer<String> vp2 = createValueGenerator(gen2, vp1);
+  report("vp2 = " + vp2);
+  report("vp2.produce() = " + vp2.produce());
+}

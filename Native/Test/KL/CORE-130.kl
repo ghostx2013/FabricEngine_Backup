@@ -1,0 +1,15 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function myFunction( io Integer a, io Integer b) 
+{ 
+  b = a * 2; 
+} 
+
+function myCallingFunction() 
+{ 
+  var Integer b = 2; 
+  myFunction(12,b); 
+  myFunction(12,13,14,b); 
+}

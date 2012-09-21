@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+alias Integer IntArray[];
+
+operator entry()
+{
+  var IntArray a;
+  a.push( 17 );
+  a.push( 42 );
+  report(a);
+}

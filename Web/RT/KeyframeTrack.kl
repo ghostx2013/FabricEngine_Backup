@@ -1,0 +1,129 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use KEYFRAMEDATATYPE, KEYFRAMETYPE;
+
+function KEYFRAMETYPETrack.clear() {
+  this.keys.resize(0);
+}
+
+
+function KEYFRAMEDATATYPE KEYFRAMETYPETrack.evaluate(
+  in Scalar time,
+  io Integer keyIndex
+) {
+  Integer numKeys = this.keys.size;
+  if(numKeys == 0){
+    return KEYFRAMEDATADEFAULTVALUE;
+  }
+  else if(numKeys == 1){
+    return this.keys[0].value;
+  }
+  else if (time >= this.keys[numKeys - 1].time) {
+    return this.keys[numKeys - 1].value;
+  }
+  else if (time <= this.keys[0].time) {
+    return this.keys[0].value;
+  }
+  else {
+    if (keyIndex < this.keys.size-1 && this.keys[keyIndex].time <= time && time <= this.keys[keyIndex + 1].time) {
+      // we are still on the same segment as the previous evaluation.
+    }
+    else if (keyIndex < this.keys.size-2 && this.keys[keyIndex + 1].time < time && time < this.keys[keyIndex + 2].time) {
+      keyIndex++;
+    }
+    else {
+      for (var Integer i = 0; i < numKeys - 1; i++) {
+        if (this.keys[i].time <= time && time <= this.keys[i + 1].time) {
+          keyIndex = i;
+          break;
+        }
+      }
+    }
+    return this.keys[keyIndex].interpolate(this.keys[keyIndex + 1], time);
+  }
+}
+/*
+Note: this function caused a wierd compiler error.
+TODO: log a bug.
+function KEYFRAMEDATATYPE KEYFRAMETYPETrack.evaluate(
+  in Scalar time
+) {
+  Integer keyIndex = 0;
+  return KEYFRAMETYPETrack.evaluate(time, keyIndex);
+}
+*/
+
+// PT 02-01-12 TODO: once KL arrays support 'insert' remove this function.
+function KEYFRAMETYPETrack.keysInsert(Integer index, KEYFRAMETYPE key){
+  this.keys.resize(this.keys.size + 1);
+  for(Integer i=this.keys.size-1; i>index; i--){
+    this.keys[i-1] = this.keys[i];
+  }
+  this.keys[index] = key;
+}
+
+function KEYFRAMETYPETrack.setValue(
+  in Scalar time,
+  in KEYFRAMEDATATYPE value
+) {
+  Integer numKeys = this.keys.size;
+  if (numKeys == 0 || time > this.keys[numKeys - 1].time) {
+    this.keys.push(KEYFRAMETYPE(time, value));
+  }
+  else {
+    Integer keyIndex = -1;
+    for (var Integer i = 0; i < numKeys; i++) {
+      if (this.keys[i].time >= time) {
+        keyIndex = i;
+        break;
+      }
+    }
+    if(this.keys[keyIndex].time == time){
+      this.keys[keyIndex].value = value;
+    }
+    else{
+      this.keysInsert(keyIndex, KEYFRAMETYPE(time, value));
+    }
+  }
+}
+
+/////////////////////////////////////////////////
+// KEYFRAMETYPETrackSet
+use Color, Vec3, Quat, Xfo;
+
+function Vec2 KEYFRAMETYPETrackSet.getTimeRange() {
+  return this.timeRange;
+}
+
+function KEYFRAMETYPETrackSet.calcTimeRange() {
+  this.timeRange.set(0.0, 0.0);
+  for (Integer i = 0; i < this.tracks.size; i++) {
+    if(this.tracks[i].keys.size == 0){
+      continue;
+    }
+    if(i==0){
+      this.timeRange.x = this.tracks[i].keys[0].time;
+      this.timeRange.y = this.tracks[i].keys[this.tracks[i].keys.size-1].time;
+    }
+    else{
+      if(this.timeRange.x > this.tracks[i].keys[0].time){
+        this.timeRange.x = this.tracks[i].keys[0].time;
+      }
+      if(this.timeRange.y < this.tracks[i].keys[this.tracks[i].keys.size-1].time){
+        this.timeRange.y = this.tracks[i].keys[this.tracks[i].keys.size-1].time;
+      }
+    }
+  }
+}
+
+
+function KEYFRAMETYPETrackSet.clearTracks(
+  Integer trackIds[]
+) {
+  for (Integer i = 0; i < trackIds.size; i++) {
+    this.tracks[trackIds[i]].clear();
+  }
+}
+

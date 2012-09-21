@@ -1,0 +1,30 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'baseEnv', 'buildOS' )
+
+dirs = [
+  'ALEMBIC',
+  'BULLET',
+  'CIMG',
+  'EXR',
+  'FACE',
+  'FILESTREAM',
+  'HDR',
+  'LIDAR',
+  'Math',
+  'OBJ',
+  #'OCL',
+  'OGL',
+  'PNG',
+  'TEEM',
+  'TGA',
+  'VICON',
+  'VIDEO'
+]
+
+builtinExtFiles = SConscript( dirs=dirs )
+
+Return( 'builtinExtFiles' )

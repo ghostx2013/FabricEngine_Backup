@@ -1,0 +1,9 @@
+parentName must be non-empty
+parentName must not be 'self'
+child.getDependency('parent').eq(parent)
+child.getDependency('parentAgain').eq(parent)
+child.getDependency('children') fails
+parent.getDependency('parent') fails
+parent.getDependency('children') fails
+child.getDependencies().parent.eq(parent)
+child.getDependencies().parentAgain.eq(parent)

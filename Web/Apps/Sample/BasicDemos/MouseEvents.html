@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Mouse Events</title> 
+        
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+
+FABRIC.require(["SG/SceneGraph",
+                 "SG/Lights",
+                 "SG/Images",
+                 "SG/Geometry",
+                 "SG/Materials",
+                 "SG/Manipulation"], function() {
+  
+  scene = FABRIC.SceneGraph.createScene();
+
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(70, 62, 40),
+      target: new FABRIC.RT.Vec3(30, 20, 0)
+    });
+  var viewport = scene.constructNode('Viewport', {
+      enableRaycasting: true,
+      windowElement: document.getElementById('FabricContainer'),
+      cameraNode: camera
+    });
+  
+viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: 'Resources/fabric-demo-gradient.png'
+  }));
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0) });
+  var materials = [
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0.8, 0, 0, 1), lightNode: light }),
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0, 0.8, 0, 1), lightNode: light }),
+      scene.constructNode('PhongMaterial', { diffuseColor: FABRIC.RT.rgb(0, 0, 0.8, 1), lightNode: light })
+    ];
+  
+  var outlineMaterial = scene.constructNode('OutlineShader', {
+    color: FABRIC.RT.rgb(1.0, 1.0, 1.0, 1),
+    thickness: 0.4
+  })
+  
+
+  var objId = 0;
+  var scale = 7.0;
+  for (var k = 1; k < 3; k++) {
+    var base1 = new FABRIC.RT.Vec3((k & 1) * 4.0, (k & 2) * 2.0, (k & 4)).multiplyScalar(scale);
+    for (var j = 1; j < 4; j++) {
+      var base2 = new FABRIC.RT.Vec3((j & 1) * 2.0, (j & 2), (j & 4) / 2.0).multiplyScalar(scale);
+
+      var base = base2.add(base1);
+
+      for (var i = 0; i < 7; i++) {
+        var xfo = new FABRIC.RT.Xfo();
+
+        xfo.tr = new FABRIC.RT.Vec3((i & 1), (i & 2) / 2.0, (i & 4) / 4.0).multiplyScalar(scale).add(base);
+
+        var transformNode = scene.constructNode('Transform', { hierarchical: false, globalXfo: xfo });
+
+        var cube = scene.constructNode('Cuboid', {
+          name: 'CubeMesh',
+          length: (i & 3) + 3,
+          width: (j & 3) + 3.0,
+          height: (k & 3) + 3.0
+        });
+        scene.constructNode('Instance', {
+            name: 'Cuboid',
+            transformNode: transformNode,
+            geometryNode: cube,
+            materialNode: materials[objId % materials.length],
+            enableRaycasting: true
+          });
+
+        objId++;
+      }
+    }
+  }
+
+$(document).ready(function() {
+  var mouseOverEventsText = document.getElementById('mouseOverEventsText').childNodes[0];
+  var mouseOutEventsText = document.getElementById('mouseOutEventsText').childNodes[0];
+  var mouseMoveEventsText = document.getElementById('mouseMoveEventsText').childNodes[0];
+  var mouseDownEventsText = document.getElementById('mouseDownEventsText').childNodes[0];
+  var mouseUpEventsText = document.getElementById('mouseUpEventsText').childNodes[0];
+
+  scene.addEventListener('mouseover_geom', function(evt) {
+      evt.targetNode.addMaterialNode( outlineMaterial );
+      mouseOverEventsText.data = 'Mouse Over:' + evt.targetNode.getName();
+      viewport.redraw();
+    });
+  scene.addEventListener('mousemove_geom', function(evt) {
+      mouseMoveEventsText.data = 'Mouse Move:' + evt.targetNode.getName();
+    });
+  scene.addEventListener('mouseout_geom', function(evt) {
+      evt.targetNode.removeMaterialNode( outlineMaterial );
+      mouseOutEventsText.data = 'Mouse Out:' + evt.targetNode.getName();
+      viewport.redraw();
+    });
+  scene.addEventListener('mousedown_geom', function(evt) {
+      mouseDownEventsText.data = 'Mouse Down:' + evt.targetNode.getName();
+    });
+  scene.addEventListener('mouseup_geom', function(evt) {
+      mouseUpEventsText.data = 'Mouse Up:' + evt.targetNode.getName();
+    });
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      viewport.redraw();
+      fabricDemoSceneLoaded = true;
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+	$(".box").addClass("ui-widget");
+	$(".box h2").addClass("ui-widget-header ui-corner-all");
+	$(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Mouse Events.<br>
+              This sample shows the use of mouse events in FABRIC. As the mouse is moved
+              over the viewport, rays are cast into the scene. Hit objects are collected,
+              and JavaScript event handlers are invoked. Have a look at the source code of
+              this page to learn how this works.
+            </div><!--content-->
+          </div><!--box-->
+
+          <div class="box">
+            <h2>EVENTS</h2>
+            <div class="content">
+              <p id="mouseOverEventsText">Mouse Over:</p>
+              <p id="mouseOutEventsText">Mouse Out:</p>
+              <p id="mouseMoveEventsText">Mouse Move:</p>
+              <p id="mouseDownEventsText">Mouse Down:</p>
+              <p id="mouseUpEventsText">Mouse Up:</p>
+            </div>
+          </div><!--box-->
+            
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

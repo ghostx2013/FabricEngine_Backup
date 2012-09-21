@@ -1,0 +1,11 @@
+count = 10
+produce(0) = 0
+produce(1) = 1
+produce(2) = 4
+produce(3) = 9
+produce(4) = 16
+produce(5) = 25
+produce(6) = 36
+produce(7) = 49
+produce(8) = 64
+produce(9) = 81

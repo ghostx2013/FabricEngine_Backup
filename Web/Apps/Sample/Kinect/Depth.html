@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Kinect Depth</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+    
+    
+FABRIC.require(["SG/SceneGraph",
+                "SG/Rendering",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Kinect"], function() {
+ 
+$(document).ready(function() {
+
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', { windowElement: document.getElementById('FabricContainer') });
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+
+  // construct a kinect camera
+  var kinect = scene.constructNode('KinectCamera', {supportsDepth: true});
+  
+  // create a texture
+  var texture = kinect.constructDepthTextureNode();
+
+  // show it in the viewport
+  viewport.setBackgroundTextureNode(texture);
+
+  $('#depthmin')
+  .slider({
+    min: 800,
+    max: 3000,
+    step: 1.0,
+    value: kinect.getDepthMin(),
+  })
+  .bind('slide',
+    function(event, ui) {
+      kinect.setDepthMin(ui.value);
+    });
+  $('#depthmax')
+  .slider({
+    min: 800,
+    max: 3000,
+    step: 1.0,
+    value: kinect.getDepthMax(),
+  })
+  .bind('slide',
+    function(event, ui) {
+      kinect.setDepthMax(ui.value);
+    });
+  
+  scene.animation.play();
+
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc">Setting up Kinect Scene...<br>This may take some time.</h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>NOTICE</h2>
+            <div class="content">
+              This sample depends on the Microsoft Kinect Research SDK to be installed on the system. If you don't have it yet,
+              resp. this sample isn't working, ensure to download it here and install it to this system:
+              <a href="http://research.microsoft.com/en-us/um/redmond/projects/kinectsdk/download.aspx">Microsoft Kinect SDK</a>
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>DESCRIPTION</h2>
+            <div class="content">
+              Kinect Viewer.<br>
+              The background texture in this sample is driven by the depth channel of the Kinect Camera.
+              The gradient of the depth channel can be driven by the sliders, the minimum distance the
+              camera can grab is 800mm. Persons are identified by the Kinect Camera, as soon as the full
+              conture is visible to the camera, and highlighted.
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2>CONTROLS</h2>
+            <div class="content">
+                <div>Depth Minimum:</div>
+                <div id='depthmin' style="margin-top:10px;"></div>
+                <div>Depth Maximum:</div>
+                <div id='depthmax' style="margin-top:10px;"></div>
+            </div><!--content-->
+          </div><!--box-->
+
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

@@ -1,0 +1,17 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'buildObject', 'buildOS' )
+
+npapiSources = [
+  Glob('*.cpp'),
+  buildObject
+]
+
+npapiTarget = SConscript(
+  dirs=[buildOS],
+  exports=['npapiSources']
+  )
+
+Alias('npapi', [npapiTarget, 'exts'])

@@ -1,0 +1,21 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricOGL;
+
+operator windowBeginRender(
+  io Size numDrawnVerticies,
+  io Size numDrawnTriangles,
+  io Size numDrawnGeometries,
+  io Integer fboId
+) {
+  numDrawnVerticies = 0;
+  numDrawnTriangles = 0;
+  numDrawnGeometries = 0;
+
+  Integer boundFbos[];
+  boundFbos.resize(1);
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, boundFbos);
+  fboId = boundFbos[0];
+}

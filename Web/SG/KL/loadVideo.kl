@@ -1,0 +1,96 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use FabricOGL;
+use FabricVIDEO;
+
+struct RGBCache{
+  RGB pixels[];
+};
+
+operator videoLoadResource(
+  io FabricResource resource,
+  io VideoHandle handle
+) {
+  if(!handle.pointer){
+    if(resource.data.size() > 0)
+      FabricVIDEOOpenResource(resource.data.data(), resource.data.dataSize(), handle);
+    else if(resource.dataExternalLocation) {
+      FabricVIDEOOpenFileHandle(resource.dataExternalLocation, handle);
+    }
+  }
+}
+
+operator videoSetTimeRange(
+  io VideoHandle handle,
+  io Vec2 timeRange
+) {
+  timeRange.x = 0.0;
+  timeRange.y = handle.duration;
+}
+
+operator videoSeekTime(
+  io VideoHandle handle,
+  io Scalar time,
+  io RGB pixels[],
+  io RGB pixelCache[][],
+  io Integer pixelCacheIndex[],
+  io Integer pixelCacheLimit
+) {
+  Integer frameIndex = floor(time * handle.fps + 0.5);
+  Scalar localTime = Scalar(frameIndex) / handle.fps;
+  Integer position = -1;
+  for(Size i=0;i<pixelCacheIndex.size();i++)
+  {
+    if(pixelCacheIndex[i] == frameIndex) {
+      position = i;
+      break;
+    }
+  }
+  if(position > -1){
+    pixels = pixelCache[position];
+    return;
+  }
+
+  FabricVIDEOSeekTime(handle, localTime);
+  FabricVIDEOGetAllPixels(handle, pixels);
+
+  if(pixelCacheLimit > pixelCacheIndex.size()) {
+    pixelCacheIndex.push(frameIndex);
+    pixelCache.push(pixels);
+  }
+}
+
+operator videoLoadToGPU(
+  io VideoHandle handle,
+  io RGB pixels[],
+  io Integer bufferID,
+  io Integer textureUnit
+) {
+  if (pixels.size() > 0) {
+    if (bufferID == 0) {
+      var Integer buffers[];
+      buffers.resize(1);
+      glGenTextures(1, buffers);
+      bufferID = buffers[0];
+      
+      glActiveTexture(GL_TEXTURE0 + textureUnit);
+      glBindTexture(GL_TEXTURE_2D, bufferID);
+
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }else {
+      glActiveTexture(GL_TEXTURE0 + textureUnit);
+      glBindTexture(GL_TEXTURE_2D, bufferID);
+    }
+
+    //Generate the texture
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    if (pixels.size() == (handle.width * handle.height))
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, handle.width, handle.height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+  }
+}

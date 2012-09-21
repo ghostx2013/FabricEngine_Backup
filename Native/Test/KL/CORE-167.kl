@@ -1,0 +1,18 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Scalar check( Boolean foo )
+{
+	var Boolean bar = false;
+
+	if( (foo && !bar) || (!foo && bar ) )
+		return 1.0;
+	else
+		return 0.0;
+}
+
+operator entry( )
+{
+	report(check( true ));
+}

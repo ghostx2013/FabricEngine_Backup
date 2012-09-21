@@ -1,0 +1,16 @@
+{
+  "name": "{{FABRIC_NAME}}",
+  "version": "{{FABRIC_VERSION_MAJ}}.{{FABRIC_VERSION_MIN}}.{{FABRIC_VERSION_REV}}",
+  "description": "{{FABRIC_DESC}}",
+  "homepage_url": "{{FABRIC_URL}}",
+  "update_url": "http://dist.fabric-engine.com/latest/crx-update-{{FABRIC_OS}}-{{FABRIC_ARCH}}.xml",
+  "key": "kdijpapodgbchkehlmacojcegohcmbel",
+  "icons": {
+    "16": "fabric-engine_16.png",
+    "48": "fabric-engine_48.png",
+    "128": "fabric-engine_128.png"
+  },
+  "plugins": [
+    { "path": "npFabricPlugin.dll", "public": true }
+  ]
+}

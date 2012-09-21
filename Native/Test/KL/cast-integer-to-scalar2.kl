@@ -1,0 +1,11 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry() 
+{ 
+  var Integer nb_points = 3;
+  for( var Integer i = 0; i < nb_points; i++ )
+    report( Scalar( i ) / Scalar( nb_points - 1 ) );
+      
+} 

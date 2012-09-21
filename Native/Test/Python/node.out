@@ -1,0 +1,6 @@
+Node
+{u'foo': {u'type': u'String'}}
+2
+fred
+joe
+{u'parent': 'node2'}

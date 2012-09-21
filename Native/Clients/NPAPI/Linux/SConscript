@@ -1,0 +1,30 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import( 'coreEnv', 'npapiSources', 'npapiDistDir', 'buildArch', 'npapiFlags', 'gtkglFlags', 'glewFlags' )
+
+npapiEnv = coreEnv.Clone()
+npapiEnv.MergeFlags( npapiFlags )
+npapiEnv.ParseConfig( 'pkg-config --cflags --libs gtk+-2.0' )
+
+npapiEnv.Append( CPPDEFINES = 'GLEW_STATIC' )
+npapiEnv.MergeFlags( gtkglFlags )
+npapiEnv.MergeFlags( glewFlags )
+npapiEnv.Append( LIBS = ['GL'] )
+ccflags = []
+for flag in npapiEnv['CCFLAGS']:
+  if(flag.lower() == '-include'):
+    continue
+  if(flag.lower().endswith(".h")):
+    ccflags.append("-include")
+  ccflags.append(flag)
+npapiEnv['CCFLAGS'] = ccflags
+  
+npapiSources.append( Glob('*.cpp') )
+npapiPluginName = 'FabricPlugin'
+npapiPlugin = npapiEnv.LoadableModule( 'FabricPlugin', npapiSources )
+
+npapiTarget = Install( npapiDistDir, npapiPlugin )
+Return('npapiTarget')

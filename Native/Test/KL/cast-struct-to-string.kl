@@ -1,0 +1,19 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+operator entry()
+{
+  var Vec3 vec3;
+  vec3.x = 1;
+  vec3.y = -2.71;
+  vec3.z = 3.1e21;
+  report(vec3);
+}

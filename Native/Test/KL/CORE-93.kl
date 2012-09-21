@@ -1,0 +1,37 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec3
+{
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+struct Quad 
+{ 
+  Vec3 normal; 
+}; 
+
+function Vec3( Scalar x, Scalar y, Scalar z )
+{
+  this.x = x;
+  this.y = y;
+  this.z = z;
+}
+
+function Quad( in Vec3 v[] ) 
+{ 
+  this.normal = v[0]; 
+} 
+
+operator entry() 
+{ 
+  var Vec3 v[]; 
+  v.push( Vec3( 1.0, 2.0, 3.0 ) );
+   
+  var Quad q( v ); 
+
+  report( q ); 
+} 

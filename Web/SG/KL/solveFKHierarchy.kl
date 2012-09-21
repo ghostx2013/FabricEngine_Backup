@@ -1,0 +1,39 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Xfo;
+
+operator solveFKHierarchy(
+  io Xfo pose[],
+  io Bone bones[],
+  io FKHierarchy bindings,
+  Size index,
+  io PoseVariables poseVariableSlices<>,
+) {
+  PoseVariables poseVariables = poseVariableSlices[index];
+  for (Integer i = 0; i < bindings.boneIds.size; i++) {
+    if (bones[bindings.boneIds[i]].parent == -1) {
+      pose[bindings.boneIds[i]] = poseVariables.xfoValues[bindings.xfoIds[i]];
+    }
+    else {
+      pose[bindings.boneIds[i]] = pose[bones[bindings.boneIds[i]].parent] * poseVariables.xfoValues[bindings.xfoIds[i]];
+    }
+  }
+}
+
+
+operator invertFKHierarchy(
+  io Xfo pose[],
+  io Bone bones[],
+  io FKHierarchy bindings,
+  io PoseVariables poseVariables
+) {
+  for (Integer i = 0; i < bindings.boneIds.size; i++) {
+    if (bones[bindings.boneIds[i]].parent == -1)
+      poseVariables.xfoValues[bindings.xfoIds[i]] = pose[bindings.boneIds[i]];
+    else
+      poseVariables.xfoValues[bindings.xfoIds[i]] = pose[bones[bindings.boneIds[i]].parent].inverse() * pose[bindings.boneIds[i]];
+  }
+}
+

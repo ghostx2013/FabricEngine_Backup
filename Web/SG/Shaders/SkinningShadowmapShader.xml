@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>SkinningShadowmapMaterial</name>
+  <prototypeMaterialType>ShadowMapMaterial</prototypeMaterialType>
+
+  <uniforms>
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    
+    <uniform name="u_samplerSkinningMatrices" constant="skinningMatricesTextureUnit" type="Integer" owner="geometry"/>
+    <uniform name="u_transformTextureHeight" constant="transformTextureHeight" type="Scalar" owner="geometry"/>
+  </uniforms>
+
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_weight" binding="boneWeights"/>
+    <attribute name="a_index" binding="boneIds"/>
+  </attributes>
+  
+  <openglstateparams>
+    <enableOptions>
+      <option>GL_CULL_FACE</option>
+    </enableOptions>
+    <cullFace>GL_FRONT</cullFace>
+  </openglstateparams>
+  
+  <vertexshader>
+    <source>
+
+<![CDATA[
+
+uniform mat4 u_modelViewProjectionMatrix;
+
+// This is an array of all the bones in a skeleton.
+uniform sampler2D u_samplerSkinningMatrices;
+uniform float u_transformTextureHeight;
+
+attribute vec4 a_position;
+
+attribute vec4 a_weight;
+attribute vec4 a_index;
+
+#define SKIN_POSITIONS
+
+]]>
+    </source>
+      <include file="matrices.txt"/>
+      <include file="skinning.txt"/>
+    <source>
+<![CDATA[
+void main()
+{
+  skinPositions(u_modelViewProjectionMatrix, u_samplerSkinningMatrices, u_transformTextureHeight);
+}
+]]>
+    </source>
+    </vertexshader>
+
+    <fragmentshader>
+    <source>
+      <![CDATA[
+
+      void main()
+      {
+      	gl_FragColor.xyz = vec3(1,1,1);
+      }
+      
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

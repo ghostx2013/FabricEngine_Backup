@@ -1,0 +1,11 @@
+operator bar( io ShaderSource shaders[] ) {
+	for( var Size i = 0; i < shaders.size(); i++ ) {
+		report( "Type: " + shaders[i].type );
+		report( "Code: " + shaders[i].code );
+	}
+}
+
+[FABRIC] [MT] Type: 0
+[FABRIC] [MT] Code: Zero
+[FABRIC] [MT] Type: 1
+[FABRIC] [MT] Code: One

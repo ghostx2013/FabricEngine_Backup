@@ -1,0 +1,10 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+operator entry()
+{
+  var Scalar a = -19.78;
+  var Scalar b = 2 * a - 7;
+  report((b + 7) / 2 - a);
+}

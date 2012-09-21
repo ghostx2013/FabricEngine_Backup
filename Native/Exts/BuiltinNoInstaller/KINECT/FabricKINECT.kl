@@ -1,0 +1,148 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct RGBA {
+  Byte r;
+  Byte g;
+  Byte b;
+  Byte a;
+};
+
+struct Color {
+  Scalar r;
+  Scalar g;
+  Scalar b;
+  Scalar a;
+};
+
+struct Vec3 {
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+struct Quat {
+  Vec3 v;
+  Scalar w;
+};
+
+struct Xfo {
+  Quat ori;
+  Vec3 tr;
+  Vec3 sc;
+};
+
+struct KinectSkeletonData {
+  Integer trackingState;
+  Integer trackingID;
+  Integer userID;
+  Vec3 center;
+  Vec3 positions[];
+  Integer positionTrackingStates[];
+  Integer quality;
+};
+
+struct KinectCamera {
+  Data localData;
+  Boolean initiated;
+  Integer tiltAngle;
+  Boolean supportsColor;
+  Boolean supportsDepth;
+  Boolean supportsSkeleton;
+  RGBA colorData[];
+  Integer depthData[];
+  Integer playerData[];
+  KinectSkeletonData skeletonData[];
+  Boolean supportsSmoothing;
+  Scalar skeletonSmoothing;
+  Scalar skeletonCorrection;
+  Scalar skeletonPrediction;
+  Scalar skeletonJitterRadius;
+  Scalar skeletonMaxDeviationRadius;
+};
+
+//===================================================================================
+// constants
+const Integer KINECT_POSITION_HIP_CENTER = 0;
+const Integer KINECT_POSITION_SPINE = 1;
+const Integer KINECT_POSITION_SHOULDER_CENTER = 2;
+const Integer KINECT_POSITION_HEAD = 3;
+const Integer KINECT_POSITION_SHOULDER_LEFT = 4;
+const Integer KINECT_POSITION_ELBOW_LEFT = 5;
+const Integer KINECT_POSITION_WRIST_LEFT = 6;
+const Integer KINECT_POSITION_HAND_LEFT = 7;
+const Integer KINECT_POSITION_SHOULDER_RIGHT = 8;
+const Integer KINECT_POSITION_ELBOW_RIGHT = 9;
+const Integer KINECT_POSITION_WRIST_RIGHT = 10;
+const Integer KINECT_POSITION_HAND_RIGHT = 11;
+const Integer KINECT_POSITION_HIP_LEFT = 12;
+const Integer KINECT_POSITION_KNEE_LEFT = 13;
+const Integer KINECT_POSITION_ANKLE_LEFT = 14;
+const Integer KINECT_POSITION_FOOT_LEFT = 15;
+const Integer KINECT_POSITION_HIP_RIGHT = 16;
+const Integer KINECT_POSITION_KNEE_RIGHT = 17;
+const Integer KINECT_POSITION_ANKLE_RIGHT = 18;
+const Integer KINECT_POSITION_FOOT_RIGHT = 19;
+const Integer KINECT_POSITION_COUNT = 20;
+
+const Integer KINECT_POSITION_NOT_TRACKED = 0;
+const Integer KINECT_POSITION_INFERRED = 1;
+const Integer KINECT_POSITION_TRACKED = 2;
+const Integer KINECT_SKELETON_NOT_TRACKED = 0;
+const Integer KINECT_SKELETON_POSITION_ONLY = 1;
+const Integer KINECT_SKELETON_TRACKED = 2;
+const Integer KINECT_SKELETON_COUNT = 6;
+
+const Integer KINECT_QUALITY_CLIPPED_RIGHT = 1;
+const Integer KINECT_QUALITY_CLIPPED_LEFT = 2;
+const Integer KINECT_QUALITY_CLIPPED_TOP = 4;
+const Integer KINECT_QUALITY_CLIPPED_BOTTOM = 8;
+
+//===================================================================================
+// extension's functions
+function FabricKINECT_Init(io KinectCamera camera) = "FabricKINECT_Init";
+function FabricKINECT_Shutdown(io KinectCamera camera) = "FabricKINECT_Shutdown";
+function FabricKINECT_Tilt(io KinectCamera camera, io Integer angle) = "FabricKINECT_Tilt";
+function FabricKINECT_GetColorPixels(io KinectCamera camera) = "FabricKINECT_GetColorPixels";
+function FabricKINECT_GetDepthPixels(io KinectCamera camera) = "FabricKINECT_GetDepthPixels";
+function FabricKINECT_GetPoints(io KinectCamera camera, io Vec3 positions<>, io Color colors<>) = "FabricKINECT_GetPoints";
+function FabricKINECT_GetSkeleton(io KinectCamera camera) = "FabricKINECT_GetSkeleton";
+
+//===================================================================================
+// camera definition
+function ~KinectCamera() = "FabricKINECT_Shutdown";
+
+function KinectCamera.init(io Boolean result) {
+  if(!this.initiated) {
+    FabricKINECT_Init(this);
+    result = true;
+  }
+  else
+    result = false;
+}
+
+function KinectCamera.tilt(io Integer angle, io Boolean result) {
+  if(this.tiltAngle != angle) {
+    FabricKINECT_Tilt(this,angle);
+    result = (this.tiltAngle == angle);
+  }
+  else
+    result = false;
+}
+
+function KinectCamera.getColorPixels() {
+  FabricKINECT_GetColorPixels(this);
+}
+
+function KinectCamera.getDepthPixels() {
+  FabricKINECT_GetDepthPixels(this);
+}
+
+function KinectCamera.getPoints(io Vec3 positions<>, io Color colors<>) {
+  FabricKINECT_GetPoints(this, positions, colors);
+}
+
+function KinectCamera.getSkeleton() {
+  FabricKINECT_GetSkeleton(this);
+}

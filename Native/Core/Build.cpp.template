@@ -1,0 +1,40 @@
+/*
+ *  Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+ */
+
+#include <Fabric/Core/Build.h>
+#include <Fabric/Base/Config.h>
+
+namespace Fabric
+{
+  char const *buildName = "{{FABRIC_NAME}}";
+  char const *buildPureVersion = "{{FABRIC_VERSION_MAJ}}.{{FABRIC_VERSION_MIN}}.{{FABRIC_VERSION_REV}}";
+  char const *buildFullVersion = "{{FABRIC_VERSION_MAJ}}.{{FABRIC_VERSION_MIN}}.{{FABRIC_VERSION_REV}}{{FABRIC_VERSION_SUFFIX}}";
+  char const *buildDesc = "{{FABRIC_DESC}}";
+  char const *buildCopyright = "{{FABRIC_COPYRIGHT}}";
+  char const *buildURL = "{{FABRIC_URL}}";
+  char const *buildCacheGeneration = "{{FABRIC_CACHE_GENERATION}}";
+  char const *buildOS = "{{FABRIC_OS}}";
+  char const *buildArch = "{{FABRIC_ARCH}}";
+#if defined(FABRIC_OS_WINDOWS)
+# if defined(WIN64)
+  char const *runningArch = "x86_64";
+# else
+  char const *runningArch = "x86";
+# endif
+#elif defined(FABRIC_OS_MACOSX)
+# if defined(__x86_64)
+  char const *runningArch = "x86_64";
+# else
+  char const *runningArch = "i386";
+# endif
+#elif defined(FABRIC_OS_LINUX)
+# if defined(__x86_64)
+  char const *runningArch = "x86_64";
+# else
+  char const *runningArch = "i686";
+# endif
+#else
+# error "unsupported FABRIC_OS_..."
+#endif
+};

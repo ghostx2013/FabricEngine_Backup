@@ -1,0 +1,11 @@
+diff -ur old/Imath/ImathMatrix.h new/Imath/ImathMatrix.h
+--- old/Imath/ImathMatrix.h	2010-07-16 18:48:40.000000000 -0400
++++ new/Imath/ImathMatrix.h	2011-04-04 16:51:47.824564417 -0400
+@@ -51,6 +51,7 @@
+ 
+ #include <iostream>
+ #include <iomanip>
++#include <string.h>
+ 
+ #if (defined _WIN32 || defined _WIN64) && defined _MSC_VER
+ // suppress exception specification warnings

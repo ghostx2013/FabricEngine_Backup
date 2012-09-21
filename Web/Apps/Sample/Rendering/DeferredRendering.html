@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Deferred Rendering</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+
+FABRIC.require(["SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/DeferredRendering",
+                "SG/Parsers/parseOBJ"], function() {
+
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPrePassPhongMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPrePhongShader.xml');
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPrePassPhongInstancingMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPrePhongInstancingExtShader.xml');
+FABRIC.SceneGraph.defineEffectFromFile('DeferredPostPhongSpotLightInstancingExtMaterial', 'FABRIC_ROOT/SG/Shaders/DeferredPostPhongSpotLightInstancingExtShader.xml');
+FABRIC.SceneGraph.defineEffectFromFile('FlatInstancingExtMaterial', 'FABRIC_ROOT/SG/Shaders/FlatInstancingExtShader.xml');
+
+FABRIC.SceneGraph.registerNodeType('MoveCarsNode', {
+  briefDesc: '',
+  detailedDesc: '',
+  optionsDesc: {
+  },
+  factoryFn: function(options, scene) {
+    scene.assignDefaults(options, {
+      mainAxis : 0
+    });
+
+  var moveCarsNode = scene.constructNode('SceneGraphNode', options);//dummy
+
+  var dgNode = scene.getPrivateInterface(options.transformNode).getDGNode();
+  dgNode.addMember('xMinMax', 'Vec2', options.xMinMax);
+  dgNode.addMember('zMinMax', 'Vec2', options.zMinMax);
+  dgNode.addMember('speed', 'Scalar', options.speed);
+  dgNode.setDependency(scene.getGlobalsNode(), 'globals');
+
+  var mainAxis = options.mainAxis==0 ? 'X' : 'Y';
+
+  dgNode.bindings.append(scene.constructOperator({
+    operatorName: 'moveCars'+mainAxis,
+    srcCode: 'use Xfo, Vec2; operator moveCars(io Scalar timeStep, io Vec2 xMinMax, io Vec2 zMinMax, io Scalar speed, io Xfo globalXfo, in Size index) {\n' +
+                                'Vec3 direction = -1.0*globalXfo.ori.get' + mainAxis + 'axis();\n' +
+                                'Scalar delta = timeStep*speed;\n' +
+                                'Vec3 position = globalXfo.tr+direction*delta;\n' +
+                                'if(direction.x > 0.99 && position.x > xMinMax.y)\n' +
+                                '  position.x = xMinMax.x;\n' +
+                                'if(direction.x < -0.99 && position.x < xMinMax.x)\n' +
+                                '  position.x = xMinMax.y;\n' +
+                                'if(direction.z > 0.99 && position.z > zMinMax.y)\n' +
+                                '  position.z = zMinMax.x;\n' +
+                                'if(direction.z < -0.99 && position.z < zMinMax.x)\n' +
+                                '  position.z = zMinMax.y;\n' +
+                                'globalXfo.tr = position;\n}',
+    entryPoint: 'moveCars',
+    parameterLayout: [
+      'globals.timestep',
+      'self.xMinMax',
+      'self.zMinMax',
+      'self.speed',
+      'self.globalXfo',
+      'self.index'
+      ]
+  }));
+  return moveCarsNode;
+}});
+
+    
+$(document).ready(function() {
+  
+  $('#play').button({
+    text: true,
+    icons: {
+      primary: 'ui-icon-pause'
+    }
+  });
+
+  $('#step').button({
+    text: true,
+    icons: {
+      primary: 'ui-icon-step'
+    }
+  });
+
+  var params;
+
+  try{
+    if(localStorage && localStorage.getItem("deferredRenderCarsGridSize")){
+      params = JSON.parse(localStorage.getItem("deferredRenderCarsGridSize"));
+    }
+    else{
+      throw "no grid size";
+    }
+  }catch(e){
+    params = { gridSize:'15' };
+  }
+  $("#gridSize").val(params.gridSize);
+
+  var storeParams = function(){
+    localStorage.setItem("deferredRenderCarsGridSize", JSON.stringify(params));
+  }
+
+  //Set main params
+  var nbBlocs = params.gridSize;
+  var buildLightSources = true;
+
+  var scene = FABRIC.SceneGraph.createScene();
+  
+  var viewport = scene.constructNode('Viewport', {
+    enableRaycasting: false,
+    windowElement: document.getElementById('FabricContainer'),
+    backgroundColor: FABRIC.RT.rgb(0, 0, 0),//Important: deferred shading is additive!
+  });
+  
+  ///////////////////////////////////////
+  var nbCars = nbBlocs*nbBlocs*4;
+  var nbStreetLightsPerBloc = 2;
+  var streetWidth = 3.0;
+  var streetDistance = 15.0;
+  var nbStreets = nbBlocs-1;
+  var streetLength = streetDistance * nbBlocs;
+
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      position: new FABRIC.RT.Vec3(15, 25, 50),
+      target: new FABRIC.RT.Vec3(0, 5, 0),
+      nearDistance: 1.5,
+      farDistance: streetLength*3
+    });
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(420.0, 1000.0, 600.0), color: FABRIC.RT.rgb(0.4, 0.4, 0.6) });
+
+  var deferredRenderer = scene.constructNode('PhongDeferredRenderer', {cameraNode: camera, lightNode: light, shininess: 20, forwardRenderPass: true
+     //, showDebug: true
+  });
+
+  /////////////////////////////////
+  // Ground
+  scene.constructNode('Instance', {
+      transformNode: scene.constructNode('Transform', {
+        hierarchical: false,
+        globalXfo: new FABRIC.RT.Xfo({ tr: new FABRIC.RT.Vec3(0, -0.25, 0) })
+      }),
+      geometryNode: scene.constructNode('Plane', {
+        length: streetLength,
+        width: streetLength, 
+        lengthSections: 1,
+        widthSections: 1,
+        doubleSided: false,
+        tangentsFromUV: 0
+      }),
+      materialNode: scene.constructNode('DeferredPrePassPhongMaterial', {
+        diffuseColor: FABRIC.RT.rgb(0.3, 0.3, 0.3),
+        specularFactor: 0.1,
+        rendererNode: deferredRenderer
+      })
+    });
+
+  /////////////////////////////////
+  //Streets
+  var streetInstanceTransforms = [];
+  var i, j, k, dir;
+  for(dir = 0; dir < 2; ++dir) {
+    for(i = 1; i < nbBlocs; ++i) {
+      streetInstanceTransforms.push(new FABRIC.RT.Xfo( {
+        tr: new FABRIC.RT.Vec3(
+          dir==1 ? 0 : streetDistance*(i-nbBlocs/2.0),
+          0,
+          dir==0 ? 0 : streetDistance*(i-nbBlocs/2.0)),
+        ori: new FABRIC.RT.Quat().setFromAxisAndAngle( new FABRIC.RT.Vec3(0,1,0), dir==0 ? 0 : Math.PI/2.0 )
+      }));
+    }
+  }
+
+  var streetSlicedTransform = scene.constructNode("Transform");
+  streetSlicedTransform.setGlobalXfo(streetInstanceTransforms);
+  
+  scene.constructNode('Instance', {
+    geometryNode: scene.constructNode('Plane', {
+        length: streetLength,
+        width: streetWidth
+      }),
+    materialNode: scene.constructNode('DeferredPrePassPhongInstancingMaterial',{
+      diffuseColor: FABRIC.RT.rgb(0.6, 0.6, 0.6),
+      transformTextureNode: scene.constructNode('TransformTexture', {
+        transformNode: streetSlicedTransform,
+        dynamic: false
+      }),
+      specularFactor: 0.1,
+      rendererNode: deferredRenderer
+    }),
+    transformNode: streetSlicedTransform
+  });
+
+  /////////////////////////////////
+  //Cars
+  var nbCarsPerStreetSide = Math.floor(nbCars/(nbStreets*4));
+  if(nbCarsPerStreetSide == 0)
+    nbCarsPerStreetSide = 1;
+  var nbCarsPerStreet = nbCarsPerStreetSide*2;
+  nbCars = nbCarsPerStreet * (nbStreets*2);
+
+  var carWidth = streetWidth/3;
+  var carHeight = carWidth;
+  var carLength = carWidth*2.5;
+
+  var carInstanceTransforms = [];
+  var lightInstanceTransforms = [];
+  var carBackLightInstanceTransforms = [];
+  var carFrontLightInstanceTransforms = [];
+
+  var rotateLightsUp = new FABRIC.RT.Quat().setFromAxisAndAngle( new FABRIC.RT.Vec3(0,0,1), -Math.PI/2 );
+
+  var carLightConeRadius = carWidth*3;
+  var carLightConeLength = carLength*4;
+
+  var streetSide;
+  for(dir = 0; dir < 2; ++dir) {
+    for(i = 1; i < nbStreets+1; ++i) {
+      for(streetSide = 0; streetSide < 2; ++streetSide) {
+        for(j = 0; j < nbCarsPerStreetSide; ++j) {
+          var carDist = streetLength / nbCarsPerStreetSide
+          var carX = carDist * j - streetLength/2 + carDist*Math.random()*0.75;
+          var carZ = (streetSide==0?1:-1)*carHeight*0.75 + streetDistance*(i-nbBlocs/2.0);
+
+          var carRotAngle = 0;
+          if(streetSide == 1)
+            carRotAngle += Math.PI;
+          if(dir == 1)
+            carRotAngle += Math.PI/2;
+
+          var carTr = new FABRIC.RT.Vec3(dir==0?carX:carZ, carWidth*0.7, dir==0?carZ:carX);
+          var carOri = new FABRIC.RT.Quat().setFromAxisAndAngle( new FABRIC.RT.Vec3(0,1,0), carRotAngle );
+          carInstanceTransforms.push(new FABRIC.RT.Xfo( {
+            tr: carTr,
+            ori: carOri
+          }));
+
+          var lightOri = carOri.multiply(rotateLightsUp);
+          var invLightOri = rotateLightsUp.multiply(carOri).inverse();
+          lightTr = new FABRIC.RT.Vec3(-carWidth*0.3,carLightConeLength/2+carLength*0.4,carWidth/3.5);
+
+          var deltaFrontLightTr = new FABRIC.RT.Vec3(0,-carLightConeLength/2+carLength*0.12,0);
+          var deltaBackLightTr = new FABRIC.RT.Vec3(0,-carLightConeLength/2-carLength*1.07,0);
+
+          if(dir==1) {
+            lightTr.y = -lightTr.y;
+            deltaFrontLightTr.y = -deltaFrontLightTr.y;
+            deltaBackLightTr.y = -deltaBackLightTr.y;
+          }
+          var deltaFrontLightSc = new FABRIC.RT.Vec3(-1.0,1.0,1.0);//inverse
+
+          for(k = 0; k < 2; ++k) {
+            lightInstanceTransforms.push(new FABRIC.RT.Xfo( {
+              tr: carTr.add(invLightOri.rotateVector(lightTr)),
+              ori: lightOri
+            }));
+
+            if(buildLightSources) {
+              carFrontLightInstanceTransforms.push(new FABRIC.RT.Xfo( {
+                tr: carTr.add(invLightOri.rotateVector(lightTr.add(deltaFrontLightTr))),
+                ori: lightOri,
+                sc: deltaFrontLightSc
+              }));
+              carBackLightInstanceTransforms.push(new FABRIC.RT.Xfo( {
+                tr: carTr.add(invLightOri.rotateVector(lightTr.add(deltaBackLightTr))),
+                ori: lightOri
+              }));
+            }
+            lightTr.z = -lightTr.z;
+          }
+        }
+      }
+    }
+  }
+
+  var moveMinMax = new FABRIC.RT.Vec2(-streetLength/2, streetLength/2);
+  var speed = 8.0;
+
+  ////////// Car geometry
+  var carSlicedTransform = scene.constructNode("Transform", { name:"CarsTransform" } );
+  carSlicedTransform.setGlobalXfo(carInstanceTransforms);
+    
+  scene.importAssetFile('Models/carmod2.obj', {}, function(assetNodes){
+    scene.constructNode('Instance', {
+      geometryNode: assetNodes['carmod2'],//Note: already scaled according to carLength, carHeight, carWidth
+      materialNode: scene.constructNode('DeferredPrePassPhongInstancingMaterial', {
+        diffuseColor: FABRIC.RT.rgb(0.8, 0.4, 0.4),
+        transformTextureNode: scene.constructNode('TransformTexture', {
+          transformNode: carSlicedTransform,
+          dynamic: true
+        }),
+        specularFactor: 1.0,
+        rendererNode: deferredRenderer
+      }),
+      transformNode: carSlicedTransform
+    });
+  });
+  
+
+  scene.constructNode('MoveCarsNode', {
+    transformNode: carSlicedTransform,
+    xMinMax: moveMinMax,
+    zMinMax: moveMinMax,
+    speed: speed
+      });
+
+  ////////// Car spotlights
+  var carLightSlicedTransform = scene.constructNode("Transform", { name:"SpotLightsTransform" } );
+  carLightSlicedTransform.setGlobalXfo(lightInstanceTransforms);
+
+  var carLightConeBox = scene.constructNode('Cone', {
+    radius: carLightConeRadius*1.55,//5 sided cone completely embedding real cone of that radius
+    height: carLightConeLength,
+    detail: 2
+  });
+
+  var carLightCosCutoff = carLightConeLength / Math.sqrt(carLightConeRadius*carLightConeRadius+carLightConeLength*carLightConeLength);
+  var carLightCosCutoffStart = carLightConeLength / Math.sqrt(carLightConeRadius*0.5*carLightConeRadius*0.5+carLightConeLength*carLightConeLength);
+
+  scene.constructNode('Instance', {
+    geometryNode: carLightConeBox,
+    materialNode: scene.constructNode('DeferredPostPhongSpotLightInstancingExtMaterial', {
+      lightColor: FABRIC.RT.rgb255(140,140,255),
+      lightCosCutoff: carLightCosCutoff,
+      lightIntensity: 3.5,
+      lightCosCutoffStart: carLightCosCutoffStart,
+      lightDistCutoff: carLightConeLength,
+      lightDistCutoffStart: carLightConeLength*0.66,
+      transformTextureNode: scene.constructNode('TransformTexture', {
+        transformNode: carLightSlicedTransform,
+        dynamic: true
+      }),
+      rendererNode: deferredRenderer
+    }),
+    transformNode: carLightSlicedTransform
+  });
+
+  scene.constructNode('MoveCarsNode', {
+    transformNode: carLightSlicedTransform,
+    xMinMax: moveMinMax,
+    zMinMax: moveMinMax,
+    speed: speed,
+    mainAxis: 1
+      });
+
+  if(buildLightSources) {
+
+    ////////// Car front lights
+    var carFrontLightSlicedTransform = scene.constructNode("Transform", { name:"CarsTransform" });
+    carFrontLightSlicedTransform.setGlobalXfo(carFrontLightInstanceTransforms);
+  
+    scene.constructNode('Instance', {
+      geometryNode: scene.constructNode('Plane', {
+          width: carWidth/12,
+          length: carWidth/7,
+          lengthSections: 1,
+          widthSections: 1
+      }),
+      materialNode: deferredRenderer.addForwardRenderMaterial('FlatInstancingExtMaterial', {
+        color: FABRIC.RT.rgb255(245,245,255),
+        transformTextureNode: scene.constructNode('TransformTexture', {
+          transformNode: carFrontLightSlicedTransform,
+          dynamic: true
+        })
+      }),
+      transformNode: carFrontLightSlicedTransform
+    });
+
+    scene.constructNode('MoveCarsNode', {
+      transformNode: carFrontLightSlicedTransform,
+      xMinMax: moveMinMax,
+      zMinMax: moveMinMax,
+      speed: speed,
+      mainAxis: 1
+        });
+
+    ////////// Car back lights
+    var carBackLightSlicedTransform = scene.constructNode("Transform");
+    carBackLightSlicedTransform.setGlobalXfo(carBackLightInstanceTransforms);
+  
+    scene.constructNode('Instance', {
+      geometryNode: scene.constructNode('Plane', {
+          width: carWidth/12,
+          length: carWidth/7,
+          lengthSections: 1,
+          widthSections: 1
+      }),
+      materialNode: deferredRenderer.addForwardRenderMaterial('FlatInstancingExtMaterial', {
+        color: FABRIC.RT.rgb255(255,20,20),
+        transformTextureNode: scene.constructNode('TransformTexture', {
+          transformNode: carBackLightSlicedTransform,
+          dynamic: true
+        })
+      }),
+      transformNode: carBackLightSlicedTransform
+    });
+
+    scene.constructNode('MoveCarsNode', {
+      transformNode: carBackLightSlicedTransform,
+      xMinMax: moveMinMax,
+      zMinMax: moveMinMax,
+      speed: speed,
+      mainAxis: 1
+        });
+  }
+
+  /////////////////////////////////
+  //Street lights
+
+  var streetLightConeRadius = carLength*0.9;
+  var streetLightConeLength = carLength*1.4;
+  var streetLightDist = (streetDistance-streetWidth)/nbStreetLightsPerBloc;
+
+  var streetLightInstanceTransforms = [];
+  var streetLightConeInstanceTransforms = [];
+  var streetLightBulbInstanceTransforms = [];
+
+  for(dir = 0; dir < 2; ++dir) {
+    for(i = 1; i < nbBlocs; ++i) {
+      for(j = 0; j < nbBlocs; ++j) {
+        for(k = 0; k < nbStreetLightsPerBloc; ++k) {
+          var xCoord = streetDistance*(i-nbBlocs/2.0)+streetWidth*0.25;
+          var zCoord = streetDistance*(j-nbBlocs/2.0)+streetWidth/2+streetLightDist*(k+0.5);
+          streetLightInstanceTransforms.push(new FABRIC.RT.Xfo( {
+            tr: new FABRIC.RT.Vec3(
+              dir==1 ? zCoord : xCoord,
+              streetLightConeLength*0.4,
+              dir==0 ? zCoord : xCoord)
+          }));
+
+          if(buildLightSources) {
+            streetLightConeInstanceTransforms.push(new FABRIC.RT.Xfo( {
+              tr: new FABRIC.RT.Vec3(
+                dir==1 ? zCoord : xCoord,
+                streetLightConeLength*0.75,
+                dir==0 ? zCoord : xCoord)
+            }));
+            streetLightBulbInstanceTransforms.push(new FABRIC.RT.Xfo( {
+              tr: new FABRIC.RT.Vec3(
+                dir==1 ? zCoord : xCoord,
+                streetLightConeLength*0.7,
+                dir==0 ? zCoord : xCoord),
+              sc: new FABRIC.RT.Vec3(1.0, 0.5, 1.0)
+            }));
+          }
+        }
+      }
+    }
+  }
+
+  //Street spotlight
+  var streetLightSlicedTransform = scene.constructNode("Transform", { name:"StreetLightsTransform" });
+  streetLightSlicedTransform.setGlobalXfo(streetLightInstanceTransforms);
+  
+  var streetLightConeBox = scene.constructNode('Cone', {
+    radius: streetLightConeRadius*1.55,//5 sided cone completely embedding real cone of that radius
+    height: streetLightConeLength,
+    detail: 2
+  });
+
+  var streetLightCosCutoff = streetLightConeLength / Math.sqrt(streetLightConeRadius*streetLightConeRadius+streetLightConeLength*streetLightConeLength);
+  var streetLightCosCutoffStart = streetLightConeLength / Math.sqrt(streetLightConeRadius*0.15*streetLightConeRadius*0.15+streetLightConeLength*streetLightConeLength);
+
+  scene.constructNode('Instance', {
+    geometryNode: streetLightConeBox,
+    materialNode: scene.constructNode('DeferredPostPhongSpotLightInstancingExtMaterial', {
+      lightColor: FABRIC.RT.rgb255(255,150,90),
+      lightCosCutoff: streetLightCosCutoff,
+      lightIntensity: 1,
+      lightCosCutoffStart: streetLightCosCutoffStart,
+      lightDistCutoff: streetLightConeLength*1.5,
+      lightDistCutoffStart: streetLightConeLength*1.5,
+      transformTextureNode: scene.constructNode('TransformTexture', {
+        transformNode: streetLightSlicedTransform,
+        dynamic: false
+      }),
+      rendererNode: deferredRenderer
+    }),
+    transformNode: streetLightSlicedTransform
+  });
+
+  if(buildLightSources) {
+    //Street light cone
+    var streetLightConeSlicedTransform = scene.constructNode("Transform");
+    streetLightConeSlicedTransform.setGlobalXfo(streetLightConeInstanceTransforms);
+
+    scene.constructNode('Instance', {
+      geometryNode: scene.constructNode('Cone', {
+        radius: carWidth*0.25,
+        height: carWidth*0.35,
+        detail: 5
+      }),
+      materialNode: deferredRenderer.addForwardRenderMaterial('PhongInstancingExtMaterial', {
+        diffuseColor: FABRIC.RT.rgb255(200,200,200),
+        ambientColor: FABRIC.RT.rgb255(80,80,80),
+        lightNode: light,
+        transformTextureNode: scene.constructNode('TransformTexture', {
+          transformNode: streetLightConeSlicedTransform,
+          dynamic: false
+        })
+      }),
+      transformNode: streetLightConeSlicedTransform
+    });
+
+    //Street light bulb
+    var streetLightBulbSlicedTransform = scene.constructNode("Transform");
+    streetLightBulbSlicedTransform.setGlobalXfo(streetLightBulbInstanceTransforms);
+
+    scene.constructNode('Instance', {
+      geometryNode: scene.constructNode('Sphere', {
+        radius: carWidth*0.15,
+        detail: 2
+      }),
+      materialNode: deferredRenderer.addForwardRenderMaterial('FlatInstancingExtMaterial', {
+        color: FABRIC.RT.rgb255(255,230,200),
+        transformTextureNode: scene.constructNode('TransformTexture', {
+          transformNode: streetLightBulbSlicedTransform,
+          dynamic: false
+        })
+      }),
+      transformNode: streetLightBulbSlicedTransform
+    });
+  }
+
+  nbInstances =   streetInstanceTransforms.length 
+                + carInstanceTransforms.length
+                + lightInstanceTransforms.length
+                + carBackLightInstanceTransforms.length
+                + carFrontLightInstanceTransforms.length
+                + streetLightInstanceTransforms.length
+                + streetLightConeInstanceTransforms.length
+                + streetLightBulbInstanceTransforms.length;
+
+  $('#play').button().click(function(){
+      var options;
+      if ($(this).text() == 'Play') {
+        $(this).button('option', {
+          label: 'Pause',
+          icons: {
+            primary: 'ui-icon-pause'
+          }
+        });
+        scene.animation.play();
+      } else {
+        $(this).button('option', {
+          label: 'Play',
+          icons: {
+            primary: 'ui-icon-play'
+          }
+        });
+        scene.animation.pause();
+      }
+  });
+
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+    $('#loadingProgressBar').progressbar({
+      value: (1.0-(doneWeight/totalWeight))*100
+    });
+    if (nbRemaining===0) {
+      $('#loadingDialog').dialog('close');
+      var errors = scene.getErrors();
+      if (errors.length > 0) {
+        throw (errors.toString());
+      }
+
+      $("#gridSize").change(function() {
+        params.gridSize = $("#gridSize :selected").attr("value");
+        storeParams();
+        window.location.reload();
+      });
+
+      viewport.redraw();
+      if(!viewport.getGlewSupported('GL_EXT_draw_instanced')){
+        alert("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+        throw("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+      }
+
+      setInterval(function() {
+          document.getElementById('frameRate').childNodes[0].data = 'Frame Rate:' + viewport.getFPS().toFixed(2);
+        }, 600);
+
+      document.getElementById('nbSpotLights').childNodes[0].data = 'Nb spot lights: ' + (nbCars*2 + nbStreets*nbStreets*2*nbStreetLightsPerBloc);
+      document.getElementById('nbCars').childNodes[0].data = 'Nb cars: ' + nbCars;
+      document.getElementById('nbInstances').childNodes[0].data = 'Total geometry instances: ' + nbInstances;
+
+      if(!viewport.getGlewSupported('GL_EXT_draw_instanced')){
+        alert("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+        throw("This demo requires OpenGL 3.2 features such as 'GL_EXT_draw_instanced' to run.\n\nIt appears that your graphics card does not support geometry instancing.");
+      }
+      scene.animation.play();
+
+      return true;
+    }
+  });
+  
+});
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc"></h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+              <div class="content">
+              This sample shows how the deferred technique rendering enables to efficiently layer many lights in a second shading pass. The many spot lights are drawn only on their area of influence.<br>
+              <button id="play">Pause</button>
+              </br>
+              <label for="gridSize" style="margin-top:10px;">Grid size:</label>
+              <select id='gridSize' style="margin-top:10px;">
+                <option value="10">10 X 10 (1116 spot lights)
+                <option value="15">15 X 15 (2576 spot lights)
+                <option value="20">20 X 20 (4636 spot lights)
+                <option value="30">30 X 30 (10556 spot lights)
+                <option value="40">40 X 40 (18876 spot lights)
+              </select>
+              </br>
+            </div><!--content-->
+          </div><!--box-->
+          <div class="box">
+            <h2 id="agents">PERFORMANCE</h2>
+            <div class="content" id="frameRate">Frame Rate:</div>
+            <div class="content" id="nbSpotLights">Nb spot lights:</div>
+            <div class="content" id="nbCars">Nb cars:</div>
+            <div class="content" id="nbInstances">Total geometry instances:</div><p></p>
+          </div><!--box-->
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

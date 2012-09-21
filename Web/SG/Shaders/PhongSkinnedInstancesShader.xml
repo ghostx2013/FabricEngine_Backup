@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shader>
+  <name>PhongSkinnedInstancesMaterial</name>
+  <prototypeMaterialType>InstancingMaterial</prototypeMaterialType>
+  
+  <uniforms>
+    <uniform name="u_lightPosition" constant="lightPosition" type="Vec3" owner="light"/>
+    <uniform name="u_lightType" constant="lightType" type="Integer" owner="light"/>
+    <uniform name="u_lightDir" constant="lightDir" type="Vec3" owner="light"/>
+    <uniform name="u_lightColor" constant="lightColor" type="Color" owner="light"/>
+    <uniform name="u_lightCosCutoff" constant="lightCosCutoff" type="Scalar" owner="light"/>
+    
+    <uniform name="u_materialAmbientColor" constant="ambientColor" type="Color" defaultValue="FABRIC.RT.rgba(0.0,0.0,0.0,1)"/>
+    <uniform name="u_materialDiffuseColor" constant="diffuseColor" type="Color" defaultValue="FABRIC.RT.rgba(0.8,0,0,1)"/>
+    <uniform name="u_materialSpecularColor" constant="specularColor" type="Color" defaultValue="FABRIC.RT.rgba(0.5,0.5,0.5,1)"/>
+    <uniform name="u_materialShininess" constant="shininess" type="Scalar" defaultValue="20.0"/>
+    
+    <uniform name="u_modelViewProjectionMatrix" constant="modelViewProjectionMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_modelViewMatrix" constant="modelViewMatrix" type="Mat44" owner="instance"/>
+    <uniform name="u_normalMatrix" constant="normalMatrix" type="Mat33" owner="instance"/>
+    
+    <uniform name="u_samplerSkinningMatrices" constant="skinningMatricesTextureUnit" type="Integer" owner="geometry"/>
+    <uniform name="u_transformTextureHeight" constant="transformTextureHeight" type="Scalar"/>
+    <uniform name="u_numBonesPerInstance" constant="numBonesPerInstance" type="Integer"/>
+    
+  </uniforms>
+  
+  <attributes>
+    <attribute name="a_position" binding="positions"/>
+    <attribute name="a_normal" binding="normals"/>
+    <attribute name="a_weight" binding="boneWeights"/>
+    <attribute name="a_index" binding="boneIds"/>
+  </attributes>
+  
+  <lights>
+    <light type="Light" binding="light"/>
+  </lights>
+  
+  <vertexshader>
+    <source>
+      <![CDATA[
+uniform mat4 u_modelViewProjectionMatrix;
+uniform mat4 u_modelViewMatrix;
+uniform mat3 u_normalMatrix;
+uniform vec4 u_lightPosition;
+
+// This is an array of all the bones in a skeleton.
+uniform sampler2D u_samplerSkinningMatrices;
+uniform float u_transformTextureHeight;
+uniform int u_numBonesPerInstance;
+
+attribute vec4 a_position;
+attribute vec3 a_normal;
+
+attribute vec4 a_weight;
+attribute vec4 a_index;
+
+varying vec3 normal;
+varying vec3 lightDir;
+varying vec3 viewDir;
+
+]]>
+    </source>
+                  <include file="matrices.txt"/>
+    <source>
+<![CDATA[
+      
+      
+void skinInstancePositionsAndNormals(
+  in sampler2D samplerSkinningMatrices,
+  in int instanceId,
+  in int numBonesPerInstance
+){
+  vec4 transformedPosition = vec4(0.0,0.0,0.0,0.0);
+  vec4 transformedNormal = vec4(0.0,0.0,0.0,0.0);
+  
+  vec4 curIndex = a_index;
+  vec4 curWeight = a_weight;
+  
+  for (int i = 0; i < 4; i++){
+    float weight = curWeight[i];
+    if(weight > 0.0){
+      int idx = int(curIndex[i]);
+      int index = (instanceId * numBonesPerInstance) + idx;
+      // load the specified bone matrix from the texture
+      mat4 m44 = loadMatrixFromTexture(u_samplerSkinningMatrices, u_transformTextureHeight, index);
+      
+      
+      transformedPosition += m44 * a_position * weight;
+
+      // transform normal by bone i
+      mat3 m33 = mat3( m44[0].xyz, m44[1].xyz, m44[2].xyz );
+      transformedNormal.xyz += m33 * a_normal.xyz * weight;
+    }
+  }
+
+  vec4 modelCameraPosition = u_modelViewMatrix * transformedPosition;
+  lightDir = vec3(u_lightPosition.xyz - modelCameraPosition.xyz);
+  viewDir = vec3(-modelCameraPosition.xyz);
+  
+  gl_Position = u_modelViewProjectionMatrix * transformedPosition;    
+  
+  normal = u_normalMatrix * transformedNormal.xyz;
+}
+      
+void main(){
+  skinInstancePositionsAndNormals(u_samplerSkinningMatrices, gl_InstanceID, u_numBonesPerInstance);
+}
+      
+      ]]>
+    </source>
+  </vertexshader>
+  
+  <fragmentshader>
+    <source>
+      <![CDATA[
+      uniform int u_lightType;
+      uniform vec3 u_lightDir;
+      uniform vec4 u_lightColor;
+      uniform float u_lightCosCutoff;
+      
+      uniform float u_materialShininess;
+      uniform vec4 u_materialAmbientColor;
+      uniform vec4 u_materialDiffuseColor;
+      uniform vec4 u_materialSpecularColor;
+      
+      varying vec3 normal;
+      varying vec3 lightDir;
+      varying vec3 viewDir;
+      
+      
+      ]]>
+      </source>
+      <include file="lighting.txt"/>
+      <source>
+      <![CDATA[
+      
+      void main(){
+        vec3 Ln = normalize(lightDir);
+        vec3 Vn = normalize(viewDir);
+        vec3 Nn = normalize(normal);
+        
+        float lightFactor = 1.0;
+        gl_FragColor = phong_shading(  Nn, 
+                        Ln, 
+                        Vn, 
+                        u_lightType,
+                        u_lightDir,
+                        lightFactor,
+                        u_lightCosCutoff,
+                        u_lightColor,
+                        u_materialDiffuseColor, 
+                        u_materialSpecularColor,
+                        u_materialShininess,
+                        u_materialAmbientColor );
+      }
+      
+      ]]>
+    </source>
+  </fragmentshader>
+</shader>

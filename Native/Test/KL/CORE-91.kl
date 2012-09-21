@@ -1,0 +1,16 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Foo 
+{ 
+  Integer bar[]; 
+}; 
+
+operator entry() 
+{ 
+    var Foo baz[]; 
+    baz.resize(1); 
+    baz[0].bar.push( 20 ); 
+    report( baz );
+} 

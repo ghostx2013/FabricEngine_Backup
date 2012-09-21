@@ -1,0 +1,4 @@
+vp1 = ValueProducer<String>
+vp1.produce() = Hello!
+vp2 = ValueProducer<String>
+vp2.produce() = Hello, Hello!

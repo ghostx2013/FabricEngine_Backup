@@ -1,0 +1,6 @@
+ca.getCount() = 5
+ca.produce(0) = one
+ca.produce(1) = two
+ca.produce(2) = three
+ca.produce(3) = four
+ca.produce(4) = five

@@ -1,0 +1,10 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Foo { Integer bar; } ;
+struct Foo { Scalar bar; } ;
+
+operator entry()
+{
+}

@@ -1,0 +1,13 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function Scalar foo() {
+  return 3.14;
+  Scalar a = 2.71;
+  return a;
+}
+
+operator entry() {
+  report(foo());
+}

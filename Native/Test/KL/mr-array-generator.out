@@ -1,0 +1,88 @@
+ArrayProducer<Integer>
+10
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+generator1: value=0
+42
+ArrayProducer<Integer>
+10
+generator2: value=0 index=0
+0
+generator2: value=0 index=1
+2
+generator2: value=0 index=2
+4
+generator2: value=0 index=3
+6
+generator2: value=0 index=4
+8
+generator2: value=0 index=5
+10
+generator2: value=0 index=6
+12
+generator2: value=0 index=7
+14
+generator2: value=0 index=8
+16
+generator2: value=0 index=9
+18
+ArrayProducer<Integer>
+10
+generator3: value=0 index=0 count=10
+0
+generator3: value=0 index=1 count=10
+2
+generator3: value=0 index=2 count=10
+4
+generator3: value=0 index=3 count=10
+6
+generator3: value=0 index=4 count=10
+8
+generator3: value=0 index=5 count=10
+10
+generator3: value=0 index=6 count=10
+12
+generator3: value=0 index=7 count=10
+14
+generator3: value=0 index=8 count=10
+16
+generator3: value=0 index=9 count=10
+18
+ArrayProducer<Integer>
+10
+generator4: value=0 index=0 count=10 shared=hello
+0
+generator4: value=0 index=1 count=10 shared=hello
+2
+generator4: value=0 index=2 count=10 shared=hello
+4
+generator4: value=0 index=3 count=10 shared=hello
+6
+generator4: value=0 index=4 count=10 shared=hello
+8
+generator4: value=0 index=5 count=10 shared=hello
+10
+generator4: value=0 index=6 count=10 shared=hello
+12
+generator4: value=0 index=7 count=10 shared=hello
+14
+generator4: value=0 index=8 count=10 shared=hello
+16
+generator4: value=0 index=9 count=10 shared=hello
+18

@@ -1,0 +1,20 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+function doSomething()
+{
+  report("Did something");
+}
+
+function doSomethingElse()
+{
+  report("Did something else");
+}
+
+
+operator entry()
+{
+  true && doSomething();
+  false && doSomethingElse();
+}

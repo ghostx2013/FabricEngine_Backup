@@ -1,0 +1,2916 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct Vec2 {
+  Scalar x;
+  Scalar y;
+};
+
+function Vec2(Scalar x, Scalar y) {
+  this.x = x;
+  this.y = y;
+}
+
+function Vec2.set(Scalar x, Scalar y) {
+  this.x = x;
+  this.y = y;
+}
+
+function Vec2.setNull() {
+  this.x = this.y = 0.0;
+}
+
+function Vec2 + (Vec2 a, Vec2 b) {
+  return Vec2(a.x + b.x, a.y + b.y);
+}
+
+function Vec2. += (Vec2 other) {
+  this = this + other;
+}
+
+function Vec2 - (Vec2 a, Vec2 b) {
+  return Vec2(a.x - b.x, a.y - b.y);
+}
+
+function Vec2. -= (Vec2 other) {
+  this = this - other;
+}
+
+function Vec2 * (Scalar a, Vec2 b) {
+  return Vec2(a * b.x, a * b.y);
+}
+
+function Vec2 * (Vec2 a, Scalar b) {
+  return Vec2(a.x * b, a.y * b);
+}
+
+function Vec2 * (Vec2 a, Vec2 b) {
+  return Vec2(a.x * b.x, a.y * b.y);
+}
+
+function Vec2. *= (Scalar other) {
+  this = this * other;
+}
+
+function Vec2. *= (Vec2 other) {
+  this = this * other;
+}
+
+function Vec2 / (Vec2 a, Vec2 b) {
+  return Vec2(a.x / b.x, a.y / b.y);
+}
+
+function Vec2 / (Scalar a, Vec2 b) {
+  return Vec2(a / b.x, a / b.y);
+}
+
+function Vec2 / (Vec2 a, Scalar b) {
+  return Vec2(a.x / b, a.y / b);
+}
+
+function Vec2. /= (Scalar other) {
+  this = this / other;
+}
+
+function Vec2. /= (Vec2 other) {
+  this = this / other;
+}
+
+function Vec2 Vec2.neg() {
+  return Vec2(-this.x, - this.y);
+}
+
+function Scalar Vec2.dot(Vec2 other) {
+  return this.x * other.x + this.y * other.y;
+}
+
+function Scalar Vec2.normSq() {
+  return this.dot(this);
+}
+
+function Scalar Vec2.norm() {
+  return sqrt(this.normSq());
+}
+
+function Vec2 Vec2.unit() {
+  var Scalar n = this.norm();
+  if (n > 0.0) {
+    return this / n;
+  }
+  return this;
+}
+
+function Vec2.setUnit() {
+  this = this.unit();
+}
+
+function Scalar Vec2.distSq(in Vec2 other) {
+  var Vec2 v;
+  v = this - other;
+  return v.normSq();
+}
+
+function Scalar Vec2.dist(in Vec2 other) {
+  return sqrt(this.distSq(other));
+}
+
+function Scalar Vec2.det(in Vec2 other) {
+  return this.x * other.y - this.y * other.x;
+}
+
+function Vec2 Vec2.max(in Vec2 other) {
+  var Vec2 v;
+  v.x = this.x > other.x ? this.x : other.x;
+  v.y = this.y > other.y ? this.y : other.y;
+  return v;
+}
+
+function Vec2 Vec2.min(in Vec2 other) {
+  var Vec2 v;
+  v.x = this.x < other.x ? this.x : other.x;
+  v.y = this.y < other.y ? this.y : other.y;
+  return v;
+}
+
+struct Vec3 {
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+function Vec3(Scalar x, Scalar y, Scalar z) {
+  this.x = x;
+  this.y = y;
+  this.z = z;
+}
+
+function Vec3.set(Scalar x, Scalar y, Scalar z) {
+  this.x = x;
+  this.y = y;
+  this.z = z;
+}
+
+function Vec3.setNull() {
+  this.x = this.y = this.z = 0.0;
+}
+
+function Vec3 + (Vec3 a, Vec3 b) {
+  return Vec3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+function Vec3. += (Vec3 other) {
+  this = this + other;
+}
+
+function Vec3 - (Vec3 a, Vec3 b) {
+  return Vec3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+function Vec3. -= (Vec3 other) {
+  this = this - other;
+}
+
+function Vec3 * (Scalar a, Vec3 b) {
+  return Vec3(a * b.x, a * b.y, a * b.z);
+}
+
+function Vec3 * (Vec3 a, Scalar b) {
+  return Vec3(a.x * b, a.y * b, a.z * b);
+}
+
+function Vec3 * (Vec3 a, Vec3 b) {
+  return Vec3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+function Vec3. *= (Scalar other) {
+  this = this * other;
+}
+
+function Vec3. *= (Vec3 other) {
+  this = this * other;
+}
+
+function Vec3 / (Vec3 a, Vec3 b) {
+  return Vec3(a.x / b.x, a.y / b.y, a.z / b.z);
+}
+
+function Vec3 / (Scalar a, Vec3 b) {
+  return Vec3(a / b.x, a / b.y, a / b.z);
+}
+
+function Vec3 / (Vec3 a, Scalar b) {
+  return Vec3(a.x / b, a.y / b, a.z / b);
+}
+
+function Vec3. /= (Scalar other) {
+  this = this / other;
+}
+
+function Vec3. /= (Vec3 other) {
+  this = this / other;
+}
+
+function Vec3 Vec3.neg() {
+  return Vec3(-this.x, -this.y, -this.z);
+}
+
+function Vec3 Vec3.inv() {
+  return Vec3(1.0 / this.x, 1.0 / this.y, 1.0 / this.z);
+}
+
+struct Mat33 {
+  Vec3 row0;
+  Vec3 row1;
+  Vec3 row2;
+};
+
+
+function Mat33(
+  Scalar _00, Scalar _01, Scalar _02,
+  Scalar _10, Scalar _11, Scalar _12,
+  Scalar _20, Scalar _21, Scalar _22
+) {
+  this.row0 = Vec3(_00, _01, _02);
+  this.row1 = Vec3(_10, _11, _12);
+  this.row2 = Vec3(_20, _21, _22);
+}
+
+function Mat33(
+  Vec3 row0, Vec3 row1, Vec3 row2
+) {
+  this.row0 = row0;
+  this.row1 = row1;
+  this.row2 = row2;
+}
+
+struct RotationOrder {
+  Integer order;
+};
+
+function RotationOrder(in Integer order) {
+  if (order < 0 || order > 5) {
+    report('Invalid rotation order: ' + order);
+    this.setXYZ();
+  }
+  else
+    this.order = order;
+}
+
+/*
+// It would be most excellent to be able to override String casts.
+function String( in RotationOrder o )
+{
+     if( o.order = 0 ) return "xyz";
+  else if( o.order = 1 ) return "yzx";
+  else if( o.order = 2 ) return "zxy";
+  else if( o.order = 3 ) return "xzy";
+  else if( o.order = 4 ) return "zyx";
+  else if( o.order = 5 ) return "yxz";
+  else return "<unknown>";
+}
+*/
+
+function Boolean RotationOrder.isXYZ() {
+  return this.order == 0;
+}
+function Boolean RotationOrder.isYZX() {
+  return this.order == 1;
+}
+function Boolean RotationOrder.isZXY() {
+  return this.order == 2;
+}
+function Boolean RotationOrder.isXZY() {
+  return this.order == 3;
+}
+function Boolean RotationOrder.isZYX() {
+  return this.order == 4;
+}
+function Boolean RotationOrder.isYXZ() {
+  return this.order == 5;
+}
+
+function Boolean RotationOrder.isReversed() {
+  return this.isXZY() || this.isZYX() || this.isYXZ();
+}
+
+function RotationOrder.setXYZ() {
+  this.order = 0;
+}
+function RotationOrder.setYZX() {
+  this.order = 1;
+}
+function RotationOrder.setZXY() {
+  this.order = 2;
+}
+function RotationOrder.setXZY() {
+  this.order = 3;
+}
+function RotationOrder.setZYX() {
+  this.order = 4;
+}
+function RotationOrder.setYXZ() {
+  this.order = 5;
+}
+
+struct Quat {
+  Vec3 v;
+  Scalar w;
+};
+
+function Quat() {
+  this.v = Vec3(0.0, 0.0, 0.0);
+  this.w = 1.0;
+}
+
+function Quat.identity() {
+  this.v = Vec3(0.0, 0.0, 0.0);
+  this.w = 1.0;
+}
+
+function Quat(in Scalar w, in Vec3 v) {
+  this.v = v;
+  this.w = w;
+}
+
+function Quat + (in Quat a, in Quat b) {
+  return Quat(a.w + b.w, a.v + b.v);
+}
+
+function Quat - (in Quat a, in Quat b) {
+  return Quat(a.w - b.w, a.v - b.v);
+}
+
+function Quat * (in Quat a, in Quat b) {
+  return Quat(a.w * b.w - a.v.dot(b.v), a.v.cross(b.v) + (a.w * b.v) + (a.v * b.w));
+}
+
+function Quat * (in Scalar a, in Quat b) {
+  return Quat(a * b.w, a * b.v);
+}
+
+function Quat * (in Quat a, in Scalar b) {
+  return Quat(a.w * b, a.v * b);
+}
+
+function Quat / (in Quat a, in Quat b) {
+  return Quat(a.w * b.w + a.v.dot(b.v), (a.v * b.w) - (a.w * b.v) - a.v.cross(b.v));
+}
+
+function Scalar Quat.normSq() {
+  return this.w * this.w + this.v.normSq();
+}
+
+function Scalar Quat.norm() {
+  return sqrt(this.normSq());
+}
+
+function Quat Quat.unit() {
+  var Scalar l = this.norm();
+  return Quat(this.w / l, this.v / l);
+}
+
+function Quat.setUnit() {
+  this = this.unit();
+}
+
+function Quat.normalize() {
+  this = this.unit();
+}
+
+function Quat Quat.conjugate() {
+  return Quat(this.w, this.v.neg());
+}
+
+function Quat Quat.inv() {
+  return this.unit().conjugate();
+}
+
+function Scalar Quat.dot(in Quat other) {
+  return this.w * other.w + this.v.dot(other.v);
+}
+
+function Quat.makeClosest(in Quat other) {
+  if(this.dot(other) < 0.0){
+    this = Quat(-this.w, this.v.neg());;
+  }
+}
+
+
+// Note: a and b should be unit Quaternions
+function Quat slerp(in Quat a, in Quat b, in Scalar t) {
+  var Quat r;
+
+  var Scalar cosHalfTheta = a.dot(b);
+
+  if (abs(cosHalfTheta) < 1.0) {
+    var Scalar halfTheta = acos(cosHalfTheta);
+    var Scalar sinHalfTheta = sqrt(1.0 - cosHalfTheta * cosHalfTheta);
+
+    if (abs(sinHalfTheta) < 0.00001) {
+      r = Quat((a.w + b.w) * 0.5, (a.v + b.v) * 0.5);
+    }
+    else {
+      var Scalar rA = sin((1 - t) * halfTheta) / sinHalfTheta;
+      var Scalar rB = sin(t * halfTheta) / sinHalfTheta;
+
+      r = Quat(a.w * rA + b.w * rB, a.v * rA + b.v * rB);
+    }
+  }
+  else {
+    // They're the same
+    r = a;
+  }
+
+  return r.unit();
+}
+
+function Quat axisAndAngleToQuat(in Vec3 axis, in Scalar angle) {
+  var Scalar halfAngle = angle / 2.0;
+  return Quat(cos(halfAngle), sin(halfAngle) * axis.unit());
+}
+
+// NB. Function taken from the 'Game Programming Gems' article 'The Shortest Arc Quat' by Stan Melax
+// NB. Both vectors must be normalized.
+function Quat makeQuatFrom2Vectors(in Vec3 vec1, in Vec3 vec2) {
+  Quat q;
+  Scalar val = vec1.dot(vec2) + 1.0;
+  if (val <= 0.001) {
+    // the vectors pointed in opposite directions.
+    // creating the quaterion is impossible
+    return q;
+  }
+  val = sqrt(val * 2.0);
+  q.v = vec1.cross(vec2);
+  q.v /= val;
+  q.w = val / 2.0;
+  return q;
+}
+
+// Method for obtaining axes directly from a quaternion
+function Vec3 Quat.getXaxis() {
+  Vec3 temp;
+  Scalar xy = this.v.x * this.v.y; Scalar xz = this.v.x * this.v.z;
+  Scalar yy = this.v.y * this.v.y; Scalar yw = this.v.y * this.w;
+  Scalar zz = this.v.z * this.v.z; Scalar zw = this.v.z * this.w;
+
+  temp.x = 1.0 - 2.0 * (zz + yy);
+  temp.y = 2.0 * (xy + zw);
+  temp.z = 2.0 * (xz - yw);
+  return temp;
+}
+
+function Vec3 Quat.getYaxis() {
+  Vec3 temp;
+  Scalar xx = this.v.x * this.v.x; Scalar xy = this.v.x * this.v.y; Scalar xw = this.v.x * this.w;
+  Scalar yz = this.v.y * this.v.z;
+  Scalar zz = this.v.z * this.v.z; Scalar zw = this.v.z * this.w;
+
+  temp.x = 2.0 * (xy - zw);
+  temp.y = 1.0 - 2.0 * (zz + xx);
+  temp.z = 2.0 * (yz + xw);
+  return temp;
+}
+
+function Vec3 Quat.getZaxis() {
+  Vec3 temp;
+  Scalar xx = this.v.x * this.v.x; Scalar xz = this.v.x * this.v.z; Scalar xw = this.v.x * this.w;
+
+  Scalar yy = this.v.y * this.v.y; Scalar yz = this.v.y * this.v.z; Scalar yw = this.v.y * this.w;
+
+  temp.x = 2.0 * (yw + xz);
+  temp.y = 2.0 * (yz - xw);
+  temp.z = 1.0 - 2.0 * (yy + xx);
+  return temp;
+}
+
+function Mat33 Quat.makeMatrix() {
+  Mat33 temp;
+
+  Scalar xx = this.v.x * this.v.x; Scalar xy = this.v.x * this.v.y; Scalar xz = this.v.x * this.v.z; Scalar xw = this.v.x * this.w;
+  Scalar yy = this.v.y * this.v.y; Scalar yz = this.v.y * this.v.z; Scalar yw = this.v.y * this.w;
+  Scalar zz = this.v.z * this.v.z; Scalar zw = this.v.z * this.w;
+
+  temp.row0.x = 1.0 - 2.0 * (zz + yy);
+  temp.row1.x = 2.0 * (xy + zw);
+  temp.row2.x = 2.0 * (xz - yw);
+
+  temp.row0.y = 2.0 * (xy - zw);
+  temp.row1.y = 1.0 - 2.0 * (zz + xx);
+  temp.row2.y = 2.0 * (yz + xw);
+
+  temp.row0.z = 2.0 * (yw + xz);
+  temp.row1.z = 2.0 * (yz - xw);
+  temp.row2.z = 1.0 - 2.0 * (yy + xx);
+
+  return temp;
+}
+
+function Vec3 Quat.transform(in Vec3 v) {
+  var Quat vq = Quat(0.0, v);
+  var Quat pq = this * vq * this.conjugate();
+  return pq.v;
+}
+
+// TODO: Remove the function above. 'transform' is too ambiguous,
+// and inconsistent with our JS library.
+function Vec3 Quat.rotateVector(in Vec3 v) {
+  var Quat vq = Quat(0.0, v);
+  var Quat pq = this * vq * this.conjugate();
+  return pq.v;
+}
+
+function Quat(in Mat33 mat) {
+  var Scalar trace = mat.row0.x + mat.row1.y + mat.row2.z;
+  if (trace > 0) {
+    var Scalar s = 0.5 / sqrt(trace + 1.0);
+    this.w = 0.25 / s;
+    this.v.x = (mat.row2.y - mat.row1.z) * s;
+    this.v.y = (mat.row0.z - mat.row2.x) * s;
+    this.v.z = (mat.row1.x - mat.row0.y) * s;
+  }else {
+    if (mat.row0.x > mat.row1.y && mat.row0.x > mat.row2.z) {
+      var Scalar s = 2.0 * sqrt(1.0 + mat.row0.x - mat.row1.y - mat.row2.z);
+      this.w = (mat.row2.y - mat.row1.z) / s;
+      this.v.x = 0.25 * s;
+      this.v.y = (mat.row0.y + mat.row1.x) / s;
+      this.v.z = (mat.row0.z + mat.row2.x) / s;
+    }else if (mat.row1.y > mat.row2.z) {
+      var Scalar s = 2.0 * sqrt(1.0 + mat.row1.y - mat.row0.x - mat.row2.z);
+      this.w = (mat.row0.z - mat.row2.x) / s;
+      this.v.x = (mat.row0.y + mat.row1.x) / s;
+      this.v.y = 0.25 * s;
+      this.v.z = (mat.row1.z + mat.row2.y) / s;
+    }else {
+      var Scalar s = 2.0 * sqrt(1.0 + mat.row2.z - mat.row0.x - mat.row1.y);
+      this.w = (mat.row1.x - mat.row0.y) / s;
+      this.v.x = (mat.row0.z + mat.row2.x) / s;
+      this.v.y = (mat.row1.z + mat.row2.y) / s;
+      this.v.z = 0.25 * s;
+    }
+  }
+  this.setUnit();
+}
+
+
+
+function Quat Quat.nlerp(in Quat other, in Scalar t) {
+  Quat q;
+  q.v = this.v.lerp(other.v, t);
+  q.w = this.w + ((other.w - this.w) * t);
+  return q.unit();
+}
+
+struct Euler {
+  Scalar x;
+  Scalar y;
+  Scalar z;
+  RotationOrder ro;
+  Quat dummy;
+};
+
+function Quat(in Euler e) {
+  var Scalar ti, tj, tk;
+  ti = e.x * 0.5;
+  tj = e.ro.isReversed() ? - e.y * 0.5 : e.y * 0.5;
+  tk = e.z * 0.5;
+  var Scalar ci = cos(ti), cj = cos(tj), ck = cos(tk);
+  var Scalar si = sin(ti), sj = sin(tj), sk = sin(tk);
+  var Scalar cc = ci * ck, cs = ci * sk, sc = si * ck, ss = si * sk;
+  var Scalar ai, aj, ak;
+  ai = cj * sc - sj * cs;
+  aj = cj * ss + sj * cc;
+  ak = cj * cs - sj * sc;
+
+  if (e.ro.isReversed()) {
+    aj = - aj;
+  }
+  this.w = cj * cc + sj * ss;
+
+  if (e.ro.isXYZ()) {
+    this.v.x = ai; this.v.y = aj; this.v.z = ak;
+  }
+  else if (e.ro.isYZX()) {
+    this.v.x = aj; this.v.y = ak; this.v.z = ai;
+  }
+  else if (e.ro.isZXY()) {
+    this.v.x = ak; this.v.y = ai; this.v.z = aj;
+  }
+  else if (e.ro.isXZY()) {
+    this.v.x = ai; this.v.y = ak; this.v.z = aj;
+  }
+  else if (e.ro.isZYX()) {
+    this.v.x = ak; this.v.y = aj; this.v.z = ai;
+  }
+  else if (e.ro.isYXZ()) {
+    this.v.x = aj; this.v.y = ai; this.v.z = ak;
+  }
+}
+
+function Euler(in Vec3 angles) {
+  this.x = angles.x;
+  this.y = angles.y;
+  this.z = angles.z;
+  this.ro.setXYZ();
+}
+
+function Euler(in Vec3 angles, in RotationOrder order) {
+  this.x = angles.x;
+  this.y = angles.y;
+  this.z = angles.z;
+  this.ro = order;
+}
+
+function Vec3 Euler.getAngles() {
+  return Vec3(this.x, this.y, this.z);
+}
+
+// Euler <-> Quaternion/Mat33 conversion
+
+function Euler(in Quat q, in RotationOrder ro) {
+  this.ro = ro;
+
+  var Scalar nq = q.normSq();
+  var Scalar s = (nq > 0.0) ? (2.0 / nq) : 0.0;
+  var Scalar xs = q.v.x * s, ys = q.v.y * s, zs = q.v.z * s;
+  var Scalar wx = q.w * xs, wy = q.w * ys, wz = q.w * zs;
+  var Scalar xx = q.v.x * xs, xy = q.v.x * ys, xz = q.v.x * zs;
+  var Scalar yy = q.v.y * xs, yz = q.v.y * ys, zz = q.v.z * zs;
+}
+
+function Mat33(in Euler e) {
+  var Scalar Cx = cos(e.x), Sx = sin(e.x);
+  var Scalar Cy = cos(e.y), Sy = sin(e.y);
+  var Scalar Cz = cos(e.z), Sz = sin(e.z);
+
+  var Mat33 Rx, Ry, Rz;
+
+  Rx.row0.x = 1.0; Rx.row0.y = 0.0; Rx.row0.z = 0.0;
+  Rx.row1.x = 0.0; Rx.row1.y = Cx; Rx.row1.z = - Sx;
+  Rx.row2.x = 0.0; Rx.row2.y = Sx; Rx.row2.z = Cx;
+
+  Ry.row0.x = Cy; Ry.row0.y = 0.0; Ry.row0.z = Sy;
+  Ry.row1.x = 0.0; Ry.row1.y = 1.0; Ry.row1.z = 0.0;
+  Ry.row2.x = - Sy; Ry.row2.y = 0.0; Ry.row2.z = Cy;
+
+  Rz.row0.x = Cz; Rz.row0.y = - Sz; Rz.row0.z = 0.0;
+  Rz.row1.x = Sz; Rz.row1.y = Cz; Rz.row1.z = 0.0;
+  Rz.row2.x = 0.0; Rz.row2.y = 0.0; Rz.row2.z = 1.0;
+
+  if (e.ro.isXYZ()) this = Rx * Ry * Rz;
+    else if (e.ro.isYZX()) this = Ry * Rz * Rx;
+    else if (e.ro.isZXY()) this = Rz * Rx * Ry;
+    else if (e.ro.isXZY()) this = Rx * Rz * Ry;
+    else if (e.ro.isZYX()) this = Rz * Ry * Rx;
+    else if (e.ro.isYXZ()) this = Ry * Rx * Rz;
+
+    report(this);
+}
+
+function Mat33.setNull() {
+  var Vec3 null(0.0, 0.0, 0.0);
+  this.row0 = this.row1 = this.row2 = null;
+}
+
+function Mat33.setDiagonal(in Scalar v) {
+  this.row0.x = this.row1.y = this.row2.z = v;
+}
+
+function Mat33.setDiagonal(in Vec3 v) {
+  this.row0.x = v.x;
+  this.row1.y = v.y;
+  this.row2.z = v.z;
+}
+
+function Vec3 * (Vec3 vec3, Mat33 mat33) {
+  return Vec3(
+    vec3.x * mat33.row0.x + vec3.y * mat33.row1.x + vec3.z * mat33.row2.x,
+    vec3.x * mat33.row0.y + vec3.y * mat33.row1.y + vec3.z * mat33.row2.y,
+    vec3.x * mat33.row0.z + vec3.y * mat33.row1.z + vec3.z * mat33.row2.z
+  );
+}
+
+function Vec3 * (Mat33 mat33, Vec3 vec3) {
+  return Vec3(
+    mat33.row0.x * vec3.x + mat33.row0.y * vec3.y + mat33.row0.z * vec3.z,
+    mat33.row1.x * vec3.x + mat33.row1.y * vec3.y + mat33.row1.z * vec3.z,
+    mat33.row2.x * vec3.x + mat33.row2.y * vec3.y + mat33.row2.z * vec3.z
+  );
+}
+
+function Mat33 * (Mat33 left, Mat33 right) {
+  var Mat33 result;
+
+  result.row0.x = left.row0.x * right.row0.x + left.row0.y * right.row1.x + left.row0.z * right.row2.x;
+  result.row0.y = left.row0.x * right.row0.y + left.row0.y * right.row1.y + left.row0.z * right.row2.y;
+  result.row0.z = left.row0.x * right.row0.z + left.row0.y * right.row1.z + left.row0.z * right.row2.z;
+
+  result.row1.x = left.row1.x * right.row0.x + left.row1.y * right.row1.x + left.row1.z * right.row2.x;
+  result.row1.y = left.row1.x * right.row0.y + left.row1.y * right.row1.y + left.row1.z * right.row2.y;
+  result.row1.z = left.row1.x * right.row0.z + left.row1.y * right.row1.z + left.row1.z * right.row2.z;
+
+  result.row2.x = left.row2.x * right.row0.x + left.row2.y * right.row1.x + left.row2.z * right.row2.x;
+  result.row2.y = left.row2.x * right.row0.y + left.row2.y * right.row1.y + left.row2.z * right.row2.y;
+  result.row2.z = left.row2.x * right.row0.z + left.row2.y * right.row1.z + left.row2.z * right.row2.z;
+
+  return result;
+}
+function Mat33 / (Mat33 mat, Scalar value) {
+  var Mat33 result;
+  result.row0 = mat.row0 / value;
+  result.row1 = mat.row1 / value;
+  result.row2 = mat.row2 / value;
+  return result;
+}
+
+function Scalar Mat33.det() {
+  return this.row0.x * this.row1.y * this.row2.z
+  + this.row0.y * this.row1.z * this.row2.x
+  + this.row0.z * this.row1.x * this.row2.y
+  - this.row0.x * this.row1.z * this.row2.y
+  - this.row0.y * this.row1.x * this.row2.z
+  - this.row0.z * this.row1.y * this.row2.x;
+}
+
+function Mat33 Mat33.adjoint() {
+  var Mat33 result;
+
+  result.row0.x = this.row1.y * this.row2.z - this.row1.z * this.row2.y;
+  result.row0.y = this.row0.z * this.row2.y - this.row0.y * this.row2.z;
+  result.row0.z = this.row0.y * this.row1.z - this.row0.z * this.row1.y;
+
+  result.row1.x = this.row1.z * this.row2.x - this.row1.x * this.row2.z;
+  result.row1.y = this.row0.x * this.row2.z - this.row0.z * this.row2.x;
+  result.row1.z = this.row0.z * this.row1.x - this.row0.x * this.row1.z;
+
+  result.row2.x = this.row1.x * this.row2.y - this.row1.y * this.row2.x;
+  result.row2.y = this.row0.y * this.row2.x - this.row0.x * this.row2.y;
+  result.row2.z = this.row0.x * this.row1.y - this.row0.y * this.row1.x;
+
+  return result;
+}
+
+function Mat33 Mat33.inverse() {
+  var Mat33 result = this.adjoint();
+  result = result / this.det();
+  return result;
+}
+
+function Mat33 Mat33.transpose() {
+  var Mat33 result;
+
+  result.row0.x = this.row0.x;
+  result.row0.y = this.row1.x;
+  result.row0.z = this.row2.x;
+
+  result.row1.x = this.row0.y;
+  result.row1.y = this.row1.y;
+  result.row1.z = this.row2.y;
+
+  result.row2.x = this.row0.z;
+  result.row2.y = this.row1.z;
+  result.row2.z = this.row2.z;
+
+  return result;
+}
+
+struct Vec4 {
+  Scalar x;
+  Scalar y;
+  Scalar z;
+  Scalar t;
+};
+
+function Vec4(Scalar x, Scalar y, Scalar z, Scalar t) {
+  this.x = x;
+  this.y = y;
+  this.z = z;
+  this.t = t;
+}
+
+function Vec4.set(Scalar x, Scalar y, Scalar z, Scalar t) {
+  this.x = x;
+  this.y = y;
+  this.z = z;
+  this.t = t;
+}
+
+function Vec4.setNull() {
+  this.x = this.y = this.z = this.t = 0.0;
+}
+
+function Vec4 + (Vec4 a, Vec4 b) {
+  return Vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.t + b.t);
+}
+
+function Vec4. += (Vec4 other) {
+  this = this + other;
+}
+
+function Vec4 - (Vec4 a, Vec4 b) {
+  return Vec4(a.x - b.x, a.y - b.y, a.z - b.z, a.t - b.t);
+}
+
+function Vec4. -= (Vec4 other) {
+  this = this - other;
+}
+
+function Vec4 * (Scalar a, Vec4 b) {
+  return Vec4(a * b.x, a * b.y, a * b.z, a * b.t);
+}
+
+function Vec4 * (Vec4 a, Scalar b) {
+  return Vec4(a.x * b, a.y * b, a.z * b, a.t * b);
+}
+
+function Vec4 * (Vec4 a, Vec4 b) {
+  return Vec4(a.x * b.x, a.y * b.y, a.z * b.z, a.t * b.t);
+}
+
+function Vec4. *= (Scalar other) {
+  this = this * other;
+}
+
+function Vec4. *= (Vec4 other) {
+  this = this * other;
+}
+
+function Vec4 / (Vec4 a, Vec4 b) {
+  return Vec4(a.x / b.x, a.y / b.y, a.z / b.z, a.t / b.t);
+}
+
+function Vec4 / (Scalar a, Vec4 b) {
+  return Vec4(a / b.x, a / b.y, a / b.z, a / b.t);
+}
+
+function Vec4 / (Vec4 a, Scalar b) {
+  return Vec4(a.x / b, a.y / b, a.z / b, a.t / b);
+}
+
+function Vec4. /= (Scalar other) {
+  this = this / other;
+}
+
+function Vec4. /= (Vec4 other) {
+  this = this / other;
+}
+
+function Vec4 Vec4.neg() {
+  return Vec4(-this.x, - this.y, - this.z, - this.t);
+}
+
+function Scalar Vec4.dot(in Vec4 other) {
+  return this.x * other.x + this.y * other.y + this.z * other.z + this.t * other.t;
+}
+
+function Scalar Vec4.normSq() {
+  return this.dot(this);
+}
+
+function Scalar Vec4.norm() {
+  return sqrt(this.normSq());
+}
+
+function Vec4 Vec4.unit() {
+  var Scalar n = this.norm();
+  if (n > 0.0)
+    return this / n;
+  return this;
+}
+
+function Vec4.setUnit() {
+  this = this.unit();
+}
+
+function Vec4 Vec4.max(in Vec4 other) {
+  var Vec4 v;
+  v.x = this.x > other.x ? this.x : other.x;
+  v.y = this.y > other.y ? this.y : other.y;
+  v.z = this.z > other.z ? this.z : other.z;
+  v.t = this.t > other.t ? this.t : other.t;
+  return v;
+}
+
+function Vec4 Vec4.min(in Vec4 other) {
+  var Vec4 v;
+  v.x = this.x < other.x ? this.x : other.x;
+  v.y = this.y < other.y ? this.y : other.y;
+  v.z = this.z < other.z ? this.z : other.z;
+  v.t = this.t < other.t ? this.t : other.t;
+  return v;
+}
+
+
+function Vec4 Vec4.lerp(in Vec4 other, in Scalar t) {
+  return this + ((other - this) * t);
+}
+
+function Scalar Vec3.dot(Vec3 other) {
+  return this.x * other.x + this.y * other.y + this.z * other.z;
+}
+
+function Scalar Vec3.normSq() {
+  return this.dot(this);
+}
+
+function Scalar Vec3.norm() {
+  return sqrt(this.normSq());
+}
+
+function Scalar Vec3.length() {
+  return sqrt(this.normSq());
+}
+
+function Vec3 Vec3.unit() {
+  var Scalar n = this.norm();
+  if (n > 0.0) {
+    return this / n;
+  }
+  return this;
+}
+
+function Vec3.setUnit() {
+  this = this.unit();
+}
+
+function Vec3 Vec3.cross(in Vec3 other) {
+  return Vec3(
+    this.y * other.z - this.z * other.y,
+    this.z * other.x - this.x * other.z,
+    this.x * other.y - this.y * other.x
+  );
+}
+
+// TODO: Depricate the ambiguous function
+function Scalar Vec3.angle(in Vec3 other) {
+  return acos(this.dot(other));
+}
+
+function Scalar Vec3.angleTo(in Vec3 other) {
+  return acos(this.dot(other));
+}
+
+function Scalar Vec3.distSq(in Vec3 other) {
+  var Vec3 v;
+  v = this - other;
+  return v.normSq();
+}
+
+function Scalar Vec3.dist(in Vec3 other) {
+  return sqrt(this.distSq(other));
+}
+
+function Vec3 Vec3.max(in Vec3 other) {
+  var Vec3 v;
+  v.x = this.x > other.x ? this.x : other.x;
+  v.y = this.y > other.y ? this.y : other.y;
+  v.z = this.z > other.z ? this.z : other.z;
+  return v;
+}
+
+function Vec3 Vec3.min(in Vec3 other) {
+  var Vec3 v;
+  v.x = this.x < other.x ? this.x : other.x;
+  v.y = this.y < other.y ? this.y : other.y;
+  v.z = this.z < other.z ? this.z : other.z;
+  return v;
+}
+
+function Vec3 Vec3.lerp(in Vec3 other, in Scalar t) {
+  return this + ((other - this) * t);
+}
+
+function Scalar distFromPointToLine(in Vec3 P, in Vec3 lineP0, in Vec3 lineP1) {
+  var Vec3 v, w, Pb;
+  var Scalar c1, c2, b;
+  v = lineP1 - lineP0;
+  w = P - lineP0;
+
+  c1 = w.dot(v);
+  c2 = v.dot(v);
+  if(c2 == 0.0){
+    return P.dist(lineP0);
+  }
+  b = c1 / c2;
+
+  Pb = lineP0 + b * v;
+  return P.dist(Pb);
+}
+
+function Scalar distFromPointToSegment(in Vec3 P, in Vec3 segmentP0, in Vec3 segmentP1) {
+  var Vec3 v, w, Pb;
+  var Scalar c1, c2, b;
+  v = segmentP1 - segmentP0;
+  w = P - segmentP0;
+
+  c1 = w.dot(v);
+  if (c1 <= 0) {
+    return P.dist(segmentP0);
+  }
+  c2 = v.dot(v);
+  if (c2 <= c1) {
+    return P.dist(segmentP1);
+  }
+  b = c1 / c2;
+  Pb = segmentP0 + b * v;
+  return P.dist(Pb);
+}
+
+// dist3D_Line_to_Line():
+//    Input:  two 3D lines L1 and L2
+//    Return: the shortest distance between L1 and L2
+function Scalar distanceFromLineToLine(
+  in Vec3 l1_p0, in Vec3 l1_p1,
+  in Vec3 l2_p0, in Vec3 l2_p1,
+  io Scalar l1_t, io Scalar l2_t
+) {
+  Vec3 u, v, w, dP;
+  Scalar a, b, c, d, e, D;
+  u = l1_p1 - l1_p0;
+  v = l2_p1 - l2_p0;
+  w = l1_p0 - l2_p0;
+  a = u.dot(u); // always >= 0
+  b = u.dot(v);
+  c = v.dot(v); // always >= 0
+  d = u.dot(w);
+  e = v.dot(w);
+  if(a == 0.0 && c == 0.0){
+    return l1_p0.dist(l2_p0);
+  }
+  if(a == 0.0){
+    return distFromPointToLine(l1_p0, l2_p0, l2_p1);
+  }
+  if(c == 0.0){
+    return distFromPointToLine(l2_p0, l1_p0, l1_p1);
+  }
+  D = a * c - b * b; // always >= 0
+
+  // com_pute the line _parameters of the two closest points
+  if (D < 0.001) {
+    // the lines are almost parallel
+    l1_t = 0.0;
+    if (b > c) {
+      // use the largest denominator
+      l2_t = d / b;
+    }else {
+      l2_t = e / c;
+    }
+  }
+  else {
+    l1_t = (b * e - c * d) / D;
+    l2_t = (a * e - b * d) / D;
+  }
+  // get the difference of the two closest points
+  dP = w + (l1_t * u) - (l2_t * v);
+
+  return dP.norm(); // return the closest distance
+}
+
+struct Mat44 {
+  Vec4 row0;
+  Vec4 row1;
+  Vec4 row2;
+  Vec4 row3;
+};
+
+function Mat44(
+  Scalar _00, Scalar _01, Scalar _02, Scalar _03,
+  Scalar _10, Scalar _11, Scalar _12, Scalar _13,
+  Scalar _20, Scalar _21, Scalar _22, Scalar _23,
+  Scalar _30, Scalar _31, Scalar _32, Scalar _33
+) {
+  this.row0 = Vec4(_00, _01, _02, _03);
+  this.row1 = Vec4(_10, _11, _12, _13);
+  this.row2 = Vec4(_20, _21, _22, _23);
+  this.row3 = Vec4(_30, _31, _32, _33);
+}
+
+function Mat44.set(
+  Scalar _00, Scalar _01, Scalar _02, Scalar _03,
+  Scalar _10, Scalar _11, Scalar _12, Scalar _13,
+  Scalar _20, Scalar _21, Scalar _22, Scalar _23,
+  Scalar _30, Scalar _31, Scalar _32, Scalar _33
+) {
+  this.row0 = Vec4(_00, _01, _02, _03);
+  this.row1 = Vec4(_10, _11, _12, _13);
+  this.row2 = Vec4(_20, _21, _22, _23);
+  this.row3 = Vec4(_30, _31, _32, _33);
+}
+
+function Mat44(in Mat33 m) {
+  this.row0.x = m.row0.x; this.row0.y = m.row0.y; this.row0.z = m.row0.z; this.row0.t = 0.0;
+  this.row1.x = m.row1.x; this.row1.y = m.row1.y; this.row1.z = m.row1.z; this.row1.t = 0.0;
+  this.row2.x = m.row2.x; this.row2.y = m.row2.y; this.row2.z = m.row2.z; this.row2.t = 0.0;
+  this.row3.x = 0.0; this.row3.y = 0.0; this.row3.z = 0.0; this.row3.t = 1.0;
+}
+
+function Mat44.setNull() {
+  var Vec4 null(0.0, 0.0, 0.0, 0.0);
+  this.row0 = this.row1 = this.row2 = this.row3 = null;
+}
+
+function Mat44.setDiagonal(in Scalar v) {
+  this.row0.x = this.row1.y = this.row2.z = this.row3.t = v;
+}
+
+function Mat44.setDiagonal(in Vec4 v) {
+  this.row0.x = v.x;
+  this.row1.y = v.y;
+  this.row2.z = v.z;
+  this.row3.t = v.t;
+}
+
+function Mat44.setRows(in Vec4 row0, in Vec4 row1, in Vec4 row2, in Vec4 row3) {
+  this.row0 = row0;
+  this.row1 = row1;
+  this.row2 = row2;
+  this.row3 = row3;
+}
+
+function Mat44.setColumns(in Vec4 col0, in Vec4 col1, in Vec4 col2, in Vec4 col3) {
+  this.row0.x = col0.x; this.row0.y = col1.x; this.row0.z = col2.x; this.row0.t = col3.x;
+  this.row1.x = col0.y; this.row1.y = col1.y; this.row1.z = col2.y; this.row1.t = col3.y;
+  this.row2.x = col0.z; this.row2.y = col1.z; this.row2.z = col2.z; this.row2.t = col3.z;
+  this.row3.x = col0.t; this.row3.y = col1.t; this.row3.z = col2.t; this.row3.t = col3.t;
+}
+
+function Vec4 * (Vec4 vec4, Mat44 mat44) {
+  return Vec4(
+    vec4.x * mat44.row0.x + vec4.y * mat44.row1.x + vec4.z * mat44.row2.x + vec4.t * mat44.row3.x,
+    vec4.x * mat44.row0.y + vec4.y * mat44.row1.y + vec4.z * mat44.row2.y + vec4.t * mat44.row3.y,
+    vec4.x * mat44.row0.z + vec4.y * mat44.row1.z + vec4.z * mat44.row2.z + vec4.t * mat44.row3.z,
+    vec4.x * mat44.row0.t + vec4.y * mat44.row1.t + vec4.z * mat44.row2.t + vec4.t * mat44.row3.t
+  );
+}
+
+function Vec4 * (Mat44 mat44, Vec4 vec4) {
+  return Vec4(
+    mat44.row0.x * vec4.x + mat44.row0.y * vec4.y + mat44.row0.z * vec4.z + mat44.row0.t * vec4.t,
+    mat44.row1.x * vec4.x + mat44.row1.y * vec4.y + mat44.row1.z * vec4.z + mat44.row1.t * vec4.t,
+    mat44.row2.x * vec4.x + mat44.row2.y * vec4.y + mat44.row2.z * vec4.z + mat44.row2.t * vec4.t,
+    mat44.row3.x * vec4.x + mat44.row3.y * vec4.y + mat44.row3.z * vec4.z + mat44.row3.t * vec4.t
+  );
+}
+
+function Vec3 * (Vec3 vec3, Mat44 mat44) {
+  var Vec4 temp = Vec4(vec3.x, vec3.y, vec3.z, 1.0) * mat44;
+  var Vec3 result;
+  result.x = temp.x / temp.t;
+  result.y = temp.y / temp.t;
+  result.z = temp.z / temp.t;
+  return result;
+}
+
+function Mat44 * (Mat44 left, Mat44 right) {
+  var Mat44 result;
+
+  result.row0.x = left.row0.x * right.row0.x + left.row0.y * right.row1.x + left.row0.z * right.row2.x + left.row0.t * right.row3.x;
+  result.row0.y = left.row0.x * right.row0.y + left.row0.y * right.row1.y + left.row0.z * right.row2.y + left.row0.t * right.row3.y;
+  result.row0.z = left.row0.x * right.row0.z + left.row0.y * right.row1.z + left.row0.z * right.row2.z + left.row0.t * right.row3.z;
+  result.row0.t = left.row0.x * right.row0.t + left.row0.y * right.row1.t + left.row0.z * right.row2.t + left.row0.t * right.row3.t;
+
+  result.row1.x = left.row1.x * right.row0.x + left.row1.y * right.row1.x + left.row1.z * right.row2.x + left.row1.t * right.row3.x;
+  result.row1.y = left.row1.x * right.row0.y + left.row1.y * right.row1.y + left.row1.z * right.row2.y + left.row1.t * right.row3.y;
+  result.row1.z = left.row1.x * right.row0.z + left.row1.y * right.row1.z + left.row1.z * right.row2.z + left.row1.t * right.row3.z;
+  result.row1.t = left.row1.x * right.row0.t + left.row1.y * right.row1.t + left.row1.z * right.row2.t + left.row1.t * right.row3.t;
+
+  result.row2.x = left.row2.x * right.row0.x + left.row2.y * right.row1.x + left.row2.z * right.row2.x + left.row2.t * right.row3.x;
+  result.row2.y = left.row2.x * right.row0.y + left.row2.y * right.row1.y + left.row2.z * right.row2.y + left.row2.t * right.row3.y;
+  result.row2.z = left.row2.x * right.row0.z + left.row2.y * right.row1.z + left.row2.z * right.row2.z + left.row2.t * right.row3.z;
+  result.row2.t = left.row2.x * right.row0.t + left.row2.y * right.row1.t + left.row2.z * right.row2.t + left.row2.t * right.row3.t;
+
+  result.row3.x = left.row3.x * right.row0.x + left.row3.y * right.row1.x + left.row3.z * right.row2.x + left.row3.t * right.row3.x;
+  result.row3.y = left.row3.x * right.row0.y + left.row3.y * right.row1.y + left.row3.z * right.row2.y + left.row3.t * right.row3.y;
+  result.row3.z = left.row3.x * right.row0.z + left.row3.y * right.row1.z + left.row3.z * right.row2.z + left.row3.t * right.row3.z;
+  result.row3.t = left.row3.x * right.row0.t + left.row3.y * right.row1.t + left.row3.z * right.row2.t + left.row3.t * right.row3.t;
+
+  return result;
+}
+
+function Scalar Mat44.det() {
+  var Scalar a0 = this.row0.x * this.row1.y - this.row0.y * this.row1.x;
+  var Scalar a1 = this.row0.x * this.row1.z - this.row0.z * this.row1.x;
+  var Scalar a2 = this.row0.x * this.row1.t - this.row0.t * this.row1.x;
+  var Scalar a3 = this.row0.y * this.row1.z - this.row0.z * this.row1.y;
+  var Scalar a4 = this.row0.y * this.row1.t - this.row0.t * this.row1.y;
+  var Scalar a5 = this.row0.z * this.row1.t - this.row0.t * this.row1.z;
+  var Scalar b0 = this.row2.x * this.row3.y - this.row2.y * this.row3.x;
+  var Scalar b1 = this.row2.x * this.row3.z - this.row2.z * this.row3.x;
+  var Scalar b2 = this.row2.x * this.row3.t - this.row2.t * this.row3.x;
+  var Scalar b3 = this.row2.y * this.row3.z - this.row2.z * this.row3.y;
+  var Scalar b4 = this.row2.y * this.row3.t - this.row2.t * this.row3.y;
+  var Scalar b5 = this.row2.z * this.row3.t - this.row2.t * this.row3.z;
+  return a0 * b5 - a1 * b4 + a2 * b3 + a3 * b2 - a4 * b1 + a5 * b0;
+}
+
+function Mat44 Mat44.inverse() {
+  // Compute the determinant of the matrix.
+  var Scalar det = this.det();
+
+  var Mat44 result;
+
+  if (abs(det) < 0.00001) {
+    result.setNull();
+    return result;
+  }
+
+  var Scalar a0 = this.row0.x * this.row1.y - this.row0.y * this.row1.x;
+  var Scalar a1 = this.row0.x * this.row1.z - this.row0.z * this.row1.x;
+  var Scalar a2 = this.row0.x * this.row1.t - this.row0.t * this.row1.x;
+  var Scalar a3 = this.row0.y * this.row1.z - this.row0.z * this.row1.y;
+  var Scalar a4 = this.row0.y * this.row1.t - this.row0.t * this.row1.y;
+  var Scalar a5 = this.row0.z * this.row1.t - this.row0.t * this.row1.z;
+  var Scalar b0 = this.row2.x * this.row3.y - this.row2.y * this.row3.x;
+  var Scalar b1 = this.row2.x * this.row3.z - this.row2.z * this.row3.x;
+  var Scalar b2 = this.row2.x * this.row3.t - this.row2.t * this.row3.x;
+  var Scalar b3 = this.row2.y * this.row3.z - this.row2.z * this.row3.y;
+  var Scalar b4 = this.row2.y * this.row3.t - this.row2.t * this.row3.y;
+  var Scalar b5 = this.row2.z * this.row3.t - this.row2.t * this.row3.z;
+
+  var Scalar di = 1.0 / det;
+  result.row0.x = ( + this.row1.y * b5 - this.row1.z * b4 + this.row1.t * b3) * di;
+  result.row1.x = (-this.row1.x * b5 + this.row1.z * b2 - this.row1.t * b1) * di;
+  result.row2.x = ( + this.row1.x * b4 - this.row1.y * b2 + this.row1.t * b0) * di;
+  result.row3.x = (-this.row1.x * b3 + this.row1.y * b1 - this.row1.z * b0) * di;
+  result.row0.y = (-this.row0.y * b5 + this.row0.z * b4 - this.row0.t * b3) * di;
+  result.row1.y = ( + this.row0.x * b5 - this.row0.z * b2 + this.row0.t * b1) * di;
+  result.row2.y = (-this.row0.x * b4 + this.row0.y * b2 - this.row0.t * b0) * di;
+  result.row3.y = ( + this.row0.x * b3 - this.row0.y * b1 + this.row0.z * b0) * di;
+  result.row0.z = ( + this.row3.y * a5 - this.row3.z * a4 + this.row3.t * a3) * di;
+  result.row1.z = (-this.row3.x * a5 + this.row3.z * a2 - this.row3.t * a1) * di;
+  result.row2.z = ( + this.row3.x * a4 - this.row3.y * a2 + this.row3.t * a0) * di;
+  result.row3.z = (-this.row3.x * a3 + this.row3.y * a1 - this.row3.z * a0) * di;
+  result.row0.t = (-this.row2.y * a5 + this.row2.z * a4 - this.row2.t * a3) * di;
+  result.row1.t = ( + this.row2.x * a5 - this.row2.z * a2 + this.row2.t * a1) * di;
+  result.row2.t = (-this.row2.x * a4 + this.row2.y * a2 - this.row2.t * a0) * di;
+  result.row3.t = ( + this.row2.x * a3 - this.row2.y * a1 + this.row2.z * a0) * di;
+
+  return result;
+}
+
+function Mat33 Mat44.upperLeft() {
+  var Mat33 result;
+
+  result.row0.x = this.row0.x;
+  result.row0.y = this.row0.y;
+  result.row0.z = this.row0.z;
+
+  result.row1.x = this.row1.x;
+  result.row1.y = this.row1.y;
+  result.row1.z = this.row1.z;
+
+  result.row2.x = this.row2.x;
+  result.row2.y = this.row2.y;
+  result.row2.z = this.row2.z;
+
+  return result;
+}
+
+function Mat44 Mat44.transpose() {
+  var Mat44 r;
+  r.row0.x = this.row0.x; r.row1.x = this.row0.y; r.row2.x = this.row0.z; r.row3.x = this.row0.t;
+  r.row0.y = this.row1.x; r.row1.y = this.row1.y; r.row2.y = this.row1.z; r.row3.y = this.row1.t;
+  r.row0.z = this.row2.x; r.row1.z = this.row2.y; r.row2.z = this.row2.z; r.row3.z = this.row2.t;
+  r.row0.t = this.row3.x; r.row1.t = this.row3.y; r.row2.t = this.row3.z; r.row3.t = this.row3.t;
+  return r;
+}
+
+function Vec3 Mat44.translation() {
+  var Vec3 result;
+  result.x = this.row3.x;
+  result.y = this.row3.y;
+  result.z = this.row3.z;
+  return result;
+}
+
+
+struct BezierKeyframe {
+  Scalar time;
+  Scalar value;
+  Vec2 intangent;
+  Vec2 outtangent;
+};
+
+function BezierKeyframe(Scalar time, Scalar value, Vec2 intangent, Vec2 outtangent) {
+  this.time = time;
+  this.value = value;
+  this.intangent = intangent;
+  this.outtangent = outtangent;
+}
+
+function Boolean isZero(Scalar x) {
+  var Scalar EQN_EPS = 1e-9;
+  return (x > - EQN_EPS && x < EQN_EPS);
+}
+
+function Scalar cbrt(Scalar v) {
+  return pow(v, 1.0 / 3.0);
+}
+
+function Integer FindRootsToCubic(
+  Scalar c[4],
+  io Scalar roots[3]
+) {
+  var Scalar pi = 3.14159265;
+  var Scalar sub;
+  var Integer i, num;
+  var Scalar A, B, C;
+  var Scalar sq_A, p, q;
+  var Scalar cb_p, D;
+
+  // normal form: x^3 + Ax^2 + Bx + C = 0
+
+  A = c[2] / c[3];
+  B = c[1] / c[3];
+  C = c[0] / c[3];
+
+  // substitute x = y - A/3 to eliminate quadric term:
+  // x^3 +px + q = 0
+
+  sq_A = A * A;
+  p = 1.0 / 3.0 * (-1.0 / 3.0 * sq_A + B);
+  q = 1.0 / 2.0 * (2.0 / 27.0 * A * sq_A - 1.0 / 3.0 * A * B + C);
+
+  // use Cardano's formula
+
+  cb_p = p * p * p;
+  D = q * q + cb_p;
+
+  if (isZero(D)) {
+    if (isZero(q))// one triple solution
+    {
+      roots[0] = 0.0;
+      num = 1;
+    }
+    else // one single and one double solution
+    {
+      var Scalar u = cbrt(-q);
+      roots[0] = 2.0 * u;
+      roots[1] = - u;
+      num = 2;
+    }
+  }
+  else if (D < 0)// Casus irreducibilis: three real solutions
+  {
+    var Scalar phi = 1.0 / 3 * acos(-q / sqrt(-cb_p));
+    var Scalar t = 2.0 * sqrt(-p);
+
+    roots[0] = t * cos(phi);
+    roots[1] = - t * cos(phi + pi / 3);
+    roots[2] = - t * cos(phi - pi / 3);
+    num = 3;
+  }
+  else // one real solution
+  {
+    var Scalar sqrt_D = sqrt(D);
+    var Scalar u = cbrt(sqrt_D - q);
+    var Scalar v = - cbrt(sqrt_D + q);
+
+    roots[0] = u + v;
+    num = 1;
+  }
+
+  // resubstitute
+
+  sub = 1.0 / 3.0 * A;
+
+  for (i = 0; i < num; ++ i) {
+    roots[i] -= sub;
+  }
+  return num;
+}
+
+function Scalar BezierKeyframe.interpolate(BezierKeyframe key2, Scalar t) {
+  var Vec2 outvec, invec;
+  outvec.x = this.time + this.outtangent.x;
+  outvec.y = this.value + this.outtangent.y;
+  invec.x = key2.time + key2.intangent.x;
+  invec.y = key2.value + key2.intangent.y;
+
+  var Scalar u = (t - this.time) / (key2.time - this.time);
+  var Scalar s = 1.0 - u;
+  var Scalar u2 = u * u;
+
+  // ax3+bx2+cx+d=0
+  var Scalar Ax, Bx, Cx, Dx;
+  Ax = key2.time - this.time - 3.0 * invec.x + 3.0 * outvec.x;
+  Bx = this.time - 2.0 * outvec.x + invec.x;
+  Cx = - this.time + outvec.x;
+  Dx = this.time - t;
+
+  var Scalar Ay, By, Cy, Dy;
+  Ay = key2.value - this.value - 3.0 * invec.y + 3.0 * outvec.y;
+  By = this.value - 2.0 * outvec.y + invec.y;
+  Cy = - this.value + outvec.y;
+  Dy = this.value;
+
+  var Scalar c[4];
+  var Scalar roots[3];
+  c[0] = Dx;
+  c[1] = 3.0 * Cx;
+  c[2] = 3.0 * Bx;
+  c[3] = Ax;
+
+  var Scalar v;
+  if ((Ax == 0.0) && (Bx == 0.0)) {
+    v = u;
+  }
+  else if (t == this.time) {
+    return this.value;
+  }
+  else if (t == key2.time) {
+    return key2.value;
+  }
+  else {
+    var Integer numroots = FindRootsToCubic(c, roots);
+    // Count is the number of solutions to the cubic equation
+    if (numroots == 1) {
+      v = roots[0]; // One solution, just return it
+    }
+    else {
+      v = - 1.0;
+      for (var Integer i = 0; i < numroots; i++) {
+        // make sure the solution is within 0..1
+        if ((roots[i] >= 0.0) && (roots[i] <= 1.0)) {
+          // Get the largest solution
+          if (v < 0.0) v = roots[i];
+            else if (roots[i] > v) v = roots[i];
+          }
+      }
+    }
+  }
+
+  var Scalar v2 = v * v;
+  var Scalar v3 = v2 * v;
+  return (Ay * v3 + 3.0 * By * v2 + 3.0 * Cy * v + Dy);
+}
+
+function Scalar evaluateKeyframeAnimationTrack(
+  io BezierKeyframe track[],
+  io Scalar time,
+  io Integer keyIndex
+) {
+  var Integer numKeys = track.size;
+  if (time >= track[numKeys - 1].time) {
+    return track[numKeys - 1].value;
+  }
+  else if (time <= track[0].time) {
+    return track[0].value;
+  }
+  else {
+    if (track[keyIndex].time <= time && time <= track[keyIndex + 1].time) {
+      // we are still on the same segment as the previous evaluation.
+    }
+    else if (track[keyIndex + 1].time < time && time < track[keyIndex + 2].time) {
+      keyIndex++;
+    }
+    else {
+      for (var Integer i = 0; i < numKeys - 1; i++) {
+        if (track[i].time <= time && time <= track[i + 1].time) {
+          keyIndex = i;
+          break;
+        }
+      }
+    }
+    return track[keyIndex].interpolate(track[keyIndex + 1], time);
+  }
+}
+
+operator evaluateKeyframeAnimationTracks(
+  io BezierKeyframe tracks[][],
+  io Scalar time,
+  Size index,
+  io Scalar value,
+  io Integer keyIndex
+) {
+  value = evaluateKeyframeAnimationTrack(tracks[index], time, keyIndex);
+}
+
+operator evaluateCurve(
+  io BezierKeyframe tracks[][],
+  io Integer trackIndex,
+  io Vec2 timeRange,
+  Size index,
+  Size count,
+  io Scalar time,
+  io Scalar value,
+  io Integer keyIndex
+) {
+  time = ((Scalar(index) / Scalar(count)) * (timeRange.y - timeRange.x)) + timeRange.x;
+  value = evaluateKeyframeAnimationTrack(tracks[trackIndex], time, keyIndex);
+}
+
+struct Color {
+  Scalar r;
+  Scalar g;
+  Scalar b;
+  Scalar a;
+};
+
+function Color(Scalar r, Scalar g, Scalar b, Scalar a) {
+  this.r = r;
+  this.g = g;
+  this.b = b;
+  this.a = a;
+}
+
+function Color + (Color a, Color b) {
+  return Color(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a);
+}
+
+function Color. += (Color other) {
+  this = this + other;
+}
+
+function Color - (Color a, Color b) {
+  return Color(a.r - b.r, a.g - b.g, a.b - b.b, a.a - b.a);
+}
+
+function Color. -= (Color other) {
+  this = this - other;
+}
+
+function Color * (Scalar a, Color b) {
+  return Color(a * b.r, a * b.g, a * b.b, a * b.a);
+}
+
+function Color * (Color a, Scalar b) {
+  return Color(a.r * b, a.g * b, a.b * b, a.a * b);
+}
+
+function Color * (Color a, Color b) {
+  return Color(a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a);
+}
+
+function Color. *= (Scalar other) {
+  this = this * other;
+}
+
+function Color. *= (Color other) {
+  this = this * other;
+}
+
+function Color / (Color a, Color b) {
+  return Color(a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a);
+}
+
+function Color / (Scalar a, Color b) {
+  return Color(a / b.r, a / b.g, a / b.b, a / b.a);
+}
+
+function Color / (Color a, Scalar b) {
+  return Color(a.r / b, a.g / b, a.b / b, a.a / b);
+}
+
+function Color. /= (Scalar other) {
+  this = this / other;
+}
+
+function Color. /= (Color other) {
+  this = this / other;
+}
+
+function Color Color.lerp(in Color other, in Scalar t) {
+  return this + ((other - this) * t);
+}
+
+struct Xfo {
+  Quat ori;
+  Vec3 tr;
+  Vec3 sc;
+};
+
+function Xfo() {
+  this.tr = this.tr.setNull();
+  this.ori = this.ori.inv();
+  this.sc = this.sc.inv();
+}
+
+function Xfo.identity() {
+  this.tr.setNull();
+  this.ori.identity();
+  this.sc = Vec3(1.0, 1.0, 1.0);
+}
+
+function Xfo * (in Xfo local, in Xfo global) {
+  var Quat lcl_ori = local.ori.unit();
+  var Quat glb_ori = global.ori.unit();
+
+  var Xfo result;
+  result.tr = global.tr + glb_ori.transform(global.sc * local.tr);
+  //  result.ori = lcl_ori * glb_ori;
+  result.ori = glb_ori * lcl_ori;
+  result.ori.setUnit();
+  result.sc = global.sc * local.sc;
+  return result;
+}
+
+function Xfo Xfo.inv() {
+  var Xfo result;
+  result.tr = this.tr.neg();
+  result.ori = this.ori.inv();
+  result.sc = this.sc.inv();
+  return result;
+}
+
+function Xfo Xfo.project(in Xfo xf) {
+  return xf * this;
+}
+
+function Xfo Xfo.invProject(in Xfo xf) {
+  var Xfo thisInv = this.inv();
+  var Quat glb_ori = xf.ori.unit();
+  var Quat inv_ori = thisInv.ori.unit();
+
+  var Xfo result;
+  result.tr = inv_ori.transform(thisInv.sc * (xf.tr + thisInv.tr));
+  result.ori = glb_ori * inv_ori;
+  //  result.ori = inv_ori * glb_ori;
+  result.ori.setUnit();
+  result.sc = thisInv.sc * xf.sc;
+  return result;
+}
+
+function Vec3 Xfo.transform(in Vec3 v) {
+  return this.ori.transform(v) * this.sc + this.tr;
+}
+
+// TODO: Remove the function above. 'transform' is too ambiguous,
+// and inconsistent with our JS library.
+function Vec3 Xfo.transformVector(in Vec3 v) {
+  return this.ori.rotateVector(v) * this.sc + this.tr;
+}
+
+function Mat44(in Xfo xfo) {
+  var Mat44 scl, rot, trn;
+
+  scl.setNull();
+  scl.setDiagonal(Vec4(xfo.sc.x, xfo.sc.y, xfo.sc.z, 1.0));
+
+  // [hi 20110311 this transpose shouldn't be needed but we do]
+  var Quat q = xfo.ori;
+  rot.setNull();
+  rot.row0.x = 1.0 - 2.0 * (q.v.y * q.v.y + q.v.z * q.v.z);
+  rot.row0.y = 2.0 * (q.v.x * q.v.y - q.v.z * q.w);
+  rot.row0.z = 2.0 * (q.v.x * q.v.z + q.v.y * q.w);
+
+  rot.row1.x = 2.0 * (q.v.x * q.v.y + q.v.z * q.w);
+  rot.row1.y = 1.0 - 2.0 * (q.v.x * q.v.x + q.v.z * q.v.z);
+  rot.row1.z = 2.0 * (q.v.y * q.v.z - q.v.x * q.w);
+
+  rot.row2.x = 2.0 * (q.v.x * q.v.z - q.v.y * q.w);
+  rot.row2.y = 2.0 * (q.v.y * q.v.z + q.v.x * q.w);
+  rot.row2.z = 1.0 - 2.0 * (q.v.x * q.v.x + q.v.y * q.v.y);
+
+  rot.row3.t = 1.0;
+  rot = rot.transpose();
+
+  trn.setNull();
+  trn.setDiagonal(1.0);
+  trn.row3.x = xfo.tr.x;
+  trn.row3.y = xfo.tr.y;
+  trn.row3.z = xfo.tr.z;
+
+  this = scl * rot * trn;
+}
+
+function Xfo Mat44.decompose(in RotationOrder ro) {
+  var Xfo xfo;
+
+  if (abs(1.0 - this.row3.t) > 0.001) {
+    report('Cannot handle denormalized matrices');
+    report(this.row3.t);
+    return xfo;
+  }
+
+  if (this.row0.t != 0.0 || this.row1.t != 0.0 || this.row2.t != 0.0) {
+    report('Cannot handle perspective projection matrices');
+    return xfo;
+  }
+
+  if (abs(this.det()) < 0.00001) {
+    report('Matrix is singular.');
+    return xfo;
+  }
+
+  // Grab the translation
+  xfo.tr.x = this.row3.x;
+  xfo.tr.y = this.row3.y;
+  xfo.tr.z = this.row3.z;
+
+  var Vec3 row0, row1, row2;
+  row0.set(this.row0.x, this.row0.y, this.row0.z);
+  row1.set(this.row1.x, this.row1.y, this.row1.z);
+  row2.set(this.row2.x, this.row2.y, this.row2.z);
+
+  // Grab the X scale and normalize the first row
+  xfo.sc.x = row0.norm();
+  row0.setUnit();
+
+  // Make the 2nd row orthogonal to the 1st
+  row1 -= row0 * row0.dot(row1);
+
+  // Grab the Y scale and normalize
+  xfo.sc.y = row1.norm();
+  row1.setUnit();
+
+  // Make the 3rd row orthogonal to the 1st and 2nd
+  row2 -= row0 * row0.dot(row2);
+  row2 -= row1 * row1.dot(row2);
+
+  xfo.sc.z = row2.norm();
+  row2.setUnit();
+
+  var Vec3 rot;
+
+  if (ro.isXYZ()) {
+    rot.y = asin(row0.z);
+    if (abs(row0.z) > 0.9995) {
+      rot.x = atan2(row2.y, row1.y);
+      rot.y = row0.z < 0.0 ? - rot.y : rot.y;
+      rot.z = 0.0;
+    }
+    else {
+      rot.x = atan2(-row1.z, row2.z);
+      rot.z = atan2(-row0.y, row0.x);
+    }
+  }
+  else {
+    report('Mat44.decompose only implemented for XYZ rotation order');
+  }
+
+  var Euler e(rot, ro);
+  var Quat q(e);
+  xfo.ori = q;
+
+  return xfo;
+}
+
+function Xfo(in Mat44 m) {
+  this = m.decompose(RotationOrder(0));
+}
+
+function Scalar clamp(in Scalar val, in Scalar minval, in Scalar maxval){
+  return (val < minval ? minval : (val > maxval ? maxval : val));
+}
+
+function Scalar lerp(in Scalar val1, in Scalar val2, in Scalar t){
+  return val1 + ((val2 - val1) * t);
+}
+
+
+function Scalar calcPolarElipse(
+  in Scalar theta,
+  in Scalar semiMajor,
+  in Scalar semiMinor
+){
+  if(semiMajor==0.0 || semiMinor==0.0){
+    return 0.0;
+  }
+  Scalar bcostheta = semiMinor*cos(theta);
+  Scalar asintheta = semiMajor*sin(theta);
+  return (semiMajor*semiMinor)/sqrt((bcostheta*bcostheta)+(asintheta*asintheta));
+}
+
+function Vec3 evalBSpline( Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4, Scalar t ){
+  Vec3 a0, a1, a2, a3;
+
+  a0 = ( p1.neg() + (p2 * 3.0) - (p3 * 3.0) + p4)/6.0;
+  a1 = ((p1 * 3.0) - (p2 * 6.0) + (p3 * 3.0))/6.0;
+  a2 = ((p1 * -3.0) + (p3 * 3.0))/6.0;
+  a3 = ( p1 + (p2 * 4.0) + p3 )/6.0;
+
+  return a3 + ((a2 + ((a1 + (a0 * t)) * t)) * t);
+}
+
+
+function Vec3 evalPiecewiseBSpline( 
+  in Xfo xfos[],
+  in Scalar u,
+  io Scalar t,
+  io Integer i
+){
+  Vec3 p;
+  t = u * Scalar(xfos.size() - 1);
+  if( t < Scalar(xfos.size() - 1) ){
+    i = Integer(floor( t ));
+    t = t - Scalar(i);
+  }
+  else{
+    i = xfos.size() - 2;
+    t = 1.0;
+  }
+
+  if( i == 0 ){
+    p = xfos[ i ].tr + ( xfos[ i ].tr - xfos[ i + 1 ].tr );
+    return evalBSpline( p, xfos[ i ].tr, xfos[ i + 1 ].tr, xfos[ i + 2 ].tr, t );
+  }
+  else if( i == ( xfos.size() - 2 ) ){
+    p = xfos[ i + 1 ].tr + ( xfos[ i + 1 ].tr - xfos[ i ].tr );
+    return evalBSpline( xfos[ i - 1 ].tr, xfos[ i ].tr, xfos[ i + 1 ].tr, p, t );
+  }
+  else{
+    return evalBSpline( xfos[ i - 1 ].tr, xfos[ i ].tr, xfos[ i + 1 ].tr, xfos[ i + 2 ].tr, t );
+  }
+}
+
+struct Ray {
+  Vec3 start;
+  Vec3 direction;
+};
+
+function Ray(Vec3 start, Vec3 direction) {
+  this.start = start;
+  this.direction = direction;
+}
+
+function Ray.set(Vec3 start, Vec3 direction) {
+  this.start = start;
+  this.direction = direction;
+}
+
+function Scalar Ray.distanceToPoint(Vec3 point) {
+  Vec3 v, w;
+  Scalar c1, c2;
+  Scalar rayT, dist;
+
+  w = point - this.start;
+  c1 = w.dot(this.direction);
+  c2 = v.dot(this.direction);
+  rayT = c1 / c2;
+
+  if (rayT >= 0.0) {
+    Vec3 pointOnRay = this.start + (rayT * this.direction);
+    return pointOnRay.dist(point);
+  }
+  else {
+    return this.start.dist(point);
+  }
+}
+
+function Boolean Ray.intersectLineSegment(
+  Vec3 lineP0,
+  Vec3 lineP1,
+  io Scalar dist,
+  io Scalar rayParam,
+  io Scalar segmentParam,
+) {
+  Vec3 rayP1;
+  rayP1 = this.start + this.direction;
+
+  dist = distanceFromLineToLine(
+    this.start, rayP1,
+    lineP0, lineP1,
+    rayParam, segmentParam
+  );
+  
+  if (rayParam >= 0.0){
+    if (segmentParam >= 0.0 && segmentParam <= 1.0) {
+      return true;
+    }
+    if (segmentParam < 0.0) {
+      dist = this.distanceToPoint(lineP0);
+      segmentParam = 0.0;
+      return true;
+    }
+    if (segmentParam > 1.0) {
+      dist = this.distanceToPoint(lineP1);
+      segmentParam = 1.0;
+      return true;
+    }
+  }
+  return false;
+}
+
+function Vec2 Ray.intersectLine(Vec3 lineP0, Vec3 lineP1) {
+  Vec3 rayP1;
+  rayP1 = this.start + this.direction;
+
+  var Scalar rayT, lineT, dist;
+  dist = distanceFromLineToLine(
+    this.start, rayP1,
+    lineP0, lineP1,
+    rayT, lineT
+  );
+  return Vec2(rayT, lineT);
+}
+
+function Boolean Ray.intersectTriangle(
+  Boolean cull,
+  Vec3 v0,
+  Vec3 v1,
+  Vec3 v2,
+  io Vec3 point,
+  io Scalar dist,
+  io Scalar u,
+  io Scalar v
+) {
+  var Vec3 e1 = v1 - v0;
+  var Vec3 e2 = v2 - v0;
+  var Vec3 pvec = this.direction.cross(e2);
+  var Scalar det = e1.dot(pvec);
+
+  if (cull) {
+    if (det < 0.00001) {
+      return false;
+    }
+    var Vec3 tvec = this.start - v0;
+    u = tvec.dot(pvec);
+    if (u < 0.0 || u > det) {
+      return false;
+    }
+    var Vec3 qvec = tvec.cross(e1);
+    v = this.direction.dot(qvec);
+    if (v < 0.0 || (u + v) > det) {
+      return false;
+    }
+    var Scalar inv_det = 1.0 / det;
+    dist = e2.dot(qvec) * inv_det;
+    u *= inv_det;
+    v *= inv_det;
+  }
+  else {
+    if (det > - 0.00001 && det < 0.00001) {
+      return false;
+    }
+    var Scalar inv_det = 1.0 / det;
+    var Vec3 tvec = this.start - v0;
+    u = tvec.dot(pvec) * inv_det;
+    if (u < 0.0 || u > 1.0) {
+      return false;
+    }
+    var Vec3 qvec = tvec.cross(e1);
+    v = this.direction.dot(qvec) * inv_det;
+    if (v < 0.0 || (u + v) > 1.0) {
+      return false;
+    }
+    dist = e2.dot(qvec) * inv_det;
+  }
+  point = this.start + (this.direction * dist);
+  return true;
+}
+
+function Boolean intersectBBoxEdge(
+  Ray ray,
+  Vec3 bboxCenter,
+  io Vec3 e1,
+  io Vec3 e2
+) {
+  var Vec2 p = ray.intersectLine(e1, e2);
+  if (p.y < 0.0 || p.y > 1.0) {
+    return false;
+  }
+  var Vec3 rayPoint = ray.start + (ray.direction * p.x);
+  var Vec3 edgeP = e1.lerp(e2, p.y);
+  return ((rayPoint - edgeP).dot(rayPoint - bboxCenter) < 0.0);
+}
+
+// Note: This intersection test should be performed in object space,
+// removing the need for all the matrix > vector multiplications
+function Boolean Ray.intersectBoundingBox(
+  Vec3 bboxmin,
+  Vec3 bboxmax
+) {
+  var Vec3 bboxCenter = (bboxmin + bboxmax) * 0.5;
+
+  var Vec3 b1 = Vec3(bboxmin.x, bboxmin.y, bboxmin.z);
+  var Vec3 b2 = Vec3(bboxmin.x, bboxmax.y, bboxmin.z);
+  var Vec3 b3 = Vec3(bboxmin.x, bboxmax.y, bboxmax.z);
+  var Vec3 b4 = Vec3(bboxmin.x, bboxmin.y, bboxmax.z);
+
+  var Vec3 t1 = Vec3(bboxmax.x, bboxmin.y, bboxmin.z);
+  var Vec3 t2 = Vec3(bboxmax.x, bboxmax.y, bboxmin.z);
+  var Vec3 t3 = Vec3(bboxmax.x, bboxmax.y, bboxmax.z);
+  var Vec3 t4 = Vec3(bboxmax.x, bboxmin.y, bboxmax.z);
+
+  return (intersectBBoxEdge(this, bboxCenter, b1, t1)
+    || intersectBBoxEdge(this, bboxCenter, b2, t2)
+    || intersectBBoxEdge(this, bboxCenter, b3, t3)
+    || intersectBBoxEdge(this, bboxCenter, b4, t4)
+
+    || intersectBBoxEdge(this, bboxCenter, b1, b2)
+    || intersectBBoxEdge(this, bboxCenter, b2, b3)
+    || intersectBBoxEdge(this, bboxCenter, b3, b4)
+    || intersectBBoxEdge(this, bboxCenter, b4, b1)
+
+    || intersectBBoxEdge(this, bboxCenter, t1, t2)
+    || intersectBBoxEdge(this, bboxCenter, t2, t3)
+    || intersectBBoxEdge(this, bboxCenter, t3, t4)
+  || intersectBBoxEdge(this, bboxCenter, t4, t1));
+}
+
+
+// This function gets used to generate the initial rays that are fired at the muscle meshes.
+function Ray muscleUVtoRay(
+  in Scalar u,
+  in Scalar v,
+  in Xfo xfos[] )
+{
+  Mat44 mat;
+  Quat sampleframe;
+  Integer i;
+  Scalar angle, t;
+  Ray outRay;
+
+  Scalar PI = 3.141592653589793238462643383279;
+  
+  angle = v * PI * 2.0;  
+  outRay.direction.set( 0.0, -cos( angle ), -sin( angle ) );
+
+  outRay.start = evalPiecewiseBSpline( xfos, u, t, i );
+
+  // Due to the face that nlerp exibits a slight ease in and ease out on the rotations
+  // I think it is a better slution to interpollating segments. 
+  // The one exception would be several segments in arow that were evenly twisted. 
+  sampleframe =  xfos[ i ].ori.nlerp( xfos[ i + 1 ].ori, t );
+
+  outRay.direction = sampleframe.rotateVector( outRay.direction );
+  return outRay;
+}
+
+
+
+
+function Color lookupDisplacementMap(
+  in Size displacementMapResolution,
+  in Color displacementMap[],
+  in Vec2 uv
+  ){
+  Integer uindex = Integer(uv.x * Scalar(displacementMapResolution-1));
+  Integer vindex = Integer(uv.y * Scalar(displacementMapResolution-1));
+  return displacementMap[(vindex * displacementMapResolution) + uindex];
+}
+
+operator generateDisplacementMap(
+  io Size displacementMapResolution,
+  
+  io BezierKeyframe quadrantCurve0[],
+  io BezierKeyframe quadrantCurve1[],
+  io BezierKeyframe quadrantCurve2[],
+  io BezierKeyframe quadrantCurve3[],
+  io Color displacementMap[],
+  io Boolean regenerate
+  
+  /*
+  io Xfo initialXfos[],
+  io Xfo baseMuscleXfo,
+  
+  io TriangleMesh boundingMesh
+  */
+) {
+  if (regenerate) {
+    displacementMap.resize(displacementMapResolution * displacementMapResolution);
+    Scalar u, v;
+    Scalar val0, val1, val2, val3, val;
+    Integer keyIndex;
+
+    var Size idx = 0;
+    for (var Integer y = 0; y < displacementMapResolution; y++) {
+      u = Scalar(y) / Scalar(displacementMapResolution-1);
+      
+      keyIndex = 0;
+      val0 = evaluateKeyframeAnimationTrack(quadrantCurve0, u, keyIndex);
+      keyIndex = 0;
+      val1 = evaluateKeyframeAnimationTrack(quadrantCurve1, u, keyIndex);
+      keyIndex = 0;
+      val2 = evaluateKeyframeAnimationTrack(quadrantCurve2, u, keyIndex);
+      keyIndex = 0;
+      val3 = evaluateKeyframeAnimationTrack(quadrantCurve3, u, keyIndex);
+      
+      for (var Integer x = 0; x < displacementMapResolution; x++) {
+        v = Scalar(x) / Scalar(displacementMapResolution);
+        Integer quadrant = Integer(floor(u * 4.0));
+        switch(quadrant){
+          case 0: val = calcPolarElipse( v, val0, val1 ); break;
+          case 1: val = calcPolarElipse( v, val1, val2 ); break;
+          case 2: val = calcPolarElipse( v, val2, val3 ); break;
+          case 3: val = calcPolarElipse( v, val3, val0 ); break;
+        }
+        displacementMap[idx].r = val;
+        /*
+        if(false){
+          Ray ray = muscleUVtoRay( u, v, initialXfos );
+          // Fire the ray into the mesh, and get the distance to the mesh surface
+          RayIntersection intersection;
+          if( boundingMesh.intersectRay( ray, intersection ) ){
+            displacementMap[idx] = intersection.distance;
+          }
+        }
+        */
+        idx++;
+      }
+    }
+  }
+}
+
+
+operator generateSystemDisplacementMap(
+  io Size displacementMapResolution,
+  io Scalar systemDisplacementMap[],
+  io Scalar displacementMaps[][],
+  io Size bufferID,
+  io Integer textureUnit
+) {
+  if (!bufferID) {
+    Scalar texData[];
+    texData.resize(displacementMapResolution * displacementMaps.size());
+
+    // Here we merge the displacement maps from all the different muscles into
+    // one big map that we can pass to the shader for rendering. Similar to a
+    // texture atlas. 
+    var Size idx = 0;
+    for (var Integer i = 0; i < displacementMaps.size(); i++) {
+      for (var Integer x = 0; x < displacementMapResolution; x++) {
+        for (var Integer y = 0; y < displacementMapResolution; y++) {
+          texData[idx] = displacementMaps[i][idx];
+          idx++;
+        }
+      }
+    }
+    
+    Integer size_x = displacementMapResolution * displacementMaps.size();
+    Integer size_y = displacementMapResolution;
+    
+
+    var Size buffers[];
+    buffers.push(Size(bufferID));
+    //glGenTextures(1, buffers);
+    //glActiveTexture(GL_TEXTURE0 + textureUnit);
+    //glBindTexture(GL_TEXTURE_2D, bufferID);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, size_x, size_y, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData.data());
+  }
+  else {
+    //glActiveTexture(GL_TEXTURE0 + textureUnit);
+    //glBindTexture(GL_TEXTURE_2D, bufferID);
+  }
+}
+
+operator deformMuscleVolume(
+  io Size muscleIndex,
+  io Size displacementMapResolution,
+  io Color displacementMaps[][],
+  io Xfo systemxfos[][],
+  io Scalar compressionFactors[],
+  io Vec3 parentpositions[],
+  io Vec3 parentnormals[],
+  io Vec2 parentuvs[],
+  io Vec3 position,
+  io Vec3 normal,
+  in Size index
+){
+
+  Color displacementMap[] = displacementMaps[muscleIndex];
+  Xfo xfos[] = systemxfos[muscleIndex];
+  Scalar compressionFactor = compressionFactors[muscleIndex];
+
+
+  Scalar t;
+  Integer i;
+  Vec3 corepos = evalPiecewiseBSpline( xfos, parentpositions[index].x, t, i );
+  
+  Color volumePixel = lookupDisplacementMap(
+    displacementMapResolution,
+    displacementMap,
+    parentuvs[index]
+  );
+//  Scalar inflation = mix(coreInflationValues[i], coreInflationValues[i+1], t );
+  
+  Vec3 frameoffsetvec = parentpositions[index] * volumePixel.r * compressionFactor;
+  frameoffsetvec.x = 0.0;
+  Quat frame = xfos[i].ori.nlerp( xfos[i+1].ori, t );
+  normal = frame.rotateVector( frameoffsetvec );
+  position = corepos + normal;
+  normal.setUnit();
+}
+
+
+
+//******************************************************************************
+// FindQuadraticRoots
+//
+//      return(2): 2 real roots
+//      return(1): 1 real, Scalar root
+//      return(0): 2 complex roots
+//
+//  The imaginary component may be NULL if not desired.
+//******************************************************************************
+
+
+function Integer findQuadraticRoots(
+  Scalar coeff[3],
+  io Scalar re[2]
+){
+
+  Scalar a = coeff[2];    // Quadratic coefficient 
+  Scalar b = coeff[1];    // Linear coefficient 
+  Scalar c = coeff[0];    // Constant coefficient
+
+  if( abs( a ) < 0.000001 ){
+    // If the quadratic coefficient(a) is 0.0 then this equation becomes linear
+    re[0] = -c/b;
+    return 1;
+  }
+
+  Scalar d = b * b - 4.0 * a * c;
+  
+  // Two real, distinct roots 
+  if (d > 0.0) {
+    Scalar q;
+    d = sqrt(d);
+    q = (-b + ((b < 0) ? -d : d)) * 0.5;
+    re[0] = q / a;
+    re[1] = c / q;
+    return 2;
+  }
+  
+  // One real Scalar root 
+  else if (d == 0.0) {
+    re[0] = re[1] = -b / (2.0 * a);
+    return (1);
+  }
+  
+  // Two complex conjugate roots 
+  else {                                      // d < 0 
+    re[0] = re[1] = -b / (2.0 * a);
+ //   if (im != NULL) {
+ //       im[0] = d / (2 * a);
+ //       im[1] = -im[0];
+ //   }
+    return 0;
+  }
+}
+
+
+// http://www.worldserver.com/turk/opensource/FindCubicRoots.c.txt
+
+// Copyright (C) 1997-2001 Ken Turkowski. <turk@computer.org>
+//
+// All rights reserved.
+//
+// Warranty Information
+//  Even though I have reviewed this software, I make no warranty
+//  or representation, either express or implied, with respect to this
+//  software, its quality, accuracy, merchantability, or fitness for a
+//  particular purpose.  As a result, this software is provided "as is,"
+//  and you, its user, are assuming the entire risk as to its quality
+//  and accuracy.
+//
+// This code may be used and freely distributed as long as it includes
+// this copyright notice and the above warranty information.
+///
+
+//******************************************************************************
+// FindCubicRoots
+//
+//  Solve:
+//      coeff[3] * x^3 + coeff[2] * x^2 + coeff[1] * x + coeff[0] = 0
+//
+//  returns:
+//      3 - 3 real roots
+//      1 - 1 real root (2 complex conjugate)
+//******************************************************************************
+
+function Integer findCubicRoots(
+  in Scalar coeff[4],
+  io Scalar x[3]
+){
+  if( abs( coeff[3] ) < 0.000001 ){
+    // If the cubic coefficient(A) is 0.0 then this equation becomes a quadratic
+    Scalar quadraticoeff[3];
+    quadraticoeff[0] = coeff[0];
+    quadraticoeff[1] = coeff[1];
+    quadraticoeff[2] = coeff[2];
+    Scalar quadratiroots[2];
+    Integer result = findQuadraticRoots( quadraticoeff, quadratiroots );
+    x[0] = quadratiroots[0];
+    x[1] = quadratiroots[1];
+    return result;
+  }
+
+  Scalar PI = 3.14159265358979323846;
+  Scalar a1 = coeff[2] / coeff[3];
+  Scalar a2 = coeff[1] / coeff[3];
+  Scalar a3 = coeff[0] / coeff[3];
+  
+  Scalar Q = (a1 * a1 - 3.0 * a2) / 9.0;
+  Scalar R = (2.0 * a1 * a1 * a1 - 9.0 * a1 * a2 + 27.0 * a3) / 54.0;
+  Scalar Qcubed = Q * Q * Q;
+  Scalar d = Qcubed - R * R;
+  
+  // Three real roots 
+  if (d >= 0) {
+    Scalar theta = acos( R / sqrt( Qcubed ));
+    Scalar sqrtQ = sqrt( Q );
+    x[0] =  -2 * sqrtQ * cos( theta               / 3.0) - a1 / 3.0;
+    x[1] =  -2 * sqrtQ * cos((theta + 2.0 * PI) / 3.0) - a1 / 3.0;
+    x[2] =  -2 * sqrtQ * cos((theta + 4.0 * PI) / 3.0) - a1 / 3.0;
+    return (3);
+  }
+
+  // One real root 
+  else {
+    Scalar e = pow( sqrt( -d ) + abs( R ), 1.0 / 3.0);
+    if (R > 0.0){
+      e = -e;
+    }
+    x[0] = Scalar( (e + Q / e) - a1 / 3.0 );
+    return 1;
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+// Coplanarity test for 4 moving points. 
+// These moving points could either be a point and a triangle, or 2 edges. 
+// The returned fraction tells us if they will be coplanar within the next time step
+// http://wscg.zcu.cz/wscg2007/Papers_2007/journal/D11-full.pdf
+//
+// a3 = v21 ∑ v31 ◊ v41
+// a2 = x21 ∑ v31 ◊ v41 ? v41 ∑ x31 ◊ v21 ? v21 ∑ x41 ◊ v31
+// a1 = v41 ∑ x21 ◊ x31 ? x21 ∑ x41 ◊ v31 ? x41 ∑ x31 ◊ v21
+// a0 = x41 ∑ x21 ◊ x31 (2)
+//
+// P(t) = a3∑t^3 + a2∑t^2 + a1∑t + a0
+
+function Boolean testCoplanarity(
+  in Vec3 x1,
+  in Vec3 x2,
+  in Vec3 x3,
+  in Vec3 x4,
+  in Vec3 v1,
+  in Vec3 v2,
+  in Vec3 v3,
+  in Vec3 v4,
+  io Scalar outFraction
+){
+  Vec3 x21, x31, x41, v21, v31, v41;
+  
+  // due to raounding error, sometimtes wee need to be a bit forgiving on the root finder. 
+  Scalar fuzzyness = 0.0001;
+
+  x21 =  x2 - x1;
+  x31 =  x3 - x1;
+  x41 =  x4 - x1;
+
+  v21 =  v2 - v1;
+  v31 =  v3 - v1;
+  v41 =  v4 - v1;
+
+  // 
+  Scalar coeff[4];
+  Vec3 v31Xv41, x31Xv21, x41Xv31, x21Xx31;
+
+  v31Xv41 = v31.cross(v41);
+  x31Xv21 = x31.cross(v21);
+  x41Xv31 = x41.cross(v31);
+  x21Xx31 = x21.cross(x31);
+
+  coeff[3] = v21.dot( v31Xv41 );
+  coeff[2] = x21.dot( v31Xv41 ) - v41.dot( x31Xv21 ) - v21.dot( x41Xv31 );
+  coeff[1] = v41.dot( x21Xx31 ) - x21.dot( x41Xv31 ) - x41.dot( x31Xv21 );
+  coeff[0] = x41.dot( x21Xx31 );  
+  
+  // The points will become coplanar in the next timestep if we find at least one
+  // real root and it is between 0 and 1.
+  Scalar roots[3];
+  Integer numRoots = findCubicRoots( coeff, roots );
+  if( numRoots > 0 ){
+    if( roots[0] > (0.0 - fuzzyness) && roots[0] < (1.0 + fuzzyness) ){
+      outFraction = clamp(roots[0], 0.0, 1.0 );
+      return true;
+    }
+    if( numRoots > 1 && roots[1] >= (0.0 - fuzzyness) && roots[1] < (1.0 + fuzzyness) ){
+      outFraction = clamp(roots[1], 0.0, 1.0 );
+      return true; 
+    }
+    if( numRoots > 2 && roots[2] >= (0.0 - fuzzyness) && roots[2] < (1.0 + fuzzyness) ){
+      outFraction = clamp(roots[2], 0.0, 1.0 );
+      return true;
+    }
+  }
+  return false;
+}
+
+
+function Boolean positionToMuscleUV(
+  in Vec3 pos,
+  in Xfo xfos[],
+  io Vec2 outUV,
+  io Vec3 outCorePos,
+  io Vec3 outCoreDir
+){
+  Vec3 p1, p2, p3, p4, p5, p6, v1, v2, v3;
+  Vec3 yaxis, zaxis, yaxisStart, zaxisStart, yaxisEnd, zaxisEnd;
+
+  Scalar PI = 3.14159265358979323846;
+  Scalar TWO_PI = PI * 2.0;
+  
+  // Loop through the line segments and do a sweep test using
+  // manufactured traingle. The collision fraction is our segment u.
+  // The curvePoints should be the evaluates points on the curve.
+
+  // TODO: Determine if we ever need to store the 'CurvePoints'.
+  // the only time they are actually used is in this function to make the initial 
+  // sweep just a little bit more accurate. Durring Muscle to Muscle collisions we also use them
+  // but maybe we could just evaluate them on demand. Less data == simpler
+
+  Scalar dist;
+  Scalar bigdist = 99999.9;
+  Scalar shortestdist = bigdist;
+
+  for( Integer i = 0; i < ( xfos.size() - 1 ); i++ ){
+    yaxisStart = xfos[ i ].ori.getYaxis( );
+    zaxisStart = xfos[ i ].ori.getZaxis( );
+
+    yaxisEnd = xfos[ i + 1 ].ori.getYaxis( );
+    zaxisEnd = xfos[ i + 1 ].ori.getZaxis( );
+    
+    p1 = xfos[ i ].tr;
+    p2 = p1 + yaxisStart;
+    p3 = p1 + zaxisStart;  
+
+    p4 = xfos[ i + 1 ].tr;
+    p5 = p4 + yaxisEnd;
+    p6 = p4 + zaxisEnd;
+
+    v1 = p4 - p1;
+    v2 = p5 - p2;
+    v3 = p6 - p3;
+    
+    Scalar outFraction;
+    if( testCoplanarity( pos, p1, p2, p3, Vec3(0.0, 0.0, 0.0), v1, v2, v3, outFraction ) ){
+      ///////////////////////////////////////////
+      // To calculate the v value, we need to reference the linear segments only
+      outCorePos = p1.lerp( p4, outFraction );
+      outCoreDir = pos - outCorePos;
+      outUV.x = ( Scalar(i) + outFraction ) / Scalar( xfos.size() - 1 );
+      
+      dist = outCoreDir.length();
+      if( dist > shortestdist ){
+        // Go through all the segments, and find the closest one
+        continue;
+      }
+      
+      if(dist < 0.0001){
+        outUV.y = 0.0;
+      }
+
+      outCoreDir /= dist;
+      shortestdist = dist;
+      
+      // The UV coordinates of the muscle wrap at the -y axis.
+      // The 'up' side of the muscle is +y with a V value of 0.5.
+      yaxis = yaxisStart.lerp( yaxisEnd, outFraction ).unit();
+      zaxis = zaxisStart.lerp( zaxisEnd, outFraction );
+      Scalar angle = outCoreDir.angleTo( yaxis );
+      if( outCoreDir.dot( zaxis ) < 0.0 ){
+        angle = -angle;
+      }
+      outUV.y = angle + PI;
+    }
+  }
+  
+  return (shortestdist < bigdist);
+}
+
+
+// when a point is sticking to the surface of a muscle, it stores a uvw value. 
+// this function returns the new global position.
+function Vec3 uvwToMusclePosition(
+  in Vec3 uvw,
+  in Xfo xfos[]
+){
+  Scalar PI = 3.14159265358979323846;
+  Scalar TWO_PI = PI * 2.0;
+  
+  Vec3 offset;
+  if( uvw.x < 0.0 )
+  {
+    offset = xfos[ 0 ].ori.rotateVector( uvw );
+  //  offset *= muscle->m_scale;
+    // NOTE: We may see artifacts here doue to the fact that the inflation is not applied, 
+    // and yet it is in the code block below. 
+    return xfos[ 0 ].tr + offset;
+  }
+  else if ( uvw.x > 1.0 )
+  {
+    offset = xfos[ xfos.size()-1 ].ori.rotateVector( Vec3( uvw.x - 1.0, uvw.y, uvw.z ) );
+  //  offset *= muscle->m_scale;
+    // NOTE: We may see artifacts here doue to the fact that the inlation is not applied, 
+    // and yet it is in the code block below. 
+    return xfos[ xfos.size()-1 ].tr + offset;
+  }
+  else
+  {
+    Scalar t;
+    Integer i;
+    Vec3 pos = evalPiecewiseBSpline( xfos, uvw.x, t, i );
+    
+
+    // Due to the fact that nlerp exibits a slight ease in and ease out on the rotations
+    // I think it is a better slution to interpollating segments. 
+    // The one exception would be several segments in arow that were evenly twisted. 
+    Quat pointframe = xfos[ i ].ori.nlerp( xfos[ i + 1 ].ori, t );
+
+    offset = pointframe.rotateVector( Vec3( 0.0, cos( uvw.y - PI ), sin( uvw.y - PI ) ) );
+    
+  //  return (offset * (uvw.z /* muscle->m_scale * muscle->GetMuscleBulge( uvw[0], uvw.y )*/)) + pos;
+    return (offset *  (uvw.z)) + pos;
+  }
+}
+
+
+
+function Vec3 positionToMuscleSurfacePosition(
+  in Vec3 pos,
+  in Vec3 normal,
+  in Xfo xfos[]
+){
+  // TODO: parameterise these 2 values. 
+  Scalar fallOff = 0.0;
+  Scalar shrinkWrap = 0.0;
+  
+  Scalar PI = 3.141592653589793238462643383279;
+  Scalar TWO_PI = PI * 2.0;
+  Scalar HALF_PI = PI * 0.5;
+  
+  Vec3 corePos;
+  Vec3 orthoNormal, biNormal, posToCore, bisectingVector, muscleNormal, posProjectedOntoSlice;
+  Quat sliceframe;
+  Vec2 uv;
+  Scalar u, v, w;
+  Scalar endOffset = 0.0;// If a point is off the end of the muscle, this value will be < 0.0, || > 1.0;
+
+  if(!positionToMuscleUV( pos, xfos, uv, corePos, posToCore ) ){
+    return Vec3(0.0,0.0,0.0);
+    /*
+    Vec3 endPoint = xfos[ 0 ].tr;
+    Quat endFrame = xfos[ 0 ].ori;
+      
+    posToCore = pos - endPoint;
+    endOffset = posToCore.dot( endFrame.getXaxis( ) );
+    if( endOffset <= 0.001 ){
+      corePos = endPoint;
+      sliceframe = endFrame;
+      u = 0.0;
+    }
+    else{
+      endPoint = xfos[ xfos.size()-1 ].tr;
+      endFrame = xfos[ xfos.size()-1 ].ori;
+      posToCore = pos - endPoint;
+      endOffset = posToCore.dot( endFrame.getXaxis( ) );
+      if( endOffset >= -0.001 ){
+        corePos = endPoint;
+        sliceframe = endFrame;
+        u = 1.0;
+      }
+      else{
+        return Vec3(0.0,0.0,0.0);
+      }
+    }
+    */
+  }
+  
+  report("pos:"+pos);
+
+  u = uv.x;
+
+  // Now evaluate the spline to get the actual position of the muscle core
+  Scalar t;
+  Integer segmentid;
+  corePos = evalPiecewiseBSpline(xfos, u, t, segmentid);  
+  
+  sliceframe = xfos[segmentid].ori.nlerp(xfos[segmentid + 1].ori, t);
+
+
+  //////////////////////////////////////////////////
+  // 
+  Vec3 coreTan = sliceframe.rotateVector(Vec3(1.0, 0.0, 0.0));
+
+  posProjectedOntoSlice = pos + ((pos - corePos).unit() * (pos - corePos).dot(coreTan));
+  posToCore = corePos - posProjectedOntoSlice;
+  
+  orthoNormal = normal + (coreTan * normal.dot(coreTan));
+  
+  
+  report("orthoNormal:"+orthoNormal);
+  report("posProjectedOntoSlice:"+posProjectedOntoSlice);
+  report("posToCore:"+posToCore);
+
+  // The biNormal is orthogonal to the normal
+  biNormal = orthoNormal.cross( coreTan ).unit();
+
+  //////////////////////////////////////////////////
+  // Push the point to the upper side of the muscle using the surface normal.
+  // this method works by calculating the width of the muscle at the closest point
+  // and then calculating a push vector that will push the point to the opposite side 
+  // of the musle, attempting to minimise distortion in the mesh. 
+
+  Scalar biNormalThickness, bisectingVvalue, biNormalProjLen, offsetAngle;
+
+  //////////////////////////////////////////////////
+  // Get the non-normalized offset vector, and project it onto the binormal
+  biNormalProjLen = posToCore.dot( biNormal );
+  Scalar  dir = ( biNormalProjLen > 0.0 ) ? -1.0 : 1.0;
+  
+  
+  report("biNormalProjLen:"+biNormalProjLen);
+
+  //////////////////////////////////////////////////
+  // Recalculate the v value.
+  // 
+  muscleNormal = sliceframe.rotateVector(Vec3(0.0, 1.0, 0.0));
+
+//  Scalar orthoNormalAngle = acos( clamp( muscleNormal.dot( orthoNormal ), -1.0, 1.0 ) );
+  Scalar orthoNormalAngle = muscleNormal.angleTo( orthoNormal ) * dir;
+  Scalar orthoNormalVvalue = (PI - orthoNormalAngle) / TWO_PI;
+  
+  
+  report("orthoNormalAngle:"+orthoNormalAngle);
+  report("orthoNormalVvalue:"+orthoNormalVvalue);
+  
+  /////////////////////////////////////////////
+  Scalar orthoNormalThickness  = 2.0;//muscle->GetMuscleThickness( u, orthoNormalVvalue );
+  
+  /////////////////////////////////////////////
+  // biNormalThickness
+  // To find an accurate intersection with the muscle, we only need to test
+  // a single quadrant of the muscle. i.e. top-left/top-right.
+  bisectingVvalue = (orthoNormalVvalue + (0.25 * dir));
+  if( bisectingVvalue > 1.0 )  bisectingVvalue -= 1.0;
+  if( bisectingVvalue < 0.0 )  bisectingVvalue += 1.0;
+    
+  biNormalThickness      = 2.0;//muscle->GetMuscleThickness( u, bisectingVvalue );
+  
+  ///////////////////////////////////////////////////////////
+  // Modulator
+  // The modulator creates the end caps on the muscle. 
+  // cos(asin( distRatio ))
+  Scalar modulator = 1.0;
+  if( endOffset < 0.0 ){
+    Scalar distRatio = -endOffset/biNormalThickness;
+    modulator = (distRatio < 1.0) ? cos( asin( distRatio ) ) : 0.0;
+  }
+  else if( endOffset > 0.0 ){
+    Scalar distRatio = endOffset/biNormalThickness;
+    modulator = (distRatio < 1.0) ? cos( asin( distRatio ) ) : 0.0;
+  }
+
+  /////////////////////////////////////////////
+  // Here we walk down the side of the target quadrant, checking
+  // for the hull that extends past the biNormalProjLen.
+  //      ----
+  //    /\   |
+  //   |   \ |
+  //   |_____| <- biNormalProj
+  
+  Integer numSamples = 5;
+  Integer i;
+  Scalar tempV, vdelta2, vdelta1 = 0.0;
+  Scalar t2, t1 = 0.0;
+  for( i=1; i<=numSamples; i++ ){
+    Scalar ratio = Scalar(i)/Scalar(numSamples);
+    vdelta2 = sin(ratio * 0.25 * dir);
+    
+    tempV = orthoNormalVvalue + vdelta2;
+    if( tempV > 1.0 )  tempV -= 1.0;
+    if( tempV < 0.0 )  tempV += 1.0;
+    
+    t2 = sin( ratio * HALF_PI ) * 2.0;//muscle->GetMuscleThickness( u, tempV );
+    
+    
+    if(abs(t2) >= abs(biNormalProjLen)){
+      break;
+    }
+    vdelta1 = vdelta2;
+    t1 = t2;
+  }
+  if(i < numSamples){
+    return Vec3(0.0,0.0,0.0);
+  }
+  Scalar fract = (biNormalProjLen - t1)/(t2 - t1);
+  Scalar vdelta =  lerp(vdelta1, vdelta2, fract);
+  v = orthoNormalVvalue + vdelta;
+  if(v  > 1.0)  v -= 1.0;
+  if(v  < 0.0)  v += 1.0;
+  Scalar angleDelta = vdelta * HALF_PI;
+  
+  Vec3 posOffsetDir = (biNormal * sin( angleDelta )) + (orthoNormal * cos( angleDelta ));
+  
+  w = 2.0;//muscle->GetMuscleThickness( u, v ) * modulator;
+  
+  return corePos + (posOffsetDir * w);
+  
+/*
+
+  Scalar tempV, tempVprev = orthoNormalVvalue;
+  Scalar tempBiNormalProjLen, tempBiNormalProjLenPrev = 0.0;
+  Scalar tempOffsetVval, tempOffsetVvalPrev = 0.0;
+  Scalar tempOffsetAngle, tempOffsetAnglePrev = 0.0;
+  Scalar tempMuscleThickness, tempMuscleThicknessPrev = orthoNormalThickness;
+  for( i=1; i<=numSamples; i++ ){
+    tempOffsetVval  = (Scalar(i)/Scalar(numSamples)) * 0.25;
+    if( dir ){
+      tempOffsetAngle =  tempOffsetVval * TWO_PI;
+      tempV = orthoNormalVvalue - tempOffsetVval;
+    }
+    else{
+      tempOffsetAngle = -tempOffsetVval * TWO_PI;
+      tempV = orthoNormalVvalue + tempOffsetVval;
+    }
+    
+    if( tempV > 1.0 )  tempV -= 1.0;
+    if( tempV < 0.0 )  tempV += 1.0;
+    
+    // find the shadow length of this angle
+    tempMuscleThickness = 2.0;//muscle->GetMuscleThickness( u, tempV );
+    tempBiNormalProjLen = tempMuscleThickness * sin( tempOffsetAngle ) * modulator;
+    if((dir && tempBiNormalProjLen >= biNormalProjLen ) || ( !dir && tempBiNormalProjLen <= biNormalProjLen)){
+      break;
+    }
+    if(i < numSamples){
+      tempBiNormalProjLenPrev   = tempBiNormalProjLen;
+      tempOffsetVvalPrev        = tempOffsetVval;
+      tempVprev                 = tempV;
+      tempOffsetAnglePrev       = tempOffsetAngle;  
+      tempMuscleThicknessPrev   = tempMuscleThickness;
+    }
+  }
+  report("i:"+i);
+  if(i > numSamples){
+    // The point in question is not in the shadow of the muscle.
+    // We calculate a fall off here.
+    // This is so that points don't pop onto the surface of the muscle when 
+    // they come into the shadow of the muscle.
+    Scalar orthoDist = abs( posToCore.dot( biNormal ));
+    Scalar depthBelowMuscleCore = posToCore.dot( orthoNormal ) * modulator;
+
+    if(depthBelowMuscleCore < 0.0){
+      if( fallOff == 0.0 ){
+        fallOff = -depthBelowMuscleCore;
+      }
+      // Here we calculate the 
+      Scalar weight = (orthoDist - ((orthoNormalThickness < orthoDist) ? orthoNormalThickness : orthoDist )) / fallOff;
+      if( weight >= 0.9999 ){
+        return Vec3(0.0,0.0,0.0);
+      }
+    //  else if( weight < 1.0 )
+      if( weight >= 0.0 ){ //&& weight < 1.0 )
+        return (orthoNormal.unit() * orthoNormal.dot(posToCore)) * -( 1.0 - sin( acos( 1.0 - weight ) ) );
+      //  return orthoNormal.vectorProjection( posToCore ) * -( 1.0 - sin( acos( 1.0 - weight ) ) );
+      }
+    }
+    return Vec3(0.0,0.0,0.0);
+  }
+  Scalar fract = (biNormalProjLen - tempBiNormalProjLenPrev)/(tempBiNormalProjLen - tempBiNormalProjLenPrev);
+  if( ( tempV - tempVprev ) > 1.0 ) tempVprev -= 1.0;
+  v = lerp( tempVprev, tempV, fract );
+  Scalar angle = lerp( tempOffsetAnglePrev, tempOffsetAngle, fract );
+
+  if( v > 1.0 ) v -= 1.0;
+  if( v < 0.0 ) v += 1.0;
+  w = 2.0;//muscle->GetMuscleThickness( u, v ) * modulator;
+
+  posOffsetDir = (biNormal * sin( angle )) + (orthoNormal * cos( angle ));
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // If the point is below the muscle(angle > HALF_PI), or above but inside(distToCore < w).
+  Scalar distToCore = posToCore.length();
+  posToCore /= distToCore;
+
+  offsetAngle = orthoNormal.angleTo( posToCore );
+
+  if( distToCore < w  || shrinkWrap > 0.0 || abs( offsetAngle ) > HALF_PI ){
+    if( abs( offsetAngle ) < HALF_PI && w < distToCore ){
+      return (posOffsetDir * (w * shrinkWrap) + corePos) - posProjectedOntoSlice;
+    }
+    else{
+      return ((posOffsetDir * w) + corePos) - posProjectedOntoSlice;
+    }
+  }
+  */
+  
+  return Vec3(0.0,0.0,0.0);
+}
+
+
+
+
+function Vec3 positionToMuscleUVW(
+  in Vec3 pos,
+  in Xfo xfos[]
+){
+  Vec3 corePos, coreDir;
+  Vec2 uv;
+  
+  if( positionToMuscleUV( pos, xfos, uv, corePos, coreDir ) ){
+    // Now evaluate the spline to get the actual position of the muscle core
+    Integer i;
+    Scalar t;
+    corePos = evalPiecewiseBSpline( xfos, uv.x, t, i );
+    return Vec3(uv.x,
+                uv.y,
+                ( corePos - pos ).length());
+  }
+  else
+  {
+    coreDir = pos - xfos[ 0 ].tr;
+    if( coreDir.dot( xfos[ 0 ].ori.getXaxis() ) < 0.0 ){
+      Quat endFrame = xfos[ 0 ].ori;
+      return Vec3( coreDir.dot( endFrame.getXaxis() ),
+                   coreDir.dot( endFrame.getYaxis() ),
+                   coreDir.dot( endFrame.getZaxis() ));
+    }
+
+    coreDir = pos - xfos[ xfos.size()-1 ].tr;
+    if( coreDir.dot( xfos[ xfos.size()-1 ].ori.getXaxis( ) ) > 0.0 ){      
+      Quat endFrame = xfos[ xfos.size()-1 ].ori;
+      return Vec3(1.0 + ( coreDir.dot( endFrame.getXaxis( ) )  ),
+                  coreDir.dot( endFrame.getYaxis() ),
+                  coreDir.dot( endFrame.getZaxis() ));
+    }
+  }
+  return Vec3(0.0, 0.0, 0.0);
+}
+
+
+
+operator calcSkinStickLocations(
+  io Xfo initialXfos[][],
+  io Vec3 parentpositions[],
+
+  io Integer muscleBindingIds[4],
+  io Vec3 sticklocations[4],
+  in Size index
+){
+//  report("calcSkinStickLocations pos:"+parentpositions[index] );
+  Vec3 stickDelta;
+  for(Integer i=0; i<1; i++){
+    if(muscleBindingIds[i] >= 0){
+      Integer mid = muscleBindingIds[i];
+      sticklocations[i] = positionToMuscleUVW(parentpositions[index], initialXfos[mid]);
+    }
+  }
+}
+
+operator deformSkin(
+  io Size displacementMapResolution,
+  io Color displacementMaps[][],
+  io Xfo simulatedXfos[][],
+  /*
+  io Scalar inflationValues[],
+  */
+  io Vec3 parentpositions[],
+  io Vec3 parentnormals[],
+  io Vec3 position,
+  io Vec3 normal,
+  
+  io Integer allmuscleBindingIds[][4],
+  io Scalar allmuscleBindingWeights[][4],
+  io Scalar stickweights[],
+  io Vec3 allsticklocations[][4],
+  io Scalar slideweights[],
+  io Scalar bulgeweights[],
+  in Size index
+){
+  position = parentpositions[index];
+  normal = parentnormals[index];
+  
+  Integer muscleBindingIds[4] = allmuscleBindingIds[index];
+  Scalar muscleBindingWeights[4] = allmuscleBindingWeights[index];
+  Scalar stickweight = stickweights[index];
+  Vec3 sticklocations[4] = allsticklocations[index];
+  Scalar slideweight = slideweights[index];
+  Scalar bulgeweight = bulgeweights[index];
+  /*
+  // Sticking
+  Vec3 stickDelta(0.0,0.0,0.0);
+  for(Integer i=0; i<1; i++){
+//  if(muscleBindingIds[i] >= 0 && muscleBindingWeights[i] > 0.0){
+      Integer mid = 0;//muscleBindingIds[i];
+      Vec3 stickPos = uvwToMusclePosition(sticklocations[i], simulatedXfos[mid]);
+      stickDelta += (stickPos - position);// * muscleBindingWeights[i];
+//  }
+  }
+  position += stickDelta;
+  */
+  // Sliding
+  Vec3 slideDelta;
+  for(Integer i=0; i<1; i++){
+  //  if(muscleBindingIds[i] >= 0 && muscleBindingWeights[i] > 0.0){
+      slideDelta += positionToMuscleSurfacePosition( position, normal, simulatedXfos[muscleBindingIds[i]] ) * muscleBindingWeights[i];
+  //  }
+  }
+  position += slideDelta;
+  /*
+  // Bulging
+  Vec3 bulgeDelta;
+  for(Integer i=0; i<4; i++){
+    if(muscleBindingIds[i] >= 0 && muscleBindingWeights[i] > 0.0){
+      bulgeDelta += normal * (muscleBindingWeights[i] * bulgeweight);
+    }
+  }
+  position += bulgeDelta;
+  */
+}

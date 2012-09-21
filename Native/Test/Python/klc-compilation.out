@@ -1,0 +1,5 @@
+{u'foo.kl': u'operator foo() { bad }'}
+{u'foo.kl': u'operator foo() { bad }', u'bar.kl': u'operator bar() {}'}
+[{u'column': 22, u'line': 1, u'level': u'error', u'desc': u'syntax error, unexpected }, expecting ;', u'filename': u'foo.kl'}]
+{u'bar.kl': u'operator bar() {}'}
+[]

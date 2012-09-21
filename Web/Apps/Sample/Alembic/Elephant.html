@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">  
+  <!--
+    Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+    -->
+    <title>FABRIC - Alembic Viewer</title> 
+    
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/main.css" rel="stylesheet" />
+    <link type="text/css" href="../../../ThirdParty/jQuery/css/fabric/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-ui-1.8.16.custom.min.js"></script>
+
+    <script type="text/javascript" src="../../../Core/FABRIC.js" charset="utf-8"></script>
+
+    <script type="text/javascript" src="../ga.js" charset="utf-8"></script>
+    <script type="text/javascript">
+    
+    
+FABRIC.require(["RT/Color",
+                "SG/SceneGraph",
+                "SG/Geometry",
+                "SG/Materials",
+                "SG/Manipulation",
+                "SG/Alembic"], function() {
+
+$(document).ready(function() {
+ 
+  var scene = FABRIC.SceneGraph.createScene();
+  var viewport = scene.constructNode('Viewport', { windowElement: document.getElementById('FabricContainer') });
+
+  viewport.setBackgroundTextureNode(scene.constructNode('Image2D', {
+    url: '../BasicDemos/Resources/fabric-demo-gradient.png'
+  }));
+  
+  // Create a camera to draw the scene from
+  var camera = scene.constructNode('TargetCamera', {
+      nearDistance: 1,
+      farDistance: 2000,
+      position: new FABRIC.RT.Vec3(.2, .5, 1).multiplyScalar(7.5),
+      target: new FABRIC.RT.Vec3(1.5, 2, 0).multiplyScalar(1),
+    });
+
+  scene.constructNode('CameraManipulator', { targetNode: camera });
+  viewport.setCameraNode(camera);
+
+  var light = scene.constructNode('PointLight', { position: new FABRIC.RT.Vec3(10, 30, 100).multiplyScalar(3) });
+
+  // load our custom shader
+  FABRIC.SceneGraph.defineEffectFromFile('ElephantMaterial', 'ElephantShader.xml');
+
+  var occlusionTexture = scene.constructNode('Image2D', { url: 'Models/samplehold_elephant_ambocc.png' });
+  var normalTexture = scene.constructNode('Image2D', { url: 'Models/samplehold_elephant_normalM.png' });
+
+  var elephantMaterial = scene.constructNode('ElephantMaterial', {
+    diffuseTextureNode: occlusionTexture,
+    normalTextureNode: normalTexture,
+    shininess: 20,
+    lightNode: light,
+  });
+  
+  $('#loadingDialog').dialog({
+    modal: true
+  });
+  
+  // create the alembic content, and fire the load once it is loaded
+  var alembicLoadNode = scene.constructNode('AlembicLoadNode', {
+    url:'Models/samplehold_elephant_proxy.abc',
+    dependentNode: viewport
+  } );
+  
+  alembicLoadNode.addEventListener('loadSuccess', function(){
+    // loop over all assets and create an instance
+    var nodes = alembicLoadNode.getParsedNodes();
+    for(var name in nodes) {
+      if(nodes[name].isTypeOf('Triangles'))   {
+        var inst = scene.constructNode('Instance', {
+          transformNode: alembicLoadNode.getCorrespondingTransform(name),
+          geometryNode: nodes[name],
+          materialNode: elephantMaterial
+        });
+      }
+    }
+    return true;
+  });
+  
+    FABRIC.appendOnResolveAsyncTaskCallback(function(label, nbRemaining, doneWeight, totalWeight) {
+      $('#loadingProgressBar').progressbar({
+        value: (1.0-(doneWeight/totalWeight))*100
+      });
+      if (nbRemaining===0) {
+        viewport.redraw();
+        var errors = scene.getErrors();
+        if (errors.length > 0) {
+          throw (errors.toString());
+        }
+        $('#loadingDialog').dialog('close');
+        return true;
+      }
+    });
+  });
+});
+
+// jQuert UI Styling classes
+$(document).ready(function() {
+  $(".box").addClass("ui-widget");
+  $(".box h2").addClass("ui-widget-header ui-corner-all");
+  $(".content").addClass("ui-widget-content");
+});
+
+</script>
+
+  </head> 
+  <body>
+    <div id="loadingDialog" title="Loading...">
+      <h4 id="loadingDesc">Downloading Alembic File.<br>This may take some time.</h4>
+      <div id="loadingProgressBar" class="ui-progressbar-value"></div>
+    </div>
+    <div id="wrapper">
+      <div id="editor">
+        <div id="viewer">
+          <div id="FabricContainer"></div> 
+        </div><!--viewer-->
+        <div id="sidebar">
+          <div class="box">
+            <h2>INFO</h2>
+            <div class="content">
+              Alembic Viewer.<br>
+              The model seen in this sample has been created by <a href="http://www.sampleandhold.co.uk" target=_NEW>http://www.sampleandhold.co.uk</a>.
+              We use a combination of normal mapping and ambient occlusion based shading to create the illusion of the complexity of the original
+              high resolution mesh while limiting the decoded complexity to 10.000 triangles.<br><br>
+              The custom shader creates two different effects, a specular based on one side of the model,
+              an occlusion based on on the other side. Turn the camera to inspect it!
+            </div><!--content-->
+          </div><!--box-->
+
+        </div><!--sidebar-->
+      </div> <!--editor-->
+    </div><!--wrapper-->
+  </body> 
+  </html>

@@ -1,0 +1,50 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Mat44;
+use Xfo;
+use Bone;
+
+operator calcInverseBindPose(io Bone bones[], io Mat44 invGlobalMat44[]) {
+  report('calcInverseBindPose\n');
+  invGlobalMat44.resize(bones.size());
+  for (Integer i = 0; i < bones.size(); i++) {
+    Mat44 globalMat44 = bones[i].referencePose.toMat44();
+    invGlobalMat44[i] = globalMat44.inverse();
+  }
+}
+
+operator calcReferencePoseFromInverseBindPose(io Bone bones[], io Mat44 invGlobalMat44[]) {
+  report('calcReferencePoseFromInverseBindPose bones.size():' + bones.size() + ' invGlobalMat44.size():' + invGlobalMat44.size());
+  if (bones.size() == invGlobalMat44.size()) {
+    for (Integer i = 0; i < bones.size(); i++) {
+      Xfo xfo;
+      bones[i].referencePose = xfo.setFromMat44(invGlobalMat44[i]).inverse();
+    }
+  }
+}
+
+operator calcReferenceLocalPose(io Bone bones[]) {
+  report('calcReferenceLocalPose');
+  for (Integer i = 0; i < bones.size(); i++) {
+    if (bones[i].parent == - 1) {
+      bones[i].referenceLocalPose = bones[i].referencePose;
+    }
+    else {
+      bones[i].referenceLocalPose = bones[bones[i].parent].referencePose.inverse() * bones[i].referencePose;
+    }
+  }
+}
+
+operator calcReferenceGlobalPose(io Bone bones[]) {
+  report('calcReferenceGlobalPose:' + bones.size());
+  for (Integer i = 0; i < bones.size(); i++) {
+    if (bones[i].parent == - 1) {
+      bones[i].referencePose = bones[i].referenceLocalPose;
+    }
+    else {
+      bones[i].referencePose = bones[bones[i].parent].referencePose * bones[i].referenceLocalPose;
+    }
+  }
+}

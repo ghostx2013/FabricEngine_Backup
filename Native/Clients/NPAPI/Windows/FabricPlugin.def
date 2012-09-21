@@ -1,0 +1,7 @@
+EXPORTS
+  DllMain
+  DllRegisterServer       PRIVATE
+  DllUnregisterServer     PRIVATE
+  NP_GetEntryPoints   
+  NP_Initialize       
+  NP_Shutdown         

@@ -1,0 +1,20 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+import os
+Import('nativeEnv', 'buildOS')
+
+if buildOS == 'Windows':
+	getoptEnv = nativeEnv.Clone()
+	getoptIncludeDir = getoptEnv.Dir('.');
+	getoptLib = getoptEnv.StaticLibrary(
+	  target = 'getopt',
+	  source = Glob( '*.c' )
+	  )
+
+	getoptFlags = {
+	  'CPPPATH': [getoptIncludeDir],
+	  'LIBS': [getoptLib],
+	}
+	Export( 'getoptFlags' )

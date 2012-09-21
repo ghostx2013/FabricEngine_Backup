@@ -1,0 +1,11 @@
+--- ./IlmImf/ImfChromaticities.cpp	2003-12-02 04:06:21.000000000 +0100
++++ ImfChromaticities.cpp	2011-11-09 17:09:56.365315848 +0100
+@@ -40,6 +40,8 @@
+ //
+ //-----------------------------------------------------------------------------
+ 
++#include <cstring>
++#include <climits>
+ #include <ImfChromaticities.h>
+ 
+ namespace Imf {

@@ -1,0 +1,247 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3, Quat, Xfo;
+use KEYFRAMETYPE, KEYFRAMETYPETrack, KEYFRAMETYPETrackSet;
+
+function KEYFRAMETYPETrackSetBindings.addScalarBinding(
+  in Integer varId,
+  in Integer trackId
+){
+  this.scalarBindings.resize(this.scalarBindings.size + 1);
+  this.scalarBindings[this.scalarBindings.size-1].varId = varId;
+  this.scalarBindings[this.scalarBindings.size-1].trackIds.push(trackId);
+}
+
+function KEYFRAMETYPETrackSetBindings.addXfoBinding(
+  in Integer varId,
+  in Integer trackIds[]
+){
+  this.xfoBindings.resize(this.xfoBindings.size + 1);
+  this.xfoBindings[this.xfoBindings.size-1].varId = varId;
+  this.xfoBindings[this.xfoBindings.size-1].trackIds = trackIds;
+}
+
+
+
+
+function KEYFRAMETYPETrackSetBindings.evaluateTracks(
+  in Scalar time,
+  io PoseVariables poseVariables,
+  in KEYFRAMETYPETrackSet trackSet,
+  io Integer currKeys[]
+) {
+  Integer trackId = 0;
+  if (currKeys.size < trackId + this.scalarBindings.size){
+    currKeys.resize(trackId + this.scalarBindings.size);
+  }
+  for (Integer i = 0; i < this.scalarBindings.size; i++) {
+    KeyframeTrackBinding binding = this.scalarBindings[i];
+    poseVariables.scalarValues[binding.varId] = trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]);
+  }
+  for (Integer i = 0; i < this.quatBindings.size; i++) {
+    KeyframeTrackBinding binding = this.quatBindings[i];
+    if(binding.trackIds.size != 3 && binding.trackIds.size != 4){
+      report('incorrect binding for Quat:' + binding);
+      continue;
+    }
+    if(currKeys.size < trackId + binding.trackIds.size){
+      currKeys.resize(trackId + binding.trackIds.size);
+    }
+    if(binding.trackIds.size == 3){
+      // Euler to Quat
+      Euler euler(Vec3( trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]),
+                        trackSet.tracks[binding.trackIds[1]].evaluate(time, currKeys[trackId++]),
+                        trackSet.tracks[binding.trackIds[2]].evaluate(time, currKeys[trackId++])));
+      poseVariables.quatValues[binding.varId].setFromEuler(euler);
+    }
+    else if(binding.trackIds.size == 4){
+      poseVariables.quatValues[binding.varId].set(
+        trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[1]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[2]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[3]].evaluate(time, currKeys[trackId++])
+      );
+    }
+  }
+  
+  for (Integer i = 0; i < this.xfoBindings.size; i++) {
+    KeyframeTrackBinding binding = this.xfoBindings[i];
+  //  if(binding.trackIds.size != 7){
+  //    report('incorrect binding for Xfo:' + binding);
+  //    continue;
+  //  }
+    if(currKeys.size < trackId + binding.trackIds.size){
+      currKeys.resize(trackId + binding.trackIds.size);
+    }
+    // If the this 3 or 4, we assume an fk rotation animation is bound.
+    // trackSet isn't the safest assumption, and probably should be made explicit.
+    if(binding.trackIds.size == 3){
+      Euler euler(trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]),
+                  trackSet.tracks[binding.trackIds[1]].evaluate(time, currKeys[trackId++]),
+                  trackSet.tracks[binding.trackIds[2]].evaluate(time, currKeys[trackId++]),
+                  RotationOrder(binding.param));
+      poseVariables.xfoValues[binding.varId].ori.setFromEuler(euler);
+    }
+    else if(binding.trackIds.size == 4){
+      poseVariables.xfoValues[binding.varId].ori.set(
+        trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[1]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[2]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[3]].evaluate(time, currKeys[trackId++])
+      );
+    }
+    else if(binding.trackIds.size == 6 || binding.trackIds.size == 7){
+      poseVariables.xfoValues[binding.varId].tr.set(
+        trackSet.tracks[binding.trackIds[0]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[1]].evaluate(time, currKeys[trackId++]),
+        trackSet.tracks[binding.trackIds[2]].evaluate(time, currKeys[trackId++])
+      );
+      if(binding.trackIds.size == 6){
+        Euler euler(trackSet.tracks[binding.trackIds[3]].evaluate(time, currKeys[trackId++]),
+                    trackSet.tracks[binding.trackIds[4]].evaluate(time, currKeys[trackId++]),
+                    trackSet.tracks[binding.trackIds[5]].evaluate(time, currKeys[trackId++]),
+                    RotationOrder(binding.param));
+        poseVariables.xfoValues[binding.varId].ori.setFromEuler(euler);
+      }
+      else if(binding.trackIds.size == 7){
+        poseVariables.xfoValues[binding.varId].ori.set(
+          trackSet.tracks[binding.trackIds[3]].evaluate(time, currKeys[trackId++]),
+          trackSet.tracks[binding.trackIds[4]].evaluate(time, currKeys[trackId++]),
+          trackSet.tracks[binding.trackIds[5]].evaluate(time, currKeys[trackId++]),
+          trackSet.tracks[binding.trackIds[6]].evaluate(time, currKeys[trackId++])
+        );
+      }
+    }
+  }
+}
+
+
+
+
+function KEYFRAMETYPETrackSetBindings.setPoseValues(
+  in Scalar time,
+  io PoseVariables poseVariables,
+  io KEYFRAMETYPETrackSet trackSet
+) {
+  for (Integer i = 0; i < this.scalarBindings.size; i++) {
+    KeyframeTrackBinding binding = this.scalarBindings[i];
+    if(binding.trackIds.size == 1){
+      Scalar val = poseVariables.scalarValues[binding.varId];
+      trackSet.tracks[binding.trackIds[0]].setValue(time, val);
+    }
+  }
+  
+  for (Integer i = 0; i < this.quatBindings.size; i++) {
+    KeyframeTrackBinding binding = this.quatBindings[i];
+    if(binding.trackIds.size == 3){
+      //  Quat to Euler
+      report("TODO:Euler.setFromQuat");
+    //  Euler euler;
+    //  euler.setFromQuat(poseVariables.quatValues[binding.varId]);
+    //  trackSet.tracks[binding.trackIds[0]].setValue(time, euler.x),
+    //  trackSet.tracks[binding.trackIds[1]].setValue(time, euler.y),
+    //  trackSet.tracks[binding.trackIds[2]].setValue(time, euler.z)));
+    }
+    else if(binding.trackIds.size == 4){
+      Quat q = poseVariables.quatValues[i];
+      trackSet.tracks[binding.trackIds[0]].setValue(time, q.v.x );
+      trackSet.tracks[binding.trackIds[1]].setValue(time, q.v.y );
+      trackSet.tracks[binding.trackIds[2]].setValue(time, q.v.z );
+      trackSet.tracks[binding.trackIds[3]].setValue(time, q.w );
+    }
+  }
+  
+  for (Integer i = 0; i < this.xfoBindings.size; i++) {
+    KeyframeTrackBinding binding = this.xfoBindings[i];
+    if(binding.trackIds.size != 7){
+      report('incorrect binding for Xfo:' + binding);
+      continue;
+    }
+    Xfo xfo = poseVariables.xfoValues[binding.varId];
+    
+    trackSet.tracks[binding.trackIds[0]].setValue(time, xfo.tr.x);
+    trackSet.tracks[binding.trackIds[1]].setValue(time, xfo.tr.y);
+    trackSet.tracks[binding.trackIds[2]].setValue(time, xfo.tr.z);
+    
+    if(binding.trackIds.size == 6){
+      //  Quat to Euler
+      report("TODO:Euler.setFromQuat");
+    //  Euler euler;
+    //  euler.setFromQuat(xfo.ori);
+    //  trackSet.tracks[binding.trackIds[0]].setValue(time, euler.x),
+    //  trackSet.tracks[binding.trackIds[1]].setValue(time, euler.y),
+    //  trackSet.tracks[binding.trackIds[2]].setValue(time, euler.z)));
+    }else if(binding.trackIds.size == 7){
+      trackSet.tracks[binding.trackIds[3]].setValue(time, xfo.ori.v.x);
+      trackSet.tracks[binding.trackIds[4]].setValue(time, xfo.ori.v.y);
+      trackSet.tracks[binding.trackIds[5]].setValue(time, xfo.ori.v.z);
+      trackSet.tracks[binding.trackIds[6]].setValue(time, xfo.ori.w);
+    }
+  }
+}
+
+
+
+function KEYFRAMETYPETrackSetBindings.setTrackValues(
+  in Scalar time,
+  in PoseVariables poseVariables,
+  io KEYFRAMETYPETrackSet trackSet
+) {
+  for (Integer i = 0; i < this.scalarBindings.size; i++) {
+    KeyframeTrackBinding binding = this.scalarBindings[i];
+    if(binding.trackIds.size == 1){
+      Scalar val = poseVariables.scalarValues[binding.varId];
+      trackSet.tracks[binding.trackIds[0]].setValue(time, val);
+    }
+  }
+  
+  for (Integer i = 0; i < this.quatBindings.size; i++) {
+    KeyframeTrackBinding binding = this.quatBindings[i];
+    if(binding.trackIds.size == 3){
+      // Quat to Euler.
+      report("TODO:Euler.setFromQuat");
+    //  Euler euler;
+    //  euler.setFromQuat(poseVariables.quatValues[binding.varId]);
+    //  trackSet.tracks[binding.trackIds[0]].setValue(time, euler.x),
+    //  trackSet.tracks[binding.trackIds[1]].setValue(time, euler.y),
+    //  trackSet.tracks[binding.trackIds[2]].setValue(time, euler.z)));
+    }
+    else if(binding.trackIds.size == 4){
+      Quat q = poseVariables.quatValues[i];
+      trackSet.tracks[binding.trackIds[0]].setValue(time, q.v.x );
+      trackSet.tracks[binding.trackIds[1]].setValue(time, q.v.y );
+      trackSet.tracks[binding.trackIds[2]].setValue(time, q.v.z );
+      trackSet.tracks[binding.trackIds[3]].setValue(time, q.w );
+    }
+  }
+  
+  for (Integer i = 0; i < this.xfoBindings.size; i++) {
+    KeyframeTrackBinding binding = this.xfoBindings[i];
+    if(binding.trackIds.size != 7){
+      report('incorrect binding for Xfo:' + binding);
+      continue;
+    }
+    Xfo xfo = poseVariables.xfoValues[binding.varId];
+    
+    trackSet.tracks[binding.trackIds[0]].setValue(time, xfo.tr.x);
+    trackSet.tracks[binding.trackIds[1]].setValue(time, xfo.tr.y);
+    trackSet.tracks[binding.trackIds[2]].setValue(time, xfo.tr.z);
+    
+    if(binding.trackIds.size == 6){
+      //  Quat to Euler
+      report("TODO:Euler.setFromQuat");
+    //  Euler euler;
+    //  euler.setFromQuat(xfo.ori);
+    //  trackSet.tracks[binding.trackIds[0]].setValue(time, euler.x),
+    //  trackSet.tracks[binding.trackIds[1]].setValue(time, euler.y),
+    //  trackSet.tracks[binding.trackIds[2]].setValue(time, euler.z)));
+    }else if(binding.trackIds.size == 7){
+      trackSet.tracks[binding.trackIds[3]].setValue(time, xfo.ori.v.x);
+      trackSet.tracks[binding.trackIds[4]].setValue(time, xfo.ori.v.y);
+      trackSet.tracks[binding.trackIds[5]].setValue(time, xfo.ori.v.z);
+      trackSet.tracks[binding.trackIds[6]].setValue(time, xfo.ori.w);
+    }
+  }
+}

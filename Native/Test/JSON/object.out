@@ -1,0 +1,87 @@
+OBJECT 0
+OBJECT 1
+  STRING 4 'fred'
+    INTEGER 17
+OBJECT 4
+  STRING 4 'fred'
+    STRING 3 'joe'
+  STRING 3 'joe'
+    STRING 4 'fred'
+  STRING 3 'foo'
+    NULL
+  STRING 3 'bar'
+    BOOLEAN false
+OBJECT 2
+  STRING 4 'fred'
+    OBJECT 1
+      STRING 3 'joe'
+        ARRAY 3
+          INTEGER 4
+          OBJECT 2
+            STRING 3 'bar'
+              ARRAY 2
+                NULL
+                SCALAR 4.5
+            STRING 1 'a'
+              OBJECT 1
+                STRING 1 '5'
+                  INTEGER 42
+          ARRAY 3
+            INTEGER 4
+            SCALAR 6.8
+            BOOLEAN true
+  STRING 3 'joe'
+    ARRAY 3
+      SCALAR 5.6
+      INTEGER 9
+      ARRAY 1
+        OBJECT 1
+          STRING 4 'fred'
+            STRING 0 ''
+OBJECT 23
+  STRING 7 'vampire'
+    INTEGER 1
+  STRING 5 'diary'
+    INTEGER 1
+  STRING 7 'fanlist'
+    INTEGER 1
+  STRING 5 'visit'
+    INTEGER 10
+  STRING 7 'vanessa'
+    INTEGER 1
+  STRING 7 'hudgens'
+    INTEGER 1
+  STRING 9 'airbender'
+    INTEGER 1
+  STRING 6 'stacey'
+    INTEGER 1
+  STRING 7 'soloman'
+    INTEGER 1
+  STRING 4 'jake'
+    INTEGER 1
+  STRING 10 'gyllenhaal'
+    INTEGER 1
+  STRING 4 'nina'
+    INTEGER 1
+  STRING 6 'dobrev'
+    INTEGER 1
+  STRING 6 'justin'
+    INTEGER 1
+  STRING 6 'bieber'
+    INTEGER 1
+  STRING 5 'scout'
+    INTEGER 1
+  STRING 7 'compton'
+    INTEGER 1
+  STRING 6 'ashley'
+    INTEGER 1
+  STRING 6 'greene'
+    INTEGER 1
+  STRING 6 'eleven'
+    INTEGER 1
+  STRING 3 'amy'
+    INTEGER 1
+  STRING 5 'aston'
+    INTEGER 1
+  STRING 9 'merrygold'
+    INTEGER 1

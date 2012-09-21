@@ -1,0 +1,151 @@
+/*
+ *  Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+ */
+
+// include the EDK first, since it provides the OS based defines
+#include <Fabric/EDK/EDK.h>
+IMPLEMENT_FABRIC_EDK_ENTRIES
+
+#include <GL/glew.h>
+#if defined(FABRIC_OS_LINUX)
+# undef None
+# undef True
+# undef False
+#endif
+
+
+using namespace Fabric::EDK;
+
+FABRIC_EXT_KL_STRUCT( Vec2, {
+  KL::Float32 x;
+  KL::Float32 y;
+} );
+
+FABRIC_EXT_KL_STRUCT( Vec3, {
+  KL::Float32 x;
+  KL::Float32 y;
+  KL::Float32 z;
+} );
+
+FABRIC_EXT_KL_STRUCT( Vec4, {
+  KL::Float32 x;
+  KL::Float32 y;
+  KL::Float32 z;
+  KL::Float32 t;
+} );
+
+FABRIC_EXT_KL_STRUCT( Mat22, {
+  Vec2 row0;
+  Vec2 row1;
+} );
+
+FABRIC_EXT_KL_STRUCT( Mat33, {
+  Vec3 row0;
+  Vec3 row1;
+  Vec3 row2;
+} );
+
+FABRIC_EXT_KL_STRUCT( Mat44, {
+  Vec4 row0;
+  Vec4 row1;
+  Vec4 row2;
+  Vec4 row3;
+} );
+
+static bool fglDebuggingEnabled = false;
+
+static unsigned int gBracket = 0;
+static bool gGlewInitialized = false;
+static void _incBracket()
+{
+  gBracket++;
+}
+static void _decBracket()
+{
+  if(gBracket > 0)
+    gBracket--;
+  else
+    throwException("Fabric::OGL::_decBracket: Unbalanced bracket.");
+}
+static void _clearError()
+{
+  if(!gGlewInitialized){
+    if (fglDebuggingEnabled)
+      log("glewInit();\n");
+    GLenum error = glewInit();
+    if(error != GLEW_OK)
+    {
+      throwException("[Fabric::OGL::glewInit] ERROR: %s",(const char*)glewGetErrorString(error));
+    }
+    gGlewInitialized = true;
+  }
+
+  // throw away last error
+  if(gBracket > 0)
+    return;
+  glGetError();
+}
+
+static char const *glErrorDesc( GLenum glError )
+{
+  switch ( glError )
+  {
+    case GL_NO_ERROR: return "GL_NO_ERROR";
+    case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
+    case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
+    case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
+    case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW";
+    case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW";
+    case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
+    case GL_TABLE_TOO_LARGE: return "GL_TABLE_TOO_LARGE";
+    default: return "*** Unknown OpenGL Error ***";
+  }
+}
+
+static void _checkError(const char * functionName)
+{
+  if(gBracket >0)
+    return;
+  GLenum glError = glGetError();
+  if ( glError != GL_NO_ERROR )
+  {
+    size_t const maxBufLen = 4095;
+    size_t bufLen = 0;
+    char buf[maxBufLen+1];
+    bufLen += snprintf( buf, maxBufLen, "[Fabric::OGL::%s] ERROR(s): ", functionName );
+    do
+    {
+      if( maxBufLen - bufLen )//snprintf returns -1 on some platforms if nb == 0
+			{
+        bufLen += snprintf( &buf[bufLen], maxBufLen - bufLen, ", " );
+				bufLen += snprintf( &buf[bufLen], maxBufLen - bufLen, "%s (0x%04X)", glErrorDesc( glError ), (unsigned)glError );
+			}
+      glError = glGetError();
+    } while ( glError != GL_NO_ERROR );
+    throwException( "%s", buf );
+  }
+}
+
+FABRIC_EXT_EXPORT void fglSetDebuggingEnabled( bool enable )
+{
+  fglDebuggingEnabled = enable;
+}
+
+FABRIC_EXT_EXPORT void glGetVersion_wrapper(KL::String & result)
+{
+  _clearError();
+  const char * version = (const char *)glGetString(GL_VERSION);
+  if(version == NULL)
+    result = KL::String("Error: No OpenGL context created yet.");
+  else
+    result = KL::String(version);
+}
+
+FABRIC_EXT_EXPORT void glewIsSupported_wrapper(KL::String & token, KL::Boolean & supported)
+{
+  _clearError();
+  log("querying glewSupported: %s\n",token.data());
+  supported = glewIsSupported(token.data());
+}
+
+####FUNCTIONS####

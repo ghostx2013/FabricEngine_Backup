@@ -1,0 +1,18 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'extsEnv', 'fabricExtsDistDir', 'alembicFlags', 'ExtSLName', 'buildOS' )
+
+alembicPluginEnv = extsEnv.Clone()
+if buildOS == 'Darwin':
+  alembicPluginEnv.Append( CCFLAGS = '-fvisibility=default' )
+alembicPluginEnv.MergeFlags( alembicFlags )
+alembicPlugin = alembicPluginEnv.SharedLibrary( ExtSLName('FabricALEMBIC'), Glob('*.cpp') )
+if buildOS == 'Windows':
+  alembicPlugin = alembicPlugin[0]
+alembicManifest = alembicPluginEnv.File('FabricALEMBIC.fpm.json'),
+alembicKL = alembicPluginEnv.File('FabricALEMBIC.kl'),
+alembicFiles = [alembicManifest, alembicPlugin, alembicKL]
+
+Return( 'alembicFiles' )

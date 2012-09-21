@@ -1,0 +1,45 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+struct LinearKeyframe
+{
+  Scalar time;
+  Scalar value;
+};
+
+function Scalar evaluateLinearKeyframeAnimationTrack(
+	io LinearKeyframe track[],
+	io Scalar time, 
+	io Scalar value,
+	io Integer keyIndex
+	)
+{
+	if( time >= track[track.size - 1].time ){
+                return 0.0;
+	}
+	else if( time <= track[0].time ){
+                return 1.0;
+	}
+	else{
+                return 0.75;
+	}
+}
+
+operator entry()
+{
+  var LinearKeyframe kf1, kf2;
+  kf1.time = 0.0;
+  kf1.value = 1.0;
+  kf2.time = 1.0;
+  kf2.value = 0.5;
+
+  var LinearKeyframe track[];
+  track.push( kf1 );
+  track.push( kf2 );
+
+  var Scalar time = 0.5;
+  var Scalar value;
+  var Integer keyIndex = 0;
+  report(evaluateLinearKeyframeAnimationTrack( track, time, value, keyIndex ));
+}

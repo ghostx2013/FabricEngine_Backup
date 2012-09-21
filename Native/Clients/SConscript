@@ -1,0 +1,12 @@
+#
+# Copyright 2010-2011 Fabric Technologies Inc. All rights reserved.
+#
+
+Import( 'buildOS' )
+
+SConscript( dirs=['NPAPI'] )
+SConscript( dirs=['Node'] )
+SConscript( dirs=['Python'] )
+
+Alias('cliClients', ['node', 'python'])
+Alias('clients', ['npapi', 'cliClients'])

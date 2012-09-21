@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html style='height: 100%'>
+  <head>
+    <title>Fabric Tutorial 21 - Time Extension</title>
+    <script type="text/javascript" src="../../../ThirdParty/jQuery/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="../../../Core/FABRIC.js"></script>
+  </head>
+  <body style='height: 100%'>
+    <h1>Fabric Time Sample Ext</h1>
+    <p>The current local date and time is <span id=currentTime>...</span></p>
+    <div id="fabricWindowContainer"></div>
+    <script type="text/javascript">
+    
+$(document).ready(function() {
+  
+  // create the fabric context
+  FABRIC = FABRIC.createContext();
+  
+  // create an operator to retrieve the current time
+  var op = FABRIC.DG.createOperator( "getCurrentTimeString" );
+  op.setEntryPoint( "entry" );
+  op.setSourceCode( "use TimeSample; operator entry( io String result ) { currentTimeString( result ); }" );
+  
+  // create a binding for the operator
+  var binding = FABRIC.DG.createBinding();
+  binding.setOperator( op );
+  binding.setParameterLayout( ["self.timeString"] );
+  
+  // create a dgnode and attach the binding
+  var node = FABRIC.DG.createNode( "timeNode" );
+  node.addMember( "timeString", "String" );
+  node.bindings.append( binding );
+  
+  // create a time based event to query the node per second
+  window.setInterval( function() {
+    node.setData( "timeString", "<dirty>" );
+    node.evaluate();
+    document.getElementById( 'currentTime' ).innerHTML = node.getData( "timeString" );
+  }, 1000 );
+  
+}); 
+    </script>
+  </body>
+</HTML>

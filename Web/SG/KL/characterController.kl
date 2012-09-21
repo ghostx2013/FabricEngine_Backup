@@ -1,0 +1,226 @@
+/*
+ *  Copyright 2010-2012 Fabric Engine Inc. All rights reserved.
+ */
+
+use Vec3, Quat, Xfo;
+use DebugGeometry;
+
+
+
+operator worldSpacePlayerControls(
+  io Vec2 translationControls,
+  io Vec2 orientationControls,
+  
+  io Scalar maxLinearVelocity,
+  io Scalar maxAngularVelocity,
+  
+  io Vec3 goalLinearVelocity,
+  io Quat goalOrientation
+) {
+// report("worldSpacePlayerControls:"+translationControls);
+  
+  goalLinearVelocity = Vec3(translationControls.x, 0.0, translationControls.y) * maxLinearVelocity;
+}
+
+operator screenSpacePlayerControls(
+  io Vec2 translationControls,
+  io Vec2 orientationControls,
+  
+  io Scalar maxLinearVelocity,
+  io Scalar maxAngularVelocity,
+  
+  io Vec3 goalLinearVelocity,
+  io Quat goalOrientation,
+  
+  io Mat44 cameraMat44,
+  io Mat44 projectionMat44
+) {
+// report("screenSpacePlayerControls:"+translationControls);
+  
+  Xfo camXfo;
+  Quat alignment;
+  
+  camXfo.setFromMat44(cameraMat44.inverse());
+  // Modify the Camera Matrix so that it faces straight down.
+  // This enables us to convert screen space vectors to world space.
+  alignment.setFrom2Vectors(camXfo.ori.rotateVector(Vec3(0.0, 0.0, -1.0)), Vec3(0.0, -1.0, 0.0));
+  camXfo.ori = alignment * camXfo.ori;
+  Vec3 translationX = camXfo.ori.rotateVector(Vec3(translationControls.x * maxLinearVelocity, 0.0, 0.0));
+  Vec3 translationZ = camXfo.ori.rotateVector(Vec3(0.0, translationControls.y * maxLinearVelocity, 0.0));
+
+  goalLinearVelocity = translationX + translationZ;
+}
+
+operator evaluateCharacterController(
+  io Xfo controllerXfo,
+  io CharacterControllerParams controllerparams,
+  
+  io Vec3 goalLinearVelocity,
+  io Quat goalOrientation,
+  
+  io Scalar maxLinearVelocity,
+  io Scalar maxAngularVelocity,
+  
+  io Scalar maxLinearAcceleration,
+  io Scalar maxAngularAcceleration,
+  
+  io Vec3 linearVelocity,
+  io Scalar angularVelocity,
+  io Scalar comParams[],
+  
+  io Scalar gravity,
+  io Scalar comHeight,
+  io Scalar circleSize,
+  
+  io DebugGeometry debugGeometry1,
+  io DebugGeometry debugGeometry2,
+  
+  io Scalar timestep
+) {
+// report("evaluateCharacterController:"+timestep);
+  debugGeometry1.reset();
+  if(timestep==0){
+    return;
+  }
+  Quat alignment;
+  Boolean displayDebugging = ENABLE_DEBUGGING;
+  
+  controllerXfo.tr += controllerXfo.ori.rotateVector(Vec3(0.0, controllerparams.lift, 0.0));
+  controllerparams.lift = 0.0;
+  Vec3 facingDir = controllerXfo.ori.rotateVector(Vec3(0.0, 0.0, 1.0));
+  
+  
+  ////////////////////////////
+  // Gradient Modulation
+  // As the chracter wals up and down steep terrain,
+  // the gradient is tken into account to modulate the velocity of the character.
+  Vec3 goalVel = goalLinearVelocity * cos(atan(controllerparams.gradient));
+  
+  ////////////////////////////
+  // Movement
+  Vec3 acceleration = (goalVel - linearVelocity)/timestep;
+  Scalar accel = acceleration.length();
+  if(accel > 0.001){
+    Scalar acceleationCosAngle = acceleration.unit().dot(facingDir);
+    Scalar modulator = Math_linearInterpolate(0.25, 1.0, acceleationCosAngle > 0.0 ? acceleationCosAngle : acceleationCosAngle*-0.5);
+    if(accel > maxLinearAcceleration * modulator){
+      acceleration *= (maxLinearAcceleration * modulator)/accel;
+      accel = maxLinearAcceleration * modulator;
+    }
+      
+    linearVelocity += acceleration * timestep;
+  }
+  if(goalVel.length() < linearVelocity.length()){
+    accel = -accel;
+  }
+  controllerparams.displacement.tr = linearVelocity * timestep;
+  controllerXfo.tr += controllerparams.displacement.tr;
+  
+  ////////////////////////////
+  // Ballance
+  if(gravity < 0.0){
+    if(abs(accel) > 0.001){
+      Vec3 balanceVector = acceleration + Vec3(0.0, gravity, 0.0);
+      balanceVector = balanceVector.unit() * comHeight;
+      balanceVector.y = 0.0;
+      controllerparams.balanceXfo.tr = controllerparams.balanceXfo.tr.linearInterpolate(balanceVector, 0.05);
+    }else{
+      controllerparams.balanceXfo.tr = controllerparams.balanceXfo.tr.linearInterpolate(Vec3(0.0,0.0,0.0), 0.05);
+    }
+    Scalar len = controllerparams.balanceXfo.tr.length();
+    
+    if(len > 0.001){
+      Scalar balanceAngle = acos(len / comHeight);
+      Vec3 axis = Vec3(0.0, 1.0, 0.0).cross(controllerparams.balanceXfo.tr).unit();
+      controllerparams.balanceXfo.ori.setFromAxisAndAngle(axis, HALF_PI - balanceAngle);
+      
+      if(displayDebugging){
+        debugGeometry1.drawLine(controllerXfo.tr, controllerXfo.tr - controllerparams.balanceXfo.tr, Color(0.5, 1.0, 0.5,1.0));
+        debugGeometry1.drawLine(controllerXfo.tr - controllerparams.balanceXfo.tr, controllerXfo.tr - controllerparams.balanceXfo.tr + controllerparams.balanceXfo.ori.rotateVector(Vec3(0.0, comHeight, 0.0)), Color(0.5, 1.0, 0.5, 1.0));
+      }
+    }
+    else{
+      controllerparams.balanceXfo.ori.setIdentity();
+      if(displayDebugging){
+        debugGeometry1.drawLine(controllerXfo.tr, controllerXfo.tr + Vec3(0.0, comHeight, 0.0), Color(0.5, 1.0,0.5,1.0));
+      }
+    }
+    Xfo balanceDisplayXfo;
+    balanceDisplayXfo.tr = controllerXfo.tr + controllerparams.balanceXfo.tr;
+    balanceDisplayXfo.ori = controllerparams.balanceXfo.ori * controllerXfo.ori;
+  }
+  
+  ////////////////////////////
+  // Alignment
+  
+  if(linearVelocity.length() > 0.001){
+    Vec3 displacementDir = linearVelocity.unit();
+    Scalar sign = facingDir.cross(displacementDir).y < 0.0 ? -1.0 : 1.0;
+    Scalar newAngularVelocity = facingDir.angleTo(displacementDir) * sign / timestep;
+    
+    Scalar angularAcceleration = (newAngularVelocity - angularVelocity);
+    if(abs(angularAcceleration) > maxAngularAcceleration){
+      angularAcceleration = maxAngularAcceleration * sign;
+    }
+    newAngularVelocity = angularVelocity + angularAcceleration;
+    if(abs(newAngularVelocity) > maxAngularVelocity){
+      newAngularVelocity = maxAngularVelocity * sign;
+    }
+    angularVelocity = newAngularVelocity;
+    controllerparams.displacement.ori.setFromAxisAndAngle(Vec3(0.0, 1.0, 0.0), angularVelocity * timestep);
+    controllerXfo.ori = controllerparams.displacement.ori * controllerXfo.ori;
+   
+    // Smooth changes in direction
+    // TODO: provide a parameter to ramp this.
+    if(controllerparams.trail.size == 0){
+      controllerparams.displacementDir = controllerparams.displacementDir.linearInterpolate(displacementDir, 0.1);
+    }else{
+      controllerparams.displacementDir = displacementDir;
+    }
+  }
+  else{
+    controllerparams.displacement.ori.setIdentity();
+  }
+  
+  if(displayDebugging){
+    debugGeometry1.drawLine(controllerXfo.tr, controllerXfo.tr + (controllerparams.displacementDir * circleSize * 1.2), Color(0.5,0.0,0.0,1.0));
+  }
+  ////////////////////////////
+  // Trail
+  
+  if(controllerparams.trail.size > 0){
+    Xfo lastTrailPoint = controllerparams.trail[controllerparams.trailCircularArrayIndex];
+    
+    Scalar trailSegmentDist = (controllerXfo.tr - lastTrailPoint.tr).length();
+    Scalar trailSegmentLength = controllerparams.trailLength/Scalar(controllerparams.trail.size);
+    
+    if(trailSegmentDist > trailSegmentLength){
+    //  report("newTrailPoint:"+trailSegmentDist);
+      Xfo newTrailPoint = lastTrailPoint.linearInterpolate(controllerXfo, trailSegmentLength/trailSegmentDist);
+      alignment.setFrom2Vectors(newTrailPoint.ori.rotateVector(Vec3(0.0, 0.0, 1.0)), controllerparams.displacementDir);
+      newTrailPoint.ori = alignment * newTrailPoint.ori;
+      controllerparams.trailCircularArrayIndex = (controllerparams.trailCircularArrayIndex+1) % controllerparams.trail.size;
+      controllerparams.trail[controllerparams.trailCircularArrayIndex] = newTrailPoint;
+    }
+    
+    if(displayDebugging){
+      for(Integer i=0; i < controllerparams.trail.size; i++){
+        debugGeometry1.drawAxis(controllerparams.trail[i], 1.0, Color(0.0,0.0,0.0,1.0));
+        debugGeometry1.drawPoint(controllerparams.trail[i].tr, Color(0.0,0.0,0.0,1.0));
+      }
+    }
+  }
+
+  if(displayDebugging){
+    debugGeometry1.drawAxis(controllerXfo, 1.0, Color(1.0,0.0,0.0,1.0));
+    debugGeometry1.drawCircle(controllerXfo, circleSize, Color(1.0,0.0,0.0,1.0));
+  }
+  
+  comParams.resize(4);
+  comParams[0] = linearVelocity.length();
+  comParams[1] = accel;
+  comParams[2] = 0.0; // gradient
+  comParams[3] = 0.0; // direction
+}
+
+
